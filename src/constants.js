@@ -39,11 +39,35 @@ function getPlatformUserAgent() {
 const ANTIGRAVITY_ENDPOINT_DAILY = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
 const ANTIGRAVITY_ENDPOINT_PROD = 'https://cloudcode-pa.googleapis.com';
 
-// Endpoint fallback order (daily → prod)
-export const ANTIGRAVITY_ENDPOINT_FALLBACKS = [
-    ANTIGRAVITY_ENDPOINT_DAILY,
-    ANTIGRAVITY_ENDPOINT_PROD
-];
+function isTruthy(value) {
+    return ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
+}
+
+function parseEndpointList(envValue) {
+    if (!envValue) return [];
+    return envValue
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+}
+
+function getEndpointFallbacks() {
+    const fromEnv = parseEndpointList(process.env.ANTIGRAVITY_ENDPOINTS);
+    let endpoints = fromEnv.length > 0 ? fromEnv : [ANTIGRAVITY_ENDPOINT_DAILY, ANTIGRAVITY_ENDPOINT_PROD];
+
+    if (isTruthy(process.env.ANTIGRAVITY_DISABLE_DAILY)) {
+        endpoints = endpoints.filter(endpoint => endpoint !== ANTIGRAVITY_ENDPOINT_DAILY);
+    }
+
+    if (endpoints.length === 0) {
+        endpoints = [ANTIGRAVITY_ENDPOINT_PROD];
+    }
+
+    return endpoints;
+}
+
+// Endpoint fallback order (daily → prod by default)
+export const ANTIGRAVITY_ENDPOINT_FALLBACKS = getEndpointFallbacks();
 
 // Required headers for Antigravity API requests
 export const ANTIGRAVITY_HEADERS = {
@@ -63,6 +87,10 @@ export const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 export const REQUEST_BODY_LIMIT = '50mb';
 export const ANTIGRAVITY_AUTH_PORT = 9092;
 export const DEFAULT_PORT = 8080;
+export const MODEL_CACHE_TTL_MS = parseInt(process.env.ANTIGRAVITY_MODEL_CACHE_TTL_MS || '300000', 10);
+export const ENDPOINT_404_SKIP_THRESHOLD = parseInt(process.env.ANTIGRAVITY_ENDPOINT_404_SKIP_THRESHOLD || '0', 10);
+export const ENDPOINT_404_SKIP_COOLDOWN_MS = parseInt(process.env.ANTIGRAVITY_ENDPOINT_404_SKIP_COOLDOWN_MS || '60000', 10);
+export const MODEL_VALIDATION_ENABLED = !isTruthy(process.env.ANTIGRAVITY_DISABLE_MODEL_VALIDATION);
 
 // Multi-account configuration
 export const ACCOUNT_CONFIG_PATH = join(
@@ -86,6 +114,48 @@ export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature leng
 
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
+export const MODEL_ALIASES = parseModelAliases(
+    process.env.ANTIGRAVITY_MODEL_ALIASES
+    || process.env.ANTHROPIC_MODEL_ALIASES
+    || process.env.MODEL_ALIASES
+);
+
+function parseModelAliases(input = '') {
+    const raw = String(input || '').trim();
+    if (!raw) return {};
+
+    if (raw.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                return Object.fromEntries(
+                    Object.entries(parsed).map(([key, value]) => [String(key).toLowerCase(), String(value)])
+                );
+            }
+        } catch (error) {
+            console.log('[Constants] Failed to parse MODEL_ALIASES JSON:', error.message);
+        }
+    }
+
+    const aliases = {};
+    const pairs = raw.split(/[;,]/).map(value => value.trim()).filter(Boolean);
+    for (const pair of pairs) {
+        const [from, to] = pair.split(/[:=]/).map(value => value.trim());
+        if (from && to) {
+            aliases[from.toLowerCase()] = to;
+        }
+    }
+
+    return aliases;
+}
+
+export function resolveModelAlias(modelName) {
+    if (!modelName) return modelName;
+    const direct = MODEL_ALIASES[modelName];
+    if (direct) return direct;
+    const lower = String(modelName).toLowerCase();
+    return MODEL_ALIASES[lower] || modelName;
+}
 
 /**
  * Get the model family from model name (dynamic detection, no hardcoded list).
@@ -150,10 +220,16 @@ export default {
     MAX_RETRIES,
     MAX_ACCOUNTS,
     MAX_WAIT_BEFORE_ERROR_MS,
+    MODEL_CACHE_TTL_MS,
+    ENDPOINT_404_SKIP_THRESHOLD,
+    ENDPOINT_404_SKIP_COOLDOWN_MS,
+    MODEL_VALIDATION_ENABLED,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
+    MODEL_ALIASES,
     getModelFamily,
     isThinkingModel,
+    resolveModelAlias,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI
 };

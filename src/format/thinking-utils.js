@@ -218,11 +218,19 @@ export function reorderAssistantContent(content) {
     const textBlocks = [];
     const toolUseBlocks = [];
     let droppedEmptyBlocks = 0;
+    let droppedInvalidThinkingBlocks = 0;
 
     for (const block of content) {
         if (!block) continue;
 
-        if (block.type === 'thinking' || block.type === 'redacted_thinking') {
+        if (block.type === 'thinking') {
+            if (hasValidSignature(block)) {
+                // Sanitize thinking blocks to remove cache_control and other extra fields
+                thinkingBlocks.push(sanitizeAnthropicThinkingBlock(block));
+            } else {
+                droppedInvalidThinkingBlocks++;
+            }
+        } else if (block.type === 'redacted_thinking') {
             // Sanitize thinking blocks to remove cache_control and other extra fields
             thinkingBlocks.push(sanitizeAnthropicThinkingBlock(block));
         } else if (block.type === 'tool_use') {
@@ -242,6 +250,9 @@ export function reorderAssistantContent(content) {
 
     if (droppedEmptyBlocks > 0) {
         console.log(`[ThinkingUtils] Dropped ${droppedEmptyBlocks} empty text block(s)`);
+    }
+    if (droppedInvalidThinkingBlocks > 0) {
+        console.log(`[ThinkingUtils] Dropped ${droppedInvalidThinkingBlocks} invalid thinking block(s)`);
     }
 
     const reordered = [...thinkingBlocks, ...textBlocks, ...toolUseBlocks];

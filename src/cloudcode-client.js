@@ -13,6 +13,8 @@ import crypto from 'crypto';
 import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     ANTIGRAVITY_HEADERS,
+    ENDPOINT_404_SKIP_COOLDOWN_MS,
+    ENDPOINT_404_SKIP_THRESHOLD,
     MAX_RETRIES,
     MAX_WAIT_BEFORE_ERROR_MS,
     MIN_SIGNATURE_LENGTH,
@@ -25,6 +27,88 @@ import {
 } from './format/index.js';
 import { formatDuration, sleep } from './utils/helpers.js';
 import { isRateLimitError, isAuthError } from './errors.js';
+
+const LOG_THROTTLE_MS = parseInt(process.env.ANTIGRAVITY_LOG_THROTTLE_MS || '2000', 10);
+const logThrottle = new Map();
+const endpointSkipState = new Map();
+
+function logThrottled(key, message, intervalMs = LOG_THROTTLE_MS) {
+    const now = Date.now();
+    const last = logThrottle.get(key) || 0;
+    if (now - last >= intervalMs) {
+        console.log(message);
+        logThrottle.set(key, now);
+    }
+}
+
+function shouldSkipEndpoint(endpoint) {
+    if (!ENDPOINT_404_SKIP_THRESHOLD) return false;
+    const state = endpointSkipState.get(endpoint);
+    if (!state) return false;
+    if (state.skipUntil && state.skipUntil > Date.now()) return true;
+    if (state.skipUntil && state.skipUntil <= Date.now()) {
+        endpointSkipState.delete(endpoint);
+    }
+    return false;
+}
+
+function recordEndpoint404(endpoint) {
+    if (!ENDPOINT_404_SKIP_THRESHOLD) return;
+    const now = Date.now();
+    const state = endpointSkipState.get(endpoint) || { count: 0, lastAt: 0, skipUntil: 0 };
+    if (now - state.lastAt > ENDPOINT_404_SKIP_COOLDOWN_MS) {
+        state.count = 0;
+    }
+    state.count += 1;
+    state.lastAt = now;
+    if (state.count >= ENDPOINT_404_SKIP_THRESHOLD) {
+        state.skipUntil = now + ENDPOINT_404_SKIP_COOLDOWN_MS;
+        logThrottled(
+            `endpoint-skip:${endpoint}`,
+            `[CloudCode] Temporarily skipping ${endpoint} after ${state.count} 404s`
+        );
+    }
+    endpointSkipState.set(endpoint, state);
+}
+
+function logEndpointFailure(endpoint, status, errorText, model, isStream = false) {
+    const trimmed = errorText && errorText.length > 300 ? `${errorText.slice(0, 300)}...` : errorText;
+    const key = `endpoint:${endpoint}:${status}:${model}:${isStream ? 'stream' : 'send'}`;
+    logThrottled(key, `[CloudCode] ${isStream ? 'Stream' : 'Error'} at ${endpoint}: ${status} - ${trimmed}`);
+    if (status === 404) recordEndpoint404(endpoint);
+}
+
+function buildModelOrProjectNotFoundError({ model, account, project, endpoint, errorText }) {
+    const error = new Error(`MODEL_OR_PROJECT_NOT_FOUND: model=${model} account=${account} project=${project} endpoint=${endpoint}`);
+    error.code = 'MODEL_OR_PROJECT_NOT_FOUND';
+    error.model = model;
+    error.account = account;
+    error.project = project;
+    error.endpoint = endpoint;
+    error.details = errorText;
+    return error;
+}
+
+async function buildModelNotAvailableError(model, accountManager) {
+    const { models, perAccount } = await accountManager.getAllAvailableModels();
+    const error = new Error(`MODEL_NOT_AVAILABLE: ${model}`);
+    error.code = 'MODEL_NOT_AVAILABLE';
+    error.model = model;
+    error.availableModels = models;
+    error.perAccount = perAccount;
+    return error;
+}
+
+function pickNextNonExcluded(accountManager, excluded) {
+    const available = accountManager.getAvailableAccounts();
+    if (available.length === 0) return null;
+    const maxTries = available.length;
+    for (let i = 0; i < maxTries; i++) {
+        const account = accountManager.pickNext();
+        if (account && !excluded.has(account.email)) return account;
+    }
+    return null;
+}
 
 /**
  * Check if an error is a rate limit error (429 or RESOURCE_EXHAUSTED)
@@ -276,6 +360,7 @@ function buildHeaders(token, model, accept = 'application/json') {
 export async function sendMessage(anthropicRequest, accountManager) {
     const model = anthropicRequest.model;
     const isThinking = isThinkingModel(model);
+    const excludedAccounts = new Set();
 
     // Retry loop with account failover
     // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -285,14 +370,24 @@ export async function sendMessage(anthropicRequest, accountManager) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Use sticky account selection for cache continuity
         const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount();
-        let account = stickyAccount;
+        let account = stickyAccount && !excludedAccounts.has(stickyAccount.email) ? stickyAccount : null;
 
-        // Handle waiting for sticky account
-        if (!account && waitMs > 0) {
+        // Handle waiting for sticky account (only if not excluded)
+        if (!account && waitMs > 0 && stickyAccount && !excludedAccounts.has(stickyAccount.email)) {
             console.log(`[CloudCode] Waiting ${formatDuration(waitMs)} for sticky account...`);
             await sleep(waitMs);
             accountManager.clearExpiredLimits();
-            account = accountManager.getCurrentStickyAccount();
+            const refreshedSticky = accountManager.getCurrentStickyAccount();
+            account = refreshedSticky && !excludedAccounts.has(refreshedSticky.email) ? refreshedSticky : null;
+        }
+
+        if (!account) {
+            account = pickNextNonExcluded(accountManager, excludedAccounts);
+        }
+
+        const availableCount = accountManager.getAvailableAccounts().length;
+        if (!account && availableCount > 0 && excludedAccounts.size >= availableCount) {
+            throw await buildModelNotAvailableError(model, accountManager);
         }
 
         // Handle all accounts rate-limited
@@ -313,7 +408,7 @@ export async function sendMessage(anthropicRequest, accountManager) {
                 console.log(`[CloudCode] All ${accountCount} account(s) rate-limited. Waiting ${formatDuration(allWaitMs)}...`);
                 await sleep(allWaitMs);
                 accountManager.clearExpiredLimits();
-                account = accountManager.pickNext();
+                account = pickNextNonExcluded(accountManager, excludedAccounts);
             }
 
             if (!account) {
@@ -324,6 +419,26 @@ export async function sendMessage(anthropicRequest, accountManager) {
         try {
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
+            let supportsModel = true;
+            try {
+                supportsModel = await accountManager.accountSupportsModel(account, token, model);
+            } catch (error) {
+                logThrottled(
+                    `model-check:${account.email}`,
+                    `[CloudCode] Model availability check failed for ${account.email}: ${error.message}`
+                );
+            }
+
+            if (!supportsModel) {
+                excludedAccounts.add(account.email);
+                console.log(`[CloudCode] Model ${model} not available for ${account.email}, trying next account...`);
+                const availableCount = accountManager.getAvailableAccounts().length;
+                if (availableCount > 0 && excludedAccounts.size >= availableCount) {
+                    throw await buildModelNotAvailableError(model, accountManager);
+                }
+                continue;
+            }
+
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 
@@ -333,6 +448,11 @@ export async function sendMessage(anthropicRequest, accountManager) {
             let lastError = null;
             for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
                 try {
+                    if (shouldSkipEndpoint(endpoint)) {
+                        logThrottled(`endpoint-skip:${endpoint}`, `[CloudCode] Skipping endpoint ${endpoint} (cooldown active)`);
+                        continue;
+                    }
+
                     const url = isThinking
                         ? `${endpoint}/v1internal:streamGenerateContent?alt=sse`
                         : `${endpoint}/v1internal:generateContent`;
@@ -345,7 +465,7 @@ export async function sendMessage(anthropicRequest, accountManager) {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.log(`[CloudCode] Error at ${endpoint}: ${response.status} - ${errorText}`);
+                        logEndpointFailure(endpoint, response.status, errorText, model, false);
 
                         if (response.status === 401) {
                             // Auth error - clear caches and retry with fresh token
@@ -363,6 +483,17 @@ export async function sendMessage(anthropicRequest, accountManager) {
                             if (!lastError?.is429 || (resetMs && (!lastError.resetMs || resetMs < lastError.resetMs))) {
                                 lastError = { is429: true, response, errorText, resetMs };
                             }
+                            continue;
+                        }
+
+                        if (response.status === 404) {
+                            lastError = buildModelOrProjectNotFoundError({
+                                model,
+                                account: account.email,
+                                project,
+                                endpoint,
+                                errorText
+                            });
                             continue;
                         }
 
@@ -386,7 +517,10 @@ export async function sendMessage(anthropicRequest, accountManager) {
                     if (is429Error(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
-                    console.log(`[CloudCode] Error at ${endpoint}:`, endpointError.message);
+                    logThrottled(
+                        `endpoint-ex:${endpoint}:${model}`,
+                        `[CloudCode] Error at ${endpoint}: ${endpointError.message}`
+                    );
                     lastError = endpointError;
                 }
             }
@@ -425,24 +559,10 @@ export async function sendMessage(anthropicRequest, accountManager) {
  * Parse SSE response for thinking models and accumulate all parts
  */
 async function parseThinkingSSEResponse(response, originalModel) {
-    let accumulatedThinkingText = '';
-    let accumulatedThinkingSignature = '';
     let accumulatedText = '';
     const finalParts = [];
     let usageMetadata = {};
     let finishReason = 'STOP';
-
-    const flushThinking = () => {
-        if (accumulatedThinkingText) {
-            finalParts.push({
-                thought: true,
-                text: accumulatedThinkingText,
-                thoughtSignature: accumulatedThinkingSignature
-            });
-            accumulatedThinkingText = '';
-            accumulatedThinkingSignature = '';
-        }
-    };
 
     const flushText = () => {
         if (accumulatedText) {
@@ -486,17 +606,17 @@ async function parseThinkingSSEResponse(response, originalModel) {
                 for (const part of parts) {
                     if (part.thought === true) {
                         flushText();
-                        accumulatedThinkingText += (part.text || '');
-                        if (part.thoughtSignature) {
-                            accumulatedThinkingSignature = part.thoughtSignature;
-                        }
+                        // Preserve each thought part with its own signature to avoid mismatches.
+                        finalParts.push({
+                            thought: true,
+                            text: part.text || '',
+                            thoughtSignature: part.thoughtSignature || ''
+                        });
                     } else if (part.functionCall) {
-                        flushThinking();
                         flushText();
                         finalParts.push(part);
                     } else if (part.text !== undefined) {
                         if (!part.text) continue;
-                        flushThinking();
                         accumulatedText += part.text;
                     }
                 }
@@ -506,7 +626,6 @@ async function parseThinkingSSEResponse(response, originalModel) {
         }
     }
 
-    flushThinking();
     flushText();
 
     const accumulatedResponse = {
@@ -539,6 +658,7 @@ async function parseThinkingSSEResponse(response, originalModel) {
  */
 export async function* sendMessageStream(anthropicRequest, accountManager) {
     const model = anthropicRequest.model;
+    const excludedAccounts = new Set();
 
     // Retry loop with account failover
     // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -548,14 +668,24 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Use sticky account selection for cache continuity
         const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount();
-        let account = stickyAccount;
+        let account = stickyAccount && !excludedAccounts.has(stickyAccount.email) ? stickyAccount : null;
 
-        // Handle waiting for sticky account
-        if (!account && waitMs > 0) {
+        // Handle waiting for sticky account (only if not excluded)
+        if (!account && waitMs > 0 && stickyAccount && !excludedAccounts.has(stickyAccount.email)) {
             console.log(`[CloudCode] Waiting ${formatDuration(waitMs)} for sticky account...`);
             await sleep(waitMs);
             accountManager.clearExpiredLimits();
-            account = accountManager.getCurrentStickyAccount();
+            const refreshedSticky = accountManager.getCurrentStickyAccount();
+            account = refreshedSticky && !excludedAccounts.has(refreshedSticky.email) ? refreshedSticky : null;
+        }
+
+        if (!account) {
+            account = pickNextNonExcluded(accountManager, excludedAccounts);
+        }
+
+        const availableCount = accountManager.getAvailableAccounts().length;
+        if (!account && availableCount > 0 && excludedAccounts.size >= availableCount) {
+            throw await buildModelNotAvailableError(model, accountManager);
         }
 
         // Handle all accounts rate-limited
@@ -576,7 +706,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                 console.log(`[CloudCode] All ${accountCount} account(s) rate-limited. Waiting ${formatDuration(allWaitMs)}...`);
                 await sleep(allWaitMs);
                 accountManager.clearExpiredLimits();
-                account = accountManager.pickNext();
+                account = pickNextNonExcluded(accountManager, excludedAccounts);
             }
 
             if (!account) {
@@ -587,6 +717,26 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
         try {
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
+            let supportsModel = true;
+            try {
+                supportsModel = await accountManager.accountSupportsModel(account, token, model);
+            } catch (error) {
+                logThrottled(
+                    `model-check:${account.email}`,
+                    `[CloudCode] Model availability check failed for ${account.email}: ${error.message}`
+                );
+            }
+
+            if (!supportsModel) {
+                excludedAccounts.add(account.email);
+                console.log(`[CloudCode] Model ${model} not available for ${account.email}, trying next account...`);
+                const availableCount = accountManager.getAvailableAccounts().length;
+                if (availableCount > 0 && excludedAccounts.size >= availableCount) {
+                    throw await buildModelNotAvailableError(model, accountManager);
+                }
+                continue;
+            }
+
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 
@@ -596,6 +746,11 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
             let lastError = null;
             for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
                 try {
+                    if (shouldSkipEndpoint(endpoint)) {
+                        logThrottled(`endpoint-skip:${endpoint}`, `[CloudCode] Skipping endpoint ${endpoint} (cooldown active)`);
+                        continue;
+                    }
+
                     const url = `${endpoint}/v1internal:streamGenerateContent?alt=sse`;
 
                     const response = await fetch(url, {
@@ -606,7 +761,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.log(`[CloudCode] Stream error at ${endpoint}: ${response.status} - ${errorText}`);
+                        logEndpointFailure(endpoint, response.status, errorText, model, true);
 
                         if (response.status === 401) {
                             // Auth error - clear caches and retry
@@ -626,6 +781,17 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                             continue;
                         }
 
+                        if (response.status === 404) {
+                            lastError = buildModelOrProjectNotFoundError({
+                                model,
+                                account: account.email,
+                                project,
+                                endpoint,
+                                errorText
+                            });
+                            continue;
+                        }
+
                         lastError = new Error(`API error ${response.status}: ${errorText}`);
                         continue;
                     }
@@ -640,7 +806,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                     if (is429Error(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
-                    console.log(`[CloudCode] Stream error at ${endpoint}:`, endpointError.message);
+                    logThrottled(
+                        `endpoint-ex:${endpoint}:${model}:stream`,
+                        `[CloudCode] Stream error at ${endpoint}: ${endpointError.message}`
+                    );
                     lastError = endpointError;
                 }
             }

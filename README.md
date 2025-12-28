@@ -166,6 +166,13 @@ Or to use Gemini models:
 }
 ```
 
+You can also print shell exports:
+
+```bash
+eval "$(antigravity-claude-proxy env)"
+eval "$(antigravity-claude-proxy env gemini)"
+```
+
 ### Run Claude Code
 
 ```bash
