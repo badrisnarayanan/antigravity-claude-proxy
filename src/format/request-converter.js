@@ -19,6 +19,53 @@ import {
     closeToolLoopForThinking
 } from './thinking-utils.js';
 
+const SCHEMA_CACHE_MAX = 200;
+const schemaCache = new Map();
+const schemaRefCache = new WeakMap();
+const geminiSchemaRefCache = new WeakMap();
+
+function getSchemaCacheKey(schema, isGemini) {
+    try {
+        return `${isGemini ? 'gemini' : 'default'}:${JSON.stringify(schema)}`;
+    } catch {
+        return null;
+    }
+}
+
+function setSchemaCache(key, value) {
+    if (!key) return;
+    schemaCache.set(key, value);
+    if (schemaCache.size > SCHEMA_CACHE_MAX) {
+        const firstKey = schemaCache.keys().next().value;
+        if (firstKey) schemaCache.delete(firstKey);
+    }
+}
+
+function sanitizeSchemaCached(schema, isGeminiModel) {
+    if (schema && typeof schema === 'object') {
+        const refCache = isGeminiModel ? geminiSchemaRefCache : schemaRefCache;
+        const cached = refCache.get(schema);
+        if (cached) return cached;
+    }
+
+    const key = getSchemaCacheKey(schema, isGeminiModel);
+    if (key && schemaCache.has(key)) {
+        return schemaCache.get(key);
+    }
+
+    let parameters = sanitizeSchema(schema);
+    if (isGeminiModel) {
+        parameters = cleanSchemaForGemini(parameters);
+    }
+
+    if (schema && typeof schema === 'object') {
+        const refCache = isGeminiModel ? geminiSchemaRefCache : schemaRefCache;
+        refCache.set(schema, parameters);
+    }
+    setSchemaCache(key, parameters);
+    return parameters;
+}
+
 /**
  * Convert Anthropic Messages API request to the format expected by Cloud Code
  *
@@ -185,13 +232,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
                 || tool.parameters
                 || { type: 'object' };
 
-            // Sanitize schema for general compatibility
-            let parameters = sanitizeSchema(schema);
-
-            // For Gemini models, apply additional cleaning for VALIDATED mode
-            if (isGeminiModel) {
-                parameters = cleanSchemaForGemini(parameters);
-            }
+            const parameters = sanitizeSchemaCached(schema, isGeminiModel);
 
             return {
                 name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
