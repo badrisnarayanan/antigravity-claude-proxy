@@ -35,6 +35,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     const isClaudeModel = modelFamily === 'claude';
     const isGeminiModel = modelFamily === 'gemini';
     const isThinking = isThinkingModel(modelName);
+    const maxTokens = Number.isFinite(max_tokens) ? max_tokens : undefined;
 
     const googleRequest = {
         contents: [],
@@ -147,7 +148,17 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             };
 
             // Only set thinking_budget if explicitly provided
-            const thinkingBudget = thinking?.budget_tokens;
+            let thinkingBudget = Number.isFinite(thinking?.budget_tokens) ? thinking.budget_tokens : undefined;
+            if (thinkingBudget && maxTokens && thinkingBudget >= maxTokens) {
+                const adjusted = Math.max(maxTokens - 1, 0);
+                if (adjusted > 0) {
+                    console.log(`[RequestConverter] Clamping thinking budget from ${thinkingBudget} to ${adjusted} (max_tokens: ${maxTokens})`);
+                    thinkingBudget = adjusted;
+                } else {
+                    console.log('[RequestConverter] Dropping thinking budget; max_tokens too small for thinking');
+                    thinkingBudget = undefined;
+                }
+            }
             if (thinkingBudget) {
                 thinkingConfig.thinking_budget = thinkingBudget;
                 console.log('[RequestConverter] Claude thinking enabled with budget:', thinkingBudget);
@@ -158,9 +169,21 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {
             // Gemini thinking config (uses camelCase)
+            let thinkingBudget = Number.isFinite(thinking?.budget_tokens) ? thinking.budget_tokens : 16000;
+            if (thinkingBudget && maxTokens && thinkingBudget >= maxTokens) {
+                const adjusted = Math.max(maxTokens - 1, 0);
+                if (adjusted > 0) {
+                    console.log(`[RequestConverter] Clamping Gemini thinking budget from ${thinkingBudget} to ${adjusted} (max_tokens: ${maxTokens})`);
+                    thinkingBudget = adjusted;
+                } else {
+                    console.log('[RequestConverter] Dropping Gemini thinking budget; max_tokens too small for thinking');
+                    thinkingBudget = undefined;
+                }
+            }
+
             const thinkingConfig = {
                 includeThoughts: true,
-                thinkingBudget: thinking?.budget_tokens || 16000
+                thinkingBudget: thinkingBudget
             };
             console.log('[RequestConverter] Gemini thinking enabled with budget:', thinkingConfig.thinkingBudget);
 

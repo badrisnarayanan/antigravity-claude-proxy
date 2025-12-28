@@ -420,11 +420,20 @@ app.post('/v1/messages', async (req, res) => {
             });
         }
 
+        const maxTokensInput = Number.isFinite(max_tokens) ? max_tokens : Number(max_tokens);
+        let resolvedMaxTokens = Number.isFinite(maxTokensInput) ? maxTokensInput : 4096;
+        const thinkingBudget = Number.isFinite(thinking?.budget_tokens) ? thinking.budget_tokens : undefined;
+        if (thinkingBudget && resolvedMaxTokens <= thinkingBudget) {
+            const adjustedMaxTokens = thinkingBudget + 1;
+            console.log(`[API] Adjusting max_tokens from ${resolvedMaxTokens} to ${adjustedMaxTokens} to exceed thinking budget`);
+            resolvedMaxTokens = adjustedMaxTokens;
+        }
+
         // Build the request object
         const request = {
             model: model || 'claude-3-5-sonnet-20241022',
             messages,
-            max_tokens: max_tokens || 4096,
+            max_tokens: resolvedMaxTokens,
             stream,
             system,
             tools,
