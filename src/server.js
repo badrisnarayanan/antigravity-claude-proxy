@@ -8,7 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas } from './cloudcode-client.js';
 import { forceRefresh } from './token-extractor.js';
-import { REQUEST_BODY_LIMIT } from './constants.js';
+import { MODEL_VALIDATION_ENABLED, REQUEST_BODY_LIMIT, resolveModelAlias } from './constants.js';
 import { AccountManager } from './account-manager.js';
 import { formatDuration } from './utils/helpers.js';
 
@@ -59,6 +59,19 @@ function parseError(error) {
     let errorType = 'api_error';
     let statusCode = 500;
     let errorMessage = error.message;
+    let errorInfo = {};
+
+    if (error?.code === 'MODEL_NOT_AVAILABLE') {
+        errorType = 'invalid_request_error';
+        statusCode = 400;
+        errorMessage = `Model "${error.model}" is not available for any configured account.`;
+        errorInfo = {
+            requested_model: error.model,
+            available_models: error.availableModels || [],
+            per_account_models: error.perAccount || {}
+        };
+        return { errorType, statusCode, errorMessage, errorInfo };
+    }
 
     if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
         errorType = 'authentication_error';
@@ -93,7 +106,7 @@ function parseError(error) {
         errorMessage = 'Permission denied. Check your Antigravity license.';
     }
 
-    return { errorType, statusCode, errorMessage };
+    return { errorType, statusCode, errorMessage, errorInfo };
 }
 
 // Request logging middleware
@@ -334,6 +347,7 @@ app.post('/refresh-token', async (req, res) => {
         // Clear all caches
         accountManager.clearTokenCache();
         accountManager.clearProjectCache();
+        accountManager.clearModelCache();
         // Force refresh default token
         const token = await forceRefresh();
         res.json({
@@ -420,9 +434,34 @@ app.post('/v1/messages', async (req, res) => {
             });
         }
 
+        const requestedModel = model || 'claude-3-5-sonnet-20241022';
+        const resolvedModel = resolveModelAlias(requestedModel);
+        if (resolvedModel !== requestedModel) {
+            console.log(`[API] Model alias applied: ${requestedModel} -> ${resolvedModel}`);
+        }
+
+        if (MODEL_VALIDATION_ENABLED) {
+            try {
+                const { models } = await accountManager.getAllAvailableModels();
+                if (models.length > 0 && !models.includes(resolvedModel)) {
+                    return res.status(400).json({
+                        type: 'error',
+                        error: {
+                            type: 'invalid_request_error',
+                            message: `Model "${resolvedModel}" is not available for any configured account.`,
+                            requested_model: resolvedModel,
+                            available_models: models
+                        }
+                    });
+                }
+            } catch (validationError) {
+                console.log(`[API] Model validation skipped: ${validationError.message}`);
+            }
+        }
+
         // Build the request object
         const request = {
-            model: model || 'claude-3-5-sonnet-20241022',
+            model: resolvedModel,
             messages,
             max_tokens: max_tokens || 4096,
             stream,
@@ -470,11 +509,11 @@ app.post('/v1/messages', async (req, res) => {
             } catch (streamError) {
                 console.error('[API] Stream error:', streamError);
 
-                const { errorType, errorMessage } = parseError(streamError);
+                const { errorType, errorMessage, errorInfo } = parseError(streamError);
 
                 res.write(`event: error\ndata: ${JSON.stringify({
                     type: 'error',
-                    error: { type: errorType, message: errorMessage }
+                    error: { type: errorType, message: errorMessage, ...errorInfo }
                 })}\n\n`);
                 res.end();
             }
@@ -488,7 +527,7 @@ app.post('/v1/messages', async (req, res) => {
     } catch (error) {
         console.error('[API] Error:', error);
 
-        let { errorType, statusCode, errorMessage } = parseError(error);
+        let { errorType, statusCode, errorMessage, errorInfo } = parseError(error);
 
         // For auth errors, try to refresh token
         if (errorType === 'authentication_error') {
@@ -496,6 +535,7 @@ app.post('/v1/messages', async (req, res) => {
             try {
                 accountManager.clearProjectCache();
                 accountManager.clearTokenCache();
+                accountManager.clearModelCache();
                 await forceRefresh();
                 errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
             } catch (refreshError) {
@@ -518,7 +558,8 @@ app.post('/v1/messages', async (req, res) => {
                 type: 'error',
                 error: {
                     type: errorType,
-                    message: errorMessage
+                    message: errorMessage,
+                    ...errorInfo
                 }
             });
         }

@@ -216,6 +216,27 @@ function parseResetTime(responseOrError, errorText = '') {
     return resetMs;
 }
 
+async function buildModelNotAvailableError(model, accountManager) {
+    const { models, perAccount } = await accountManager.getAllAvailableModels();
+    const error = new Error(`MODEL_NOT_AVAILABLE: ${model}`);
+    error.code = 'MODEL_NOT_AVAILABLE';
+    error.model = model;
+    error.availableModels = models;
+    error.perAccount = perAccount;
+    return error;
+}
+
+function pickNextNonExcluded(accountManager, excluded) {
+    const available = accountManager.getAvailableAccounts();
+    if (available.length === 0) return null;
+    const maxTries = available.length;
+    for (let i = 0; i < maxTries; i++) {
+        const account = accountManager.pickNext();
+        if (account && !excluded.has(account.email)) return account;
+    }
+    return null;
+}
+
 /**
  * Build the wrapped request body for Cloud Code API
  */
@@ -277,6 +298,7 @@ function buildHeaders(token, model, accept = 'application/json') {
 export async function sendMessage(anthropicRequest, accountManager) {
     const model = anthropicRequest.model;
     const isThinking = isThinkingModel(model);
+    const excludedAccounts = new Set();
 
     // Retry loop with account failover
     // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -286,14 +308,24 @@ export async function sendMessage(anthropicRequest, accountManager) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Use sticky account selection for cache continuity
         const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount();
-        let account = stickyAccount;
+        let account = stickyAccount && !excludedAccounts.has(stickyAccount.email) ? stickyAccount : null;
 
         // Handle waiting for sticky account
-        if (!account && waitMs > 0) {
+        if (!account && waitMs > 0 && stickyAccount && !excludedAccounts.has(stickyAccount.email)) {
             console.log(`[CloudCode] Waiting ${formatDuration(waitMs)} for sticky account...`);
             await sleep(waitMs);
             accountManager.clearExpiredLimits();
-            account = accountManager.getCurrentStickyAccount();
+            const refreshedSticky = accountManager.getCurrentStickyAccount();
+            account = refreshedSticky && !excludedAccounts.has(refreshedSticky.email) ? refreshedSticky : null;
+        }
+
+        if (!account) {
+            account = pickNextNonExcluded(accountManager, excludedAccounts);
+        }
+
+        const availableCount = accountManager.getAvailableAccounts().length;
+        if (!account && availableCount > 0 && excludedAccounts.size >= availableCount) {
+            throw await buildModelNotAvailableError(model, accountManager);
         }
 
         // Handle all accounts rate-limited
@@ -314,7 +346,7 @@ export async function sendMessage(anthropicRequest, accountManager) {
                 console.log(`[CloudCode] All ${accountCount} account(s) rate-limited. Waiting ${formatDuration(allWaitMs)}...`);
                 await sleep(allWaitMs);
                 accountManager.clearExpiredLimits();
-                account = accountManager.pickNext();
+                account = pickNextNonExcluded(accountManager, excludedAccounts);
             }
 
             if (!account) {
@@ -325,6 +357,23 @@ export async function sendMessage(anthropicRequest, accountManager) {
         try {
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
+            let supportsModel = true;
+            try {
+                supportsModel = await accountManager.accountSupportsModel(account, token, model);
+            } catch (error) {
+                console.log(`[CloudCode] Model availability check failed for ${account.email}: ${error.message}`);
+            }
+
+            if (!supportsModel) {
+                excludedAccounts.add(account.email);
+                console.log(`[CloudCode] Model ${model} not available for ${account.email}, trying next account...`);
+                const availableCount = accountManager.getAvailableAccounts().length;
+                if (availableCount > 0 && excludedAccounts.size >= availableCount) {
+                    throw await buildModelNotAvailableError(model, accountManager);
+                }
+                continue;
+            }
+
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 
@@ -540,6 +589,7 @@ async function parseThinkingSSEResponse(response, originalModel) {
  */
 export async function* sendMessageStream(anthropicRequest, accountManager) {
     const model = anthropicRequest.model;
+    const excludedAccounts = new Set();
 
     // Retry loop with account failover
     // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -549,14 +599,24 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Use sticky account selection for cache continuity
         const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount();
-        let account = stickyAccount;
+        let account = stickyAccount && !excludedAccounts.has(stickyAccount.email) ? stickyAccount : null;
 
         // Handle waiting for sticky account
-        if (!account && waitMs > 0) {
+        if (!account && waitMs > 0 && stickyAccount && !excludedAccounts.has(stickyAccount.email)) {
             console.log(`[CloudCode] Waiting ${formatDuration(waitMs)} for sticky account...`);
             await sleep(waitMs);
             accountManager.clearExpiredLimits();
-            account = accountManager.getCurrentStickyAccount();
+            const refreshedSticky = accountManager.getCurrentStickyAccount();
+            account = refreshedSticky && !excludedAccounts.has(refreshedSticky.email) ? refreshedSticky : null;
+        }
+
+        if (!account) {
+            account = pickNextNonExcluded(accountManager, excludedAccounts);
+        }
+
+        const availableCount = accountManager.getAvailableAccounts().length;
+        if (!account && availableCount > 0 && excludedAccounts.size >= availableCount) {
+            throw await buildModelNotAvailableError(model, accountManager);
         }
 
         // Handle all accounts rate-limited
@@ -577,7 +637,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                 console.log(`[CloudCode] All ${accountCount} account(s) rate-limited. Waiting ${formatDuration(allWaitMs)}...`);
                 await sleep(allWaitMs);
                 accountManager.clearExpiredLimits();
-                account = accountManager.pickNext();
+                account = pickNextNonExcluded(accountManager, excludedAccounts);
             }
 
             if (!account) {
@@ -588,6 +648,23 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
         try {
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
+            let supportsModel = true;
+            try {
+                supportsModel = await accountManager.accountSupportsModel(account, token, model);
+            } catch (error) {
+                console.log(`[CloudCode] Model availability check failed for ${account.email}: ${error.message}`);
+            }
+
+            if (!supportsModel) {
+                excludedAccounts.add(account.email);
+                console.log(`[CloudCode] Model ${model} not available for ${account.email}, trying next account...`);
+                const availableCount = accountManager.getAvailableAccounts().length;
+                if (availableCount > 0 && excludedAccounts.size >= availableCount) {
+                    throw await buildModelNotAvailableError(model, accountManager);
+                }
+                continue;
+            }
+
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 

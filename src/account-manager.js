@@ -16,10 +16,12 @@ import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     ANTIGRAVITY_HEADERS,
     DEFAULT_PROJECT_ID,
-    MAX_WAIT_BEFORE_ERROR_MS
+    MAX_WAIT_BEFORE_ERROR_MS,
+    MODEL_CACHE_TTL_MS
 } from './constants.js';
 import { refreshAccessToken } from './oauth.js';
 import { formatDuration } from './utils/helpers.js';
+import { fetchAvailableModels } from './cloudcode-client.js';
 
 export class AccountManager {
     #accounts = [];
@@ -31,6 +33,7 @@ export class AccountManager {
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
+    #modelCache = new Map(); // email -> { models, modelsLower, fetchedAt }
 
     constructor(configPath = ACCOUNT_CONFIG_PATH) {
         this.#configPath = configPath;
@@ -554,6 +557,96 @@ export class AccountManager {
         } else {
             this.#tokenCache.clear();
         }
+    }
+
+    /**
+     * Clear model cache for an account (useful when models change)
+     * @param {string|null} email - Email to clear cache for, or null to clear all
+     */
+    clearModelCache(email = null) {
+        if (email) {
+            this.#modelCache.delete(email);
+        } else {
+            this.#modelCache.clear();
+        }
+    }
+
+    /**
+     * Get available models for an account (cached with TTL)
+     * @param {Object} account - Account object
+     * @param {string} token - OAuth access token
+     * @param {Object} [options]
+     * @param {boolean} [options.forceRefresh] - Force refresh even if cached
+     * @returns {Promise<{models: Array<string>, modelsLower: Set<string>}>} Models for the account
+     */
+    async getModelsForAccount(account, token, { forceRefresh = false } = {}) {
+        const cached = this.#modelCache.get(account.email);
+        const now = Date.now();
+        if (!forceRefresh && cached && (now - cached.fetchedAt) < MODEL_CACHE_TTL_MS) {
+            return { models: cached.models, modelsLower: cached.modelsLower };
+        }
+
+        try {
+            const data = await fetchAvailableModels(token);
+            const modelIds = Object.keys(data?.models || {});
+            const modelsLower = new Set(modelIds.map(model => model.toLowerCase()));
+            this.#modelCache.set(account.email, {
+                models: modelIds,
+                modelsLower,
+                fetchedAt: now
+            });
+            return { models: modelIds, modelsLower };
+        } catch (error) {
+            if (cached) {
+                return { models: cached.models, modelsLower: cached.modelsLower };
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Check if an account supports a given model
+     * @param {Object} account - Account object
+     * @param {string} token - OAuth access token
+     * @param {string} model - Model ID to check
+     * @returns {Promise<boolean>} True if model is available for the account
+     */
+    async accountSupportsModel(account, token, model) {
+        const { modelsLower } = await this.getModelsForAccount(account, token);
+        return modelsLower.has(String(model || '').toLowerCase());
+    }
+
+    /**
+     * Get all available models across accounts
+     * @param {Object} [options]
+     * @param {boolean} [options.forceRefresh] - Force refresh even if cached
+     * @returns {Promise<{models: Array<string>, perAccount: Object}>}
+     */
+    async getAllAvailableModels({ forceRefresh = false } = {}) {
+        const accounts = this.getAllAccounts().filter(account => !account.isInvalid);
+        const results = await Promise.allSettled(accounts.map(async (account) => {
+            const token = await this.getTokenForAccount(account);
+            const { models } = await this.getModelsForAccount(account, token, { forceRefresh });
+            return { email: account.email, models };
+        }));
+
+        const perAccount = {};
+        const union = new Set();
+
+        results.forEach((result, index) => {
+            const account = accounts[index];
+            if (result.status === 'fulfilled') {
+                perAccount[account.email] = result.value.models;
+                result.value.models.forEach(model => union.add(model));
+            } else {
+                perAccount[account.email] = [];
+            }
+        });
+
+        return {
+            models: Array.from(union).sort(),
+            perAccount
+        };
     }
 
     /**

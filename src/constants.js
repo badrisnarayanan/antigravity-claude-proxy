@@ -63,6 +63,11 @@ export const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 export const REQUEST_BODY_LIMIT = '50mb';
 export const ANTIGRAVITY_AUTH_PORT = 9092;
 export const DEFAULT_PORT = 8080;
+export const MODEL_CACHE_TTL_MS = parseInt(process.env.ANTIGRAVITY_MODEL_CACHE_TTL_MS || '300000', 10);
+const MODEL_VALIDATION_DISABLED = ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ANTIGRAVITY_DISABLE_MODEL_VALIDATION || '').toLowerCase()
+);
+export const MODEL_VALIDATION_ENABLED = !MODEL_VALIDATION_DISABLED;
 
 // Multi-account configuration
 export const ACCOUNT_CONFIG_PATH = join(
@@ -86,6 +91,11 @@ export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature leng
 
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
+export const MODEL_ALIASES = parseModelAliases(
+    process.env.ANTIGRAVITY_MODEL_ALIASES
+    || process.env.ANTHROPIC_MODEL_ALIASES
+    || process.env.MODEL_ALIASES
+);
 
 // Gemini signature handling
 // Sentinel value to skip thought signature validation when Claude Code strips the field
@@ -94,6 +104,43 @@ export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
 
 // Cache TTL for Gemini thoughtSignatures (2 hours)
 export const GEMINI_SIGNATURE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
+
+function parseModelAliases(input = '') {
+    const raw = String(input || '').trim();
+    if (!raw) return {};
+
+    if (raw.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                return Object.fromEntries(
+                    Object.entries(parsed).map(([key, value]) => [String(key).toLowerCase(), String(value)])
+                );
+            }
+        } catch (error) {
+            console.log('[Constants] Failed to parse MODEL_ALIASES JSON:', error.message);
+        }
+    }
+
+    const aliases = {};
+    const pairs = raw.split(/[;,]/).map(value => value.trim()).filter(Boolean);
+    for (const pair of pairs) {
+        const [from, to] = pair.split(/[:=]/).map(value => value.trim());
+        if (from && to) {
+            aliases[from.toLowerCase()] = to;
+        }
+    }
+
+    return aliases;
+}
+
+export function resolveModelAlias(modelName) {
+    if (!modelName) return modelName;
+    const direct = MODEL_ALIASES[modelName];
+    if (direct) return direct;
+    const lower = String(modelName).toLowerCase();
+    return MODEL_ALIASES[lower] || modelName;
+}
 
 /**
  * Get the model family from model name (dynamic detection, no hardcoded list).
@@ -158,12 +205,16 @@ export default {
     MAX_RETRIES,
     MAX_ACCOUNTS,
     MAX_WAIT_BEFORE_ERROR_MS,
+    MODEL_CACHE_TTL_MS,
+    MODEL_VALIDATION_ENABLED,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,
     GEMINI_SIGNATURE_CACHE_TTL_MS,
+    MODEL_ALIASES,
     getModelFamily,
     isThinkingModel,
+    resolveModelAlias,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI
 };
