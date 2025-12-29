@@ -27,6 +27,24 @@ import { cacheSignature } from './format/signature-cache.js';
 import { formatDuration, sleep } from './utils/helpers.js';
 import { isRateLimitError, isAuthError } from './errors.js';
 
+const LOG_THROTTLE_MS = parseInt(process.env.ANTIGRAVITY_LOG_THROTTLE_MS || '2000', 10);
+const logThrottle = new Map();
+
+function logThrottled(key, message, intervalMs = LOG_THROTTLE_MS) {
+    const now = Date.now();
+    const last = logThrottle.get(key) || 0;
+    if (now - last >= intervalMs) {
+        console.log(message);
+        logThrottle.set(key, now);
+    }
+}
+
+function logEndpointFailure(endpoint, status, errorText, model, isStream = false) {
+    const trimmed = errorText && errorText.length > 300 ? `${errorText.slice(0, 300)}...` : errorText;
+    const key = `endpoint:${endpoint}:${status}:${model}:${isStream ? 'stream' : 'send'}`;
+    logThrottled(key, `[CloudCode] ${isStream ? 'Stream' : 'Error'} at ${endpoint}: ${status} - ${trimmed}`);
+}
+
 /**
  * Check if an error is a rate limit error (429 or RESOURCE_EXHAUSTED)
  * @deprecated Use isRateLimitError from errors.js instead
@@ -346,7 +364,7 @@ export async function sendMessage(anthropicRequest, accountManager) {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.log(`[CloudCode] Error at ${endpoint}: ${response.status} - ${errorText}`);
+                        logEndpointFailure(endpoint, response.status, errorText, model, false);
 
                         if (response.status === 401) {
                             // Auth error - clear caches and retry with fresh token
@@ -387,7 +405,10 @@ export async function sendMessage(anthropicRequest, accountManager) {
                     if (is429Error(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
-                    console.log(`[CloudCode] Error at ${endpoint}:`, endpointError.message);
+                    logThrottled(
+                        `endpoint-ex:${endpoint}:${model}`,
+                        `[CloudCode] Error at ${endpoint}: ${endpointError.message}`
+                    );
                     lastError = endpointError;
                 }
             }
@@ -607,7 +628,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.log(`[CloudCode] Stream error at ${endpoint}: ${response.status} - ${errorText}`);
+                        logEndpointFailure(endpoint, response.status, errorText, model, true);
 
                         if (response.status === 401) {
                             // Auth error - clear caches and retry
@@ -641,7 +662,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                     if (is429Error(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
-                    console.log(`[CloudCode] Stream error at ${endpoint}:`, endpointError.message);
+                    logThrottled(
+                        `endpoint-ex:${endpoint}:${model}:stream`,
+                        `[CloudCode] Stream error at ${endpoint}: ${endpointError.message}`
+                    );
                     lastError = endpointError;
                 }
             }

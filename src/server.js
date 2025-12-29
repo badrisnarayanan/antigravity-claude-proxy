@@ -13,6 +13,17 @@ import { AccountManager } from './account-manager.js';
 import { formatDuration } from './utils/helpers.js';
 
 const app = express();
+const LOG_THROTTLE_MS = parseInt(process.env.ANTIGRAVITY_LOG_THROTTLE_MS || '2000', 10);
+const logThrottle = new Map();
+
+function logThrottled(key, message, level = 'log') {
+    const now = Date.now();
+    const last = logThrottle.get(key) || 0;
+    if (now - last >= LOG_THROTTLE_MS) {
+        console[level](message);
+        logThrottle.set(key, now);
+    }
+}
 
 // Initialize account manager (will be fully initialized on first request or startup)
 const accountManager = new AccountManager();
@@ -468,9 +479,12 @@ app.post('/v1/messages', async (req, res) => {
                 res.end();
 
             } catch (streamError) {
-                console.error('[API] Stream error:', streamError);
-
                 const { errorType, errorMessage } = parseError(streamError);
+                logThrottled(
+                    `stream-error:${errorType}:${errorMessage}`,
+                    `[API] Stream error: ${errorMessage}`,
+                    'error'
+                );
 
                 res.write(`event: error\ndata: ${JSON.stringify({
                     type: 'error',
@@ -486,9 +500,12 @@ app.post('/v1/messages', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('[API] Error:', error);
-
         let { errorType, statusCode, errorMessage } = parseError(error);
+        logThrottled(
+            `api-error:${errorType}:${statusCode}:${errorMessage}`,
+            `[API] Error: ${errorMessage}`,
+            'error'
+        );
 
         // For auth errors, try to refresh token
         if (errorType === 'authentication_error') {
