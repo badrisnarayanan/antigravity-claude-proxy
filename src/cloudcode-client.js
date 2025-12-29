@@ -426,24 +426,10 @@ export async function sendMessage(anthropicRequest, accountManager) {
  * Parse SSE response for thinking models and accumulate all parts
  */
 async function parseThinkingSSEResponse(response, originalModel) {
-    let accumulatedThinkingText = '';
-    let accumulatedThinkingSignature = '';
     let accumulatedText = '';
     const finalParts = [];
     let usageMetadata = {};
     let finishReason = 'STOP';
-
-    const flushThinking = () => {
-        if (accumulatedThinkingText) {
-            finalParts.push({
-                thought: true,
-                text: accumulatedThinkingText,
-                thoughtSignature: accumulatedThinkingSignature
-            });
-            accumulatedThinkingText = '';
-            accumulatedThinkingSignature = '';
-        }
-    };
 
     const flushText = () => {
         if (accumulatedText) {
@@ -487,17 +473,17 @@ async function parseThinkingSSEResponse(response, originalModel) {
                 for (const part of parts) {
                     if (part.thought === true) {
                         flushText();
-                        accumulatedThinkingText += (part.text || '');
-                        if (part.thoughtSignature) {
-                            accumulatedThinkingSignature = part.thoughtSignature;
-                        }
+                        // Preserve each thought part with its own signature to avoid mismatches.
+                        finalParts.push({
+                            thought: true,
+                            text: part.text || '',
+                            thoughtSignature: part.thoughtSignature || ''
+                        });
                     } else if (part.functionCall) {
-                        flushThinking();
                         flushText();
                         finalParts.push(part);
                     } else if (part.text !== undefined) {
                         if (!part.text) continue;
-                        flushThinking();
                         accumulatedText += part.text;
                     }
                 }
@@ -507,7 +493,6 @@ async function parseThinkingSSEResponse(response, originalModel) {
         }
     }
 
-    flushThinking();
     flushText();
 
     const accumulatedResponse = {
