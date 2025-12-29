@@ -13,6 +13,8 @@ import crypto from 'crypto';
 import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     ANTIGRAVITY_HEADERS,
+    ENDPOINT_404_SKIP_COOLDOWN_MS,
+    ENDPOINT_404_SKIP_THRESHOLD,
     MAX_RETRIES,
     MAX_WAIT_BEFORE_ERROR_MS,
     MIN_SIGNATURE_LENGTH,
@@ -26,6 +28,35 @@ import {
 import { cacheSignature } from './format/signature-cache.js';
 import { formatDuration, sleep } from './utils/helpers.js';
 import { isRateLimitError, isAuthError } from './errors.js';
+
+const endpointSkipState = new Map();
+
+function shouldSkipEndpoint(endpoint) {
+    if (!ENDPOINT_404_SKIP_THRESHOLD) return false;
+    const state = endpointSkipState.get(endpoint);
+    if (!state) return false;
+    if (state.skipUntil && state.skipUntil > Date.now()) return true;
+    if (state.skipUntil && state.skipUntil <= Date.now()) {
+        endpointSkipState.delete(endpoint);
+    }
+    return false;
+}
+
+function recordEndpoint404(endpoint) {
+    if (!ENDPOINT_404_SKIP_THRESHOLD) return;
+    const now = Date.now();
+    const state = endpointSkipState.get(endpoint) || { count: 0, lastAt: 0, skipUntil: 0 };
+    if (now - state.lastAt > ENDPOINT_404_SKIP_COOLDOWN_MS) {
+        state.count = 0;
+    }
+    state.count += 1;
+    state.lastAt = now;
+    if (state.count >= ENDPOINT_404_SKIP_THRESHOLD) {
+        state.skipUntil = now + ENDPOINT_404_SKIP_COOLDOWN_MS;
+        console.log(`[CloudCode] Temporarily skipping ${endpoint} after ${state.count} 404s`);
+    }
+    endpointSkipState.set(endpoint, state);
+}
 
 /**
  * Check if an error is a rate limit error (429 or RESOURCE_EXHAUSTED)
@@ -334,6 +365,11 @@ export async function sendMessage(anthropicRequest, accountManager) {
             let lastError = null;
             for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
                 try {
+                    if (shouldSkipEndpoint(endpoint)) {
+                        console.log(`[CloudCode] Skipping endpoint ${endpoint} (cooldown active)`);
+                        continue;
+                    }
+
                     const url = isThinking
                         ? `${endpoint}/v1internal:streamGenerateContent?alt=sse`
                         : `${endpoint}/v1internal:generateContent`;
@@ -365,6 +401,10 @@ export async function sendMessage(anthropicRequest, accountManager) {
                                 lastError = { is429: true, response, errorText, resetMs };
                             }
                             continue;
+                        }
+
+                        if (response.status === 404) {
+                            recordEndpoint404(endpoint);
                         }
 
                         if (response.status >= 400) {
@@ -597,6 +637,11 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
             let lastError = null;
             for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
                 try {
+                    if (shouldSkipEndpoint(endpoint)) {
+                        console.log(`[CloudCode] Skipping endpoint ${endpoint} (cooldown active)`);
+                        continue;
+                    }
+
                     const url = `${endpoint}/v1internal:streamGenerateContent?alt=sse`;
 
                     const response = await fetch(url, {
@@ -625,6 +670,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager) {
                                 lastError = { is429: true, response, errorText, resetMs };
                             }
                             continue;
+                        }
+
+                        if (response.status === 404) {
+                            recordEndpoint404(endpoint);
                         }
 
                         lastError = new Error(`API error ${response.status}: ${errorText}`);

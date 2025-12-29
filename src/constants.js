@@ -39,11 +39,35 @@ function getPlatformUserAgent() {
 const ANTIGRAVITY_ENDPOINT_DAILY = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
 const ANTIGRAVITY_ENDPOINT_PROD = 'https://cloudcode-pa.googleapis.com';
 
-// Endpoint fallback order (daily → prod)
-export const ANTIGRAVITY_ENDPOINT_FALLBACKS = [
-    ANTIGRAVITY_ENDPOINT_DAILY,
-    ANTIGRAVITY_ENDPOINT_PROD
-];
+function isTruthy(value) {
+    return ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
+}
+
+function parseEndpointList(envValue) {
+    if (!envValue) return [];
+    return envValue
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+}
+
+function getEndpointFallbacks() {
+    const fromEnv = parseEndpointList(process.env.ANTIGRAVITY_ENDPOINTS);
+    let endpoints = fromEnv.length > 0 ? fromEnv : [ANTIGRAVITY_ENDPOINT_DAILY, ANTIGRAVITY_ENDPOINT_PROD];
+
+    if (isTruthy(process.env.ANTIGRAVITY_DISABLE_DAILY)) {
+        endpoints = endpoints.filter(endpoint => endpoint !== ANTIGRAVITY_ENDPOINT_DAILY);
+    }
+
+    if (endpoints.length === 0) {
+        endpoints = [ANTIGRAVITY_ENDPOINT_PROD];
+    }
+
+    return endpoints;
+}
+
+// Endpoint fallback order (daily → prod by default)
+export const ANTIGRAVITY_ENDPOINT_FALLBACKS = getEndpointFallbacks();
 
 // Required headers for Antigravity API requests
 export const ANTIGRAVITY_HEADERS = {
@@ -63,6 +87,8 @@ export const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 export const REQUEST_BODY_LIMIT = '50mb';
 export const ANTIGRAVITY_AUTH_PORT = 9092;
 export const DEFAULT_PORT = 8080;
+export const ENDPOINT_404_SKIP_THRESHOLD = parseInt(process.env.ANTIGRAVITY_ENDPOINT_404_SKIP_THRESHOLD || '0', 10);
+export const ENDPOINT_404_SKIP_COOLDOWN_MS = parseInt(process.env.ANTIGRAVITY_ENDPOINT_404_SKIP_COOLDOWN_MS || '60000', 10);
 
 // Multi-account configuration
 export const ACCOUNT_CONFIG_PATH = join(
@@ -158,6 +184,8 @@ export default {
     MAX_RETRIES,
     MAX_ACCOUNTS,
     MAX_WAIT_BEFORE_ERROR_MS,
+    ENDPOINT_404_SKIP_THRESHOLD,
+    ENDPOINT_404_SKIP_COOLDOWN_MS,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,
