@@ -40,7 +40,8 @@ async function main() {
     console.log('║              ANTIGRAVITY PROXY TEST SUITE                    ║');
     console.log('╚══════════════════════════════════════════════════════════════╝');
     console.log('');
-    console.log('Make sure the server is running on port 8080 before running tests.');
+    const port = process.env.PORT || 8080;
+    console.log(`Make sure the server is running on port ${port} before running tests.`);
     console.log('');
 
     // Check if running specific test

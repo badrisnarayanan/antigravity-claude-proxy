@@ -110,7 +110,13 @@ npx antigravity-claude-proxy start
 npm start
 ```
 
-The server runs on `http://localhost:8080` by default.
+The server runs on `http://localhost:8080` by default. You can change the port using the `--port` flag or `PORT` environment variable:
+
+```bash
+antigravity-claude-proxy start --port 9000
+# OR
+PORT=9000 antigravity-claude-proxy start
+```
 
 ### 3. Verify It's Working
 

@@ -14,8 +14,11 @@ The proxy translates requests from Anthropic Messages API format → Google Gene
 # Install dependencies
 npm install
 
-# Start server (runs on port 8080)
+# Start server (runs on port 8080 by default)
 npm start
+# Start on custom port
+npm start -- --port 9000
+PORT=9000 npm start
 
 # Start with file watching for development
 npm run dev
@@ -26,8 +29,10 @@ npm run accounts:add     # Add a new Google account via OAuth
 npm run accounts:list    # List configured accounts
 npm run accounts:verify  # Verify account tokens are valid
 
-# Run all tests (server must be running on port 8080)
+# Run all tests (server must be running)
 npm test
+# Run tests on custom port
+PORT=9000 npm test
 
 # Run individual tests
 npm run test:signatures    # Thinking signatures

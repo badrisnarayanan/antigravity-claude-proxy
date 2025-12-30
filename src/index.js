@@ -6,7 +6,15 @@
 import app from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 
-const PORT = process.env.PORT || DEFAULT_PORT;
+// Parse port from command line arguments (--port or -p)
+const args = process.argv.slice(2);
+const portArgIndex = args.findIndex(arg => arg === '--port' || arg === '-p');
+let customPort = null;
+if (portArgIndex !== -1 && args[portArgIndex + 1]) {
+    customPort = parseInt(args[portArgIndex + 1], 10);
+}
+
+const PORT = customPort || process.env.PORT || DEFAULT_PORT;
 
 app.listen(PORT, () => {
     console.log(`

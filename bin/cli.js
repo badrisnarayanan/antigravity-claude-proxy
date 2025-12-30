@@ -34,6 +34,7 @@ COMMANDS:
   accounts clear        Remove all accounts
 
 OPTIONS:
+  --port, -p <port>     Set the server port
   --help, -h            Show this help message
   --version, -v         Show version number
 
@@ -41,7 +42,7 @@ ENVIRONMENT:
   PORT                  Server port (default: 8080)
 
 EXAMPLES:
-  antigravity-claude-proxy start
+  antigravity-claude-proxy start --port 9000
   PORT=3000 antigravity-claude-proxy start
   antigravity-claude-proxy accounts add
   antigravity-claude-proxy accounts list
