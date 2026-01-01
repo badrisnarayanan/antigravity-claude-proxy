@@ -4,6 +4,7 @@
  */
 
 import { MIN_SIGNATURE_LENGTH } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Check if a part is a thinking block
@@ -95,7 +96,7 @@ function filterContentArray(contentArray) {
         }
 
         // Drop unsigned thinking blocks
-        console.log('[ThinkingUtils] Dropping unsigned thinking block');
+        logger.debug('[ThinkingUtils] Dropping unsigned thinking block');
     }
 
     return filtered;
@@ -152,7 +153,7 @@ export function removeTrailingThinkingBlocks(content) {
     }
 
     if (endIndex < content.length) {
-        console.log('[ThinkingUtils] Removed', content.length - endIndex, 'trailing unsigned thinking blocks');
+        logger.debug('[ThinkingUtils] Removed', content.length - endIndex, 'trailing unsigned thinking blocks');
         return content.slice(0, endIndex);
     }
 
@@ -187,7 +188,7 @@ export function restoreThinkingSignatures(content) {
     }
 
     if (filtered.length < originalLength) {
-        console.log(`[ThinkingUtils] Dropped ${originalLength - filtered.length} unsigned thinking block(s)`);
+        logger.debug(`[ThinkingUtils] Dropped ${originalLength - filtered.length} unsigned thinking block(s)`);
     }
 
     return filtered;
@@ -241,7 +242,7 @@ export function reorderAssistantContent(content) {
     }
 
     if (droppedEmptyBlocks > 0) {
-        console.log(`[ThinkingUtils] Dropped ${droppedEmptyBlocks} empty text block(s)`);
+        logger.debug(`[ThinkingUtils] Dropped ${droppedEmptyBlocks} empty text block(s)`);
     }
 
     const reordered = [...thinkingBlocks, ...textBlocks, ...toolUseBlocks];
@@ -251,7 +252,7 @@ export function reorderAssistantContent(content) {
         const originalOrder = content.map(b => b?.type || 'unknown').join(',');
         const newOrder = reordered.map(b => b?.type || 'unknown').join(',');
         if (originalOrder !== newOrder) {
-            console.log('[ThinkingUtils] Reordered assistant content');
+            logger.debug('[ThinkingUtils] Reordered assistant content');
         }
     }
 
@@ -455,7 +456,7 @@ export function closeToolLoopForThinking(messages) {
             content: [{ type: 'text', text: '[Tool call was interrupted.]' }]
         });
 
-        console.log('[ThinkingUtils] Applied thinking recovery for interrupted tool');
+        logger.debug('[ThinkingUtils] Applied thinking recovery for interrupted tool');
     } else {
         // For tool loops: add synthetic messages to close the loop
         const syntheticText = state.toolResultCount === 1
@@ -474,7 +475,7 @@ export function closeToolLoopForThinking(messages) {
             content: [{ type: 'text', text: '[Continue]' }]
         });
 
-        console.log('[ThinkingUtils] Applied thinking recovery for tool loop');
+        logger.debug('[ThinkingUtils] Applied thinking recovery for tool loop');
     }
 
     return modified;

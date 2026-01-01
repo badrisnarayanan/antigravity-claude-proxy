@@ -943,14 +943,14 @@ async function* streamSSEResponse(response, originalModel) {
                 }
 
             } catch (parseError) {
-                console.log('[CloudCode] SSE parse error:', parseError.message);
+                logger.warn('[CloudCode] SSE parse error:', parseError.message);
             }
         }
     }
 
     // Handle no content received
     if (!hasEmittedStart) {
-        console.log('[CloudCode] WARNING: No content parts received, emitting empty message');
+        logger.warn('[CloudCode] No content parts received, emitting empty message');
         yield {
             type: 'message_start',
             message: {
@@ -1061,13 +1061,13 @@ export async function fetchAvailableModels(token) {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.log(`[CloudCode] fetchAvailableModels error at ${endpoint}: ${response.status}`);
+                logger.warn(`[CloudCode] fetchAvailableModels error at ${endpoint}: ${response.status}`);
                 continue;
             }
 
             return await response.json();
         } catch (error) {
-            console.log(`[CloudCode] fetchAvailableModels failed at ${endpoint}:`, error.message);
+            logger.warn(`[CloudCode] fetchAvailableModels failed at ${endpoint}:`, error.message);
         }
     }
 
