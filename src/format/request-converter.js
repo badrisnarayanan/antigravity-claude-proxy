@@ -2,14 +2,12 @@
  * Request Converter
  * Converts Anthropic Messages API requests to Google Generative AI format
  */
-
 import {
     GEMINI_MAX_OUTPUT_TOKENS,
     getModelFamily,
     isThinkingModel
 } from '../constants.js';
 import { convertContentToParts, convertRole } from './content-converter.js';
-import { sanitizeSchema, cleanSchemaForGemini } from './schema-sanitizer.js';
 import {
     restoreThinkingSignatures,
     removeTrailingThinkingBlocks,
@@ -18,6 +16,7 @@ import {
     needsThinkingRecovery,
     closeToolLoopForThinking
 } from './thinking-utils.js';
+import { normalizeParameters } from './schema-normalizer.js';  // ← NEW IMPORT
 import { logger } from '../utils/logger.js';
 
 /**
@@ -48,13 +47,10 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         if (typeof system === 'string') {
             systemParts = [{ text: system }];
         } else if (Array.isArray(system)) {
-            // Filter for text blocks as system prompts are usually text
-            // Anthropic supports text blocks in system prompts
             systemParts = system
                 .filter(block => block.type === 'text')
                 .map(block => ({ text: block.text }));
         }
-
         if (systemParts.length > 0) {
             googleRequest.systemInstruction = {
                 parts: systemParts
@@ -78,8 +74,6 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     }
 
     // Apply thinking recovery for Gemini thinking models when needed
-    // This handles corrupted tool loops where thinking blocks are stripped
-    // Claude models handle this differently and don't need this recovery
     let processedMessages = messages;
     if (isGeminiModel && isThinking && needsThinkingRecovery(messages)) {
         logger.debug('[RequestConverter] Applying thinking recovery for Gemini');
@@ -93,18 +87,14 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
         // For assistant messages, process thinking blocks and reorder content
         if ((msg.role === 'assistant' || msg.role === 'model') && Array.isArray(msgContent)) {
-            // First, try to restore signatures for unsigned thinking blocks from cache
             msgContent = restoreThinkingSignatures(msgContent);
-            // Remove trailing unsigned thinking blocks
             msgContent = removeTrailingThinkingBlocks(msgContent);
-            // Reorder: thinking first, then text, then tool_use
             msgContent = reorderAssistantContent(msgContent);
         }
 
         const parts = convertContentToParts(msgContent, isClaudeModel, isGeminiModel);
 
         // SAFETY: Google API requires at least one part per content message
-        // This happens when all thinking blocks are filtered out (unsigned)
         if (parts.length === 0) {
             logger.warn('[RequestConverter] WARNING: Empty parts array after filtering, adding placeholder');
             parts.push({ text: '' });
@@ -142,12 +132,9 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // Enable thinking for thinking models (Claude and Gemini 3+)
     if (isThinking) {
         if (isClaudeModel) {
-            // Claude thinking config
             const thinkingConfig = {
                 include_thoughts: true
             };
-
-            // Only set thinking_budget if explicitly provided
             const thinkingBudget = thinking?.budget_tokens;
             if (thinkingBudget) {
                 thinkingConfig.thinking_budget = thinkingBudget;
@@ -155,45 +142,37 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             } else {
                 logger.debug('[RequestConverter] Claude thinking enabled (no budget specified)');
             }
-
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {
-            // Gemini thinking config (uses camelCase)
             const thinkingConfig = {
                 includeThoughts: true,
                 thinkingBudget: thinking?.budget_tokens || 16000
             };
             logger.debug(`[RequestConverter] Gemini thinking enabled with budget: ${thinkingConfig.thinkingBudget}`);
-
-
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         }
     }
 
-    // Convert tools to Google format
+    // Convert tools to Google format — the critical part
     if (tools && tools.length > 0) {
         const functionDeclarations = tools.map((tool, idx) => {
-            // Extract name from various possible locations
+            // Extract name & description flexibly
             const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
-
-            // Extract description from various possible locations
             const description = tool.description || tool.function?.description || tool.custom?.description || '';
 
-            // Extract schema from various possible locations
-            const schema = tool.input_schema
+            // Extract schema flexibly
+            let schema = tool.input_schema
                 || tool.function?.input_schema
                 || tool.function?.parameters
                 || tool.custom?.input_schema
                 || tool.parameters
                 || { type: 'object' };
 
-            // Sanitize schema for general compatibility
-            let parameters = sanitizeSchema(schema);
+            // ── THE FIX ──
+            // Replace broken sanitizers with proper flattening
+            let parameters = normalizeParameters(schema);
 
-            // For Gemini models, apply additional cleaning for VALIDATED mode
-            if (isGeminiModel) {
-                parameters = cleanSchemaForGemini(parameters);
-            }
+            logger.debug(`[RequestConverter] Normalized tool "${name}" parameters: ${JSON.stringify(parameters).substring(0, 200)}...`);
 
             return {
                 name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
@@ -203,7 +182,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         });
 
         googleRequest.tools = [{ functionDeclarations }];
-        logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+        logger.debug(`[RequestConverter] Converted ${functionDeclarations.length} tools`);
     }
 
     // Cap max tokens for Gemini models
