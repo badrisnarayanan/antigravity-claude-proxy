@@ -487,6 +487,12 @@ app.post('/v1/messages/count_tokens', (req, res) => {
 /**
  * Main messages endpoint - Anthropic Messages API compatible
  */
+
+
+/**
+ * Anthropic-compatible Messages API
+ * POST /v1/messages
+ */
 app.post('/v1/messages', async (req, res) => {
     try {
         // Ensure account manager is initialized
