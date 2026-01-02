@@ -1,11 +1,11 @@
 /**
- * Schema Normalizer
- * Flattens Anthropic JSON Schema to proto-safe format.
- * Recursively builds descriptive text, avoids nested types.
+ * Schema Sanitizer
+ * Sanitizes and flattens Anthropic JSON Schema into a proto-safe format.
+ * Removes or transforms invalid/unsafe constructs, recursively builds descriptive text.
  */
 
 function normalizeSchema(schema, depth = 0, maxDepth = 10) {
-    if (depth > maxDepth) throw new Error('Schema too deep – possible cycle');
+    if (depth > maxDepth) return { description: '[schema too deep]' };
 
     if (!schema) return { description: 'any' };
 
