@@ -12,6 +12,7 @@ import os from 'os';
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
+const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 // Initialize logger
 logger.setDebug(isDebug);
@@ -19,6 +20,13 @@ logger.setDebug(isDebug);
 if (isDebug) {
     logger.debug('Debug mode enabled');
 }
+
+if (isFallbackEnabled) {
+    logger.info('Model fallback mode enabled');
+}
+
+// Export fallback flag for server to use
+export const FALLBACK_ENABLED = isFallbackEnabled;
 
 const PORT = process.env.PORT || DEFAULT_PORT;
 
@@ -43,6 +51,7 @@ ${border}  ${align(`Server running at: http://localhost:${PORT}`)}${border}
 ║                                                              ║
 ║  Control:                                                    ║
 ║    --debug            Enable debug logging                   ║
+║    --fallback         Enable model fallback on quota exhaust ║
 ║    Ctrl+C             Stop server                            ║
 ║                                                              ║
 ║  Endpoints:                                                  ║

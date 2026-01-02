@@ -18,6 +18,16 @@ import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 
+// Import fallback flag (set by command line args in index.js)
+let FALLBACK_ENABLED = false;
+try {
+    // Dynamic import to avoid circular dependency
+    const indexModule = await import('./index.js');
+    FALLBACK_ENABLED = indexModule.FALLBACK_ENABLED || false;
+} catch (e) {
+    // If index.js hasn't exported it yet, fallback is disabled
+}
+
 const app = express();
 
 // Initialize account manager (will be fully initialized on first request or startup)
@@ -572,7 +582,7 @@ app.post('/v1/messages', async (req, res) => {
 
             try {
                 // Use the streaming generator with account manager
-                for await (const event of sendMessageStream(request, accountManager)) {
+                for await (const event of sendMessageStream(request, accountManager, FALLBACK_ENABLED)) {
                     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     // Flush after each event for real-time streaming
                     if (res.flush) res.flush();
@@ -593,7 +603,7 @@ app.post('/v1/messages', async (req, res) => {
 
         } else {
             // Handle non-streaming response
-            const response = await sendMessage(request, accountManager);
+            const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
             res.json(response);
         }
 
@@ -719,7 +729,7 @@ app.post('/openai/v1/chat/completions', async (req, res) => {
             try {
                 const streamId = `chatcmpl-${Math.random().toString(36).substr(2, 9)}`;
                 
-                for await (const event of sendMessageStream(anthropicRequest, accountManager)) {
+                for await (const event of sendMessageStream(anthropicRequest, accountManager, FALLBACK_ENABLED)) {
                     // Convert Anthropic event to OpenAI event
                     const openAIEvent = convertAnthropicStreamToOpenAI(event, streamId, anthropicRequest.model);
                     
@@ -746,7 +756,7 @@ app.post('/openai/v1/chat/completions', async (req, res) => {
             }
         } else {
             // Handle non-streaming
-            const anthropicResponse = await sendMessage(anthropicRequest, accountManager);
+            const anthropicResponse = await sendMessage(anthropicRequest, accountManager, FALLBACK_ENABLED);
             
             // Convert back to OpenAI format
             const openAIResponse = convertAnthropicToOpenAI(anthropicResponse, openAIRequest);
