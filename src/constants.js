@@ -103,6 +103,7 @@ export const GEMINI_SIGNATURE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 export function getModelFamily(modelName) {
     const lower = (modelName || '').toLowerCase();
     if (lower.includes('claude')) return 'claude';
+    if (lower.includes('gpt-oss')) return 'claude';  // GPT-OSS shares Claude quota group
     if (lower.includes('gemini')) return 'gemini';
     return 'unknown';
 }

@@ -7,6 +7,8 @@
 import express from 'express';
 import cors from 'cors';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas } from './cloudcode/index.js';
+import { getModelFamily } from './constants.js';
+import { triggerResetForAllAccounts, formatTriggerResults } from './cloudcode/reset-trigger.js';
 import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
@@ -283,11 +285,14 @@ app.get('/account-limits', async (req, res) => {
             }
         });
 
-        // Collect all unique model IDs
+        // Collect all unique model IDs (only claude and gemini families)
         const allModelIds = new Set();
         for (const account of accountLimits) {
             for (const modelId of Object.keys(account.models || {})) {
-                allModelIds.add(modelId);
+                const family = getModelFamily(modelId);
+                if (family === 'claude' || family === 'gemini') {
+                    allModelIds.add(modelId);
+                }
             }
         }
 
@@ -307,18 +312,18 @@ app.get('/account-limits', async (req, res) => {
             lines.push(`Accounts: ${status.total} total, ${status.available} available, ${status.rateLimited} rate-limited, ${status.invalid} invalid`);
             lines.push('');
 
-            // Table 1: Account status
-            const accColWidth = 25;
-            const statusColWidth = 15;
-            const lastUsedColWidth = 25;
-            const resetColWidth = 25;
+            // Table 1: Account status with 3 quota group reset times
+            const accColWidth = 22;
+            const statusColWidth = 12;
+            const lastUsedColWidth = 22;
+            const resetColWidth = 22;
 
-            let accHeader = 'Account'.padEnd(accColWidth) + 'Status'.padEnd(statusColWidth) + 'Last Used'.padEnd(lastUsedColWidth) + 'Quota Reset';
+            let accHeader = 'Account'.padEnd(accColWidth) + 'Status'.padEnd(statusColWidth) + 'Last Used'.padEnd(lastUsedColWidth) + 'Claude Reset'.padEnd(resetColWidth) + 'Gemini Pro'.padEnd(resetColWidth) + 'Gemini Flash';
             lines.push(accHeader);
-            lines.push('─'.repeat(accColWidth + statusColWidth + lastUsedColWidth + resetColWidth));
+            lines.push('─'.repeat(accColWidth + statusColWidth + lastUsedColWidth + resetColWidth * 3));
 
             for (const acc of status.accounts) {
-                const shortEmail = acc.email.split('@')[0].slice(0, 22);
+                const shortEmail = acc.email.split('@')[0].slice(0, 20);
                 const lastUsed = acc.lastUsed ? new Date(acc.lastUsed).toLocaleString() : 'never';
 
                 // Get status and error from accountLimits
@@ -328,6 +333,9 @@ app.get('/account-limits', async (req, res) => {
                     accStatus = 'invalid';
                 } else if (accLimit?.status === 'error') {
                     accStatus = 'error';
+                } else if (acc.isRateLimited) {
+                    const remaining = acc.rateLimitResetTime ? acc.rateLimitResetTime - Date.now() : 0;
+                    accStatus = remaining > 0 ? `ltd(${formatDuration(remaining)})` : 'limited';
                 } else {
                     // Count exhausted models (0% or null remaining)
                     const models = accLimit?.models || {};
@@ -343,14 +351,29 @@ app.get('/account-limits', async (req, res) => {
                     }
                 }
 
-                // Get reset time from quota API
-                const claudeModel = sortedModels.find(m => m.includes('claude'));
-                const quota = claudeModel && accLimit?.models?.[claudeModel];
-                const resetTime = quota?.resetTime
-                    ? new Date(quota.resetTime).toLocaleString()
+                // Get reset times for each quota group
+                // Claude group: any model with 'claude' in name
+                const claudeModel = sortedModels.find(m => m.toLowerCase().includes('claude'));
+                const claudeQuota = claudeModel && accLimit?.models?.[claudeModel];
+                const claudeReset = claudeQuota?.resetTime
+                    ? new Date(claudeQuota.resetTime).toLocaleTimeString()
                     : '-';
 
-                let row = shortEmail.padEnd(accColWidth) + accStatus.padEnd(statusColWidth) + lastUsed.padEnd(lastUsedColWidth) + resetTime;
+                // Gemini Pro group: gemini-3-pro-high or gemini-3-pro-low
+                const geminiProModel = sortedModels.find(m => m.toLowerCase().includes('gemini') && m.toLowerCase().includes('pro'));
+                const geminiProQuota = geminiProModel && accLimit?.models?.[geminiProModel];
+                const geminiProReset = geminiProQuota?.resetTime
+                    ? new Date(geminiProQuota.resetTime).toLocaleTimeString()
+                    : '-';
+
+                // Gemini Flash group: gemini-3-flash
+                const geminiFlashModel = sortedModels.find(m => m.toLowerCase().includes('gemini') && m.toLowerCase().includes('flash'));
+                const geminiFlashQuota = geminiFlashModel && accLimit?.models?.[geminiFlashModel];
+                const geminiFlashReset = geminiFlashQuota?.resetTime
+                    ? new Date(geminiFlashQuota.resetTime).toLocaleTimeString()
+                    : '-';
+
+                let row = shortEmail.padEnd(accColWidth) + accStatus.padEnd(statusColWidth) + lastUsed.padEnd(lastUsedColWidth) + claudeReset.padEnd(resetColWidth) + geminiProReset.padEnd(resetColWidth) + geminiFlashReset;
 
                 // Add error on next line if present
                 if (accLimit?.error) {
@@ -458,6 +481,37 @@ app.post('/refresh-token', async (req, res) => {
             status: 'ok',
             message: 'Token caches cleared and refreshed',
             tokenPrefix: token.substring(0, 10) + '...'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Trigger quota reset endpoint
+ * Sends minimal API requests to all accounts to start the 5-hour reset timer
+ */
+app.post('/trigger-reset', async (req, res) => {
+    try {
+        await ensureInitialized();
+        logger.info('[API] Triggering quota reset for all accounts...');
+
+        const results = await triggerResetForAllAccounts(accountManager);
+        const format = req.query.format || 'json';
+
+        if (format === 'text') {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            return res.send(formatTriggerResults(results));
+        }
+
+        res.json({
+            status: 'ok',
+            message: 'Quota reset triggered for all accounts',
+            timestamp: new Date().toISOString(),
+            results: results
         });
     } catch (error) {
         res.status(500).json({
@@ -681,3 +735,14 @@ app.use('*', (req, res) => {
 });
 
 export default app;
+
+// Export for use by index.js for startup reset trigger
+export { ensureInitialized, accountManager as getAccountManager };
+
+/**
+ * Get the account manager instance
+ * @returns {AccountManager}
+ */
+export function getAccountManagerInstance() {
+    return accountManager;
+}

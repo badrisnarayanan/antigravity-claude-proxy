@@ -1,11 +1,21 @@
 /**
  * Antigravity Claude Proxy
  * Entry point - starts the proxy server
+ *
+ * Command line options:
+ *   --debug          Enable debug logging
+ *   --trigger-reset  Trigger quota reset timer for all accounts on startup
+ *
+ * Environment variables:
+ *   PORT=8080        Server port (default: 8080)
+ *   DEBUG=true       Enable debug logging
+ *   TRIGGER_RESET=true  Trigger reset on startup
  */
 
-import app from './server.js';
+import app, { ensureInitialized, getAccountManager } from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
+import { triggerResetForAllAccounts, formatTriggerResults } from './cloudcode/reset-trigger.js';
 import path from 'path';
 import os from 'os';
 
@@ -13,6 +23,8 @@ import os from 'os';
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
+// --trigger-reset: Send minimal API requests on startup to start the 5-hour reset countdown
+const triggerResetOnStart = args.includes('--trigger-reset') || process.env.TRIGGER_RESET === 'true';
 
 // Initialize logger
 logger.setDebug(isDebug);
@@ -34,7 +46,7 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     // Clear console for a clean start
     console.clear();
 
@@ -74,6 +86,7 @@ app.listen(PORT, () => {
 ${border}  ${align(`Server running at: http://localhost:${PORT}`)}${border}
 ${statusSection}║                                                              ║
 ${controlSection}
+║    --trigger-reset    Trigger 5hr reset on startup           ║
 ║                                                              ║
 ║  Endpoints:                                                  ║
 ║    POST /v1/messages         - Anthropic Messages API        ║
@@ -81,6 +94,7 @@ ${controlSection}
 ║    GET  /health              - Health check                  ║
 ║    GET  /account-limits      - Account status & quotas       ║
 ║    POST /refresh-token       - Force token refresh           ║
+║    POST /trigger-reset       - Trigger quota reset           ║
 ║                                                              ║
 ${border}  ${align(`Configuration:`)}${border}
 ${border}    ${align4(`Storage: ${CONFIG_DIR}`)}${border}
@@ -99,9 +113,22 @@ ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${bo
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
   `);
-    
+
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
         logger.warn('Running in DEBUG mode - verbose logs enabled');
+    }
+
+    // Trigger reset on startup if requested
+    if (triggerResetOnStart) {
+        logger.info('[Startup] --trigger-reset flag detected, triggering quota reset timers...');
+        try {
+            await ensureInitialized();
+            const accountManager = getAccountManager;
+            const results = await triggerResetForAllAccounts(accountManager);
+            logger.info(formatTriggerResults(results));
+        } catch (error) {
+            logger.error(`[Startup] Failed to trigger reset: ${error.message}`);
+        }
     }
 });

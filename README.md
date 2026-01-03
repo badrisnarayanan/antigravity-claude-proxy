@@ -260,6 +260,65 @@ curl "http://localhost:8080/account-limits?format=table"
 | `/v1/messages` | POST | Anthropic Messages API |
 | `/v1/models` | GET | List available models |
 | `/refresh-token` | POST | Force token refresh |
+| `/trigger-reset` | POST | Trigger 5hr quota reset for all accounts |
+
+---
+
+## Quota Reset Timer Management
+
+Each account has **3 independent quota groups** with separate 5-hour reset timers:
+
+| Quota Group | Models Included | Notes |
+|-------------|-----------------|-------|
+| **Claude** | claude-sonnet-4-5-thinking, claude-opus-4-5-thinking, claude-sonnet-4-5, GPT-OSS 120B | Triggering ANY model resets ALL |
+| **Gemini Pro** | gemini-3-pro-high, gemini-3-pro-low | Triggering either resets both |
+| **Gemini Flash** | gemini-3-flash | Separate from Pro group |
+
+The reset trigger sends minimal requests to one model from each group to start all three timers.
+
+### Trigger Reset on Startup
+
+Start the server and immediately trigger the reset timer for all accounts:
+
+```bash
+# Via npm global install
+antigravity-claude-proxy start --trigger-reset
+
+# Via environment variable
+TRIGGER_RESET=true antigravity-claude-proxy start
+
+# Via npm script (if cloned locally)
+npm run start:reset
+```
+
+### Trigger Reset Manually
+
+Trigger reset for all accounts without restarting the server:
+
+```bash
+# Via CLI (server must not be running)
+antigravity-claude-proxy trigger-reset
+
+# Via API (while server is running)
+curl -X POST http://localhost:8080/trigger-reset
+
+# With text output format
+curl -X POST "http://localhost:8080/trigger-reset?format=text"
+```
+
+### Schedule Automatic Reset
+
+Use cron to trigger resets at a specific time daily (e.g., 9 PM for 2 AM quota reset):
+
+```bash
+# Add to crontab: crontab -e
+0 21 * * * antigravity-claude-proxy trigger-reset
+
+# Or for npm global install
+0 21 * * * /usr/local/bin/antigravity-claude-proxy trigger-reset
+```
+
+This sends minimal API requests (just "Hi" with 1 max output token) to consume virtually no quota while starting the 5-hour countdown.
 
 ---
 
