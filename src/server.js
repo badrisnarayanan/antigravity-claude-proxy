@@ -102,7 +102,7 @@ app.use((req, res, next) => {
     // Skip logging for event logging batch unless in debug mode
     if (req.path === '/api/event_logging/batch') {
         if (logger.isDebugEnabled) {
-             logger.debug(`[${req.method}] ${req.path}`);
+            logger.debug(`[${req.method}] ${req.path}`);
         }
     } else {
         logger.info(`[${req.method}] ${req.path}`);
@@ -466,6 +466,17 @@ app.post('/v1/messages', async (req, res) => {
                     ? msg.content.map(c => c.type || 'text').join(', ')
                     : (typeof msg.content === 'string' ? 'text' : 'unknown');
                 logger.debug(`  [${i}] ${msg.role}: ${contentTypes}`);
+
+                // Extra detail for assistant messages with thinking blocks
+                if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+                    msg.content.forEach((block, j) => {
+                        if (block.type === 'thinking') {
+                            const sigLen = block.signature?.length || 0;
+                            const thinkingPreview = block.thinking?.slice(0, 50) || '';
+                            logger.debug(`    [${j}] thinking: sig=${sigLen}, preview="${thinkingPreview}..."`);
+                        }
+                    });
+                }
             });
         }
 

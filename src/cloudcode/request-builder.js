@@ -11,6 +11,7 @@ import {
     isThinkingModel
 } from '../constants.js';
 import { convertAnthropicToGoogle } from '../format/index.js';
+import { logger } from '../utils/logger.js';
 import { deriveSessionId } from './session-manager.js';
 
 /**
@@ -29,7 +30,7 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
 
     // Debug: log thinkingConfig
     if (googleRequest.generationConfig?.thinkingConfig) {
-        console.log('[DEBUG] thinkingConfig being sent:', JSON.stringify(googleRequest.generationConfig.thinkingConfig));
+        logger.debug(`[RequestBuilder] thinkingConfig: ${JSON.stringify(googleRequest.generationConfig.thinkingConfig)}`);
     }
 
     const payload = {
