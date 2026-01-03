@@ -7,20 +7,11 @@
 import express from 'express';
 import cors from 'cors';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas } from './cloudcode/index.js';
-import { 
-    convertOpenAIToAnthropic, 
-    convertAnthropicToOpenAI, 
-    convertAnthropicStreamToOpenAI 
-} from './format/index.js';
 import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
-
-// Parse fallback flag directly from command line args to avoid circular dependency
-const args = process.argv.slice(2);
-const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 const app = express();
 
@@ -576,7 +567,7 @@ app.post('/v1/messages', async (req, res) => {
 
             try {
                 // Use the streaming generator with account manager
-                for await (const event of sendMessageStream(request, accountManager, FALLBACK_ENABLED)) {
+                for await (const event of sendMessageStream(request, accountManager)) {
                     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     // Flush after each event for real-time streaming
                     if (res.flush) res.flush();
@@ -597,7 +588,7 @@ app.post('/v1/messages', async (req, res) => {
 
         } else {
             // Handle non-streaming response
-            const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            const response = await sendMessage(request, accountManager);
             res.json(response);
         }
 
@@ -638,136 +629,6 @@ app.post('/v1/messages', async (req, res) => {
                 }
             });
         }
-    }
-});
-
-/**
- * OpenAI Compatible API Endpoints
- */
-
-/**
- * List models (OpenAI compatible)
- */
-app.get('/openai/v1/models', async (req, res) => {
-    try {
-        await ensureInitialized();
-        const account = accountManager.pickNext();
-        if (!account) {
-            return res.status(503).json({
-                error: {
-                    message: 'No accounts available',
-                    type: 'server_error',
-                    code: 503
-                }
-            });
-        }
-        
-        const token = await accountManager.getTokenForAccount(account);
-        const models = await listModels(token);
-        
-        // Convert Anthropic models list to OpenAI format
-        // Anthropic: { data: [{ id: "...", ... }] } (already quite similar, but let's ensure)
-        const openAIModels = {
-            object: 'list',
-            data: models.data.map(m => ({
-                id: m.id,
-                object: 'model',
-                created: Math.floor(Date.now() / 1000),
-                owned_by: 'google'
-            }))
-        };
-        
-        res.json(openAIModels);
-    } catch (error) {
-        logger.error('[API] Error listing models (OpenAI):', error);
-        res.status(500).json({
-            error: {
-                message: error.message,
-                type: 'server_error',
-                code: 500
-            }
-        });
-    }
-});
-
-/**
- * Chat Completions (OpenAI compatible)
- */
-app.post('/openai/v1/chat/completions', async (req, res) => {
-    try {
-        await ensureInitialized();
-        
-        const openAIRequest = req.body;
-        
-        // Validate
-        if (!openAIRequest.messages || !Array.isArray(openAIRequest.messages)) {
-            return res.status(400).json({
-                error: {
-                    message: 'messages is required and must be an array',
-                    type: 'invalid_request_error',
-                    code: 'invalid_message'
-                }
-            });
-        }
-        
-        // Convert to Anthropic format
-        const anthropicRequest = convertOpenAIToAnthropic(openAIRequest);
-        logger.info(`[API] OpenAI Request for model: ${openAIRequest.model} (mapped to ${anthropicRequest.model})`);
-
-        // Handle streaming
-        if (openAIRequest.stream) {
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-            
-            try {
-                const streamId = `chatcmpl-${Math.random().toString(36).substr(2, 9)}`;
-                
-                for await (const event of sendMessageStream(anthropicRequest, accountManager, FALLBACK_ENABLED)) {
-                    // Convert Anthropic event to OpenAI event
-                    const openAIEvent = convertAnthropicStreamToOpenAI(event, streamId, anthropicRequest.model);
-                    
-                    if (openAIEvent) {
-                        res.write(`data: ${JSON.stringify(openAIEvent)}\n\n`);
-                    }
-                }
-                
-                res.write('data: [DONE]\n\n');
-                res.end();
-            } catch (error) {
-                logger.error('[API] OpenAI Stream error:', error);
-                
-                // If headers sent, send error as event
-                const { statusCode, errorMessage } = parseError(error); // Reuse existing parser
-                res.write(`data: ${JSON.stringify({
-                    error: {
-                        message: errorMessage,
-                        type: 'api_error',
-                        code: statusCode
-                    }
-                })}\n\n`);
-                res.end();
-            }
-        } else {
-            // Handle non-streaming
-            const anthropicResponse = await sendMessage(anthropicRequest, accountManager, FALLBACK_ENABLED);
-            
-            // Convert back to OpenAI format
-            const openAIResponse = convertAnthropicToOpenAI(anthropicResponse, openAIRequest);
-            res.json(openAIResponse);
-        }
-
-    } catch (error) {
-        logger.error('[API] OpenAI Error:', error);
-        const { statusCode, errorMessage, errorType } = parseError(error);
-        
-        res.status(statusCode).json({
-            error: {
-                message: errorMessage,
-                type: errorType,
-                code: statusCode
-            }
-        });
     }
 });
 

@@ -18,7 +18,6 @@ import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
 import { parseThinkingSSEResponse } from './sse-parser.js';
-import { getFallbackModel } from '../fallback-config.js';
 
 /**
  * Check if an error is a rate limit error (429 or RESOURCE_EXHAUSTED)
@@ -49,7 +48,7 @@ function isAuthInvalidError(error) {
  * @returns {Promise<Object>} Anthropic-format response object
  * @throws {Error} If max retries exceeded or no accounts available
  */
-export async function sendMessage(anthropicRequest, accountManager, fallbackEnabled = false) {
+export async function sendMessage(anthropicRequest, accountManager) {
     const model = anthropicRequest.model;
     const isThinking = isThinkingModel(model);
 
@@ -93,16 +92,6 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
             }
 
             if (!account) {
-                // Check if fallback is enabled and available
-                if (fallbackEnabled) {
-                    const fallbackModel = getFallbackModel(model);
-                    if (fallbackModel) {
-                        logger.warn(`[CloudCode] All accounts exhausted for ${model}. Attempting fallback to ${fallbackModel}`);
-                        // Retry with fallback model
-                        const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
-                        return await sendMessage(fallbackRequest, accountManager, false); // Disable fallback for recursive call
-                    }
-                }
                 throw new Error('No accounts available');
             }
         }

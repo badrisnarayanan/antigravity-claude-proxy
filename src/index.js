@@ -12,7 +12,6 @@ import os from 'os';
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
-const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 // Initialize logger
 logger.setDebug(isDebug);
@@ -20,13 +19,6 @@ logger.setDebug(isDebug);
 if (isDebug) {
     logger.debug('Debug mode enabled');
 }
-
-if (isFallbackEnabled) {
-    logger.info('Model fallback mode enabled');
-}
-
-// Export fallback flag for server to use
-export const FALLBACK_ENABLED = isFallbackEnabled;
 
 const PORT = process.env.PORT || DEFAULT_PORT;
 
@@ -47,22 +39,14 @@ app.listen(PORT, () => {
     if (!isDebug) {
         controlSection += '║    --debug            Enable debug logging                   ║\n';
     }
-    if (!isFallbackEnabled) {
-        controlSection += '║    --fallback         Enable model fallback on quota exhaust ║\n';
-    }
     controlSection += '║    Ctrl+C             Stop server                            ║';
 
-    // Build status section if any modes are active
+    // Build status section if debug mode is active
     let statusSection = '';
-    if (isDebug || isFallbackEnabled) {
+    if (isDebug) {
         statusSection = '║                                                              ║\n';
         statusSection += '║  Active Modes:                                               ║\n';
-        if (isDebug) {
-            statusSection += '║    ✓ Debug mode enabled                                      ║\n';
-        }
-        if (isFallbackEnabled) {
-            statusSection += '║    ✓ Model fallback enabled                                  ║\n';
-        }
+        statusSection += '║    ✓ Debug mode enabled                                      ║\n';
     }
 
     logger.log(`
@@ -76,8 +60,7 @@ ${controlSection}
 ║                                                              ║
 ║  Endpoints:                                                  ║
 ║    POST /v1/messages         - Anthropic Messages API        ║
-║    POST /openai/v1/chat...   - OpenAI Chat API               ║
-║    GET  /openai/v1/models    - List available models         ║
+║    GET  /v1/models           - List available models         ║
 ║    GET  /health              - Health check                  ║
 ║    GET  /account-limits      - Account status & quotas       ║
 ║    POST /refresh-token       - Force token refresh           ║
@@ -89,6 +72,13 @@ ${border}    ${align(`Storage: ${CONFIG_DIR}`)}${border}
 ${border}    ${align(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${border}
 ║    export ANTHROPIC_API_KEY=dummy                            ║
 ║    claude                                                    ║
+║                                                              ║
+║  Add Google accounts:                                        ║
+║    npm run accounts                                          ║
+║                                                              ║
+║  Prerequisites (if no accounts configured):                  ║
+║    - Antigravity must be running                             ║
+║    - Have a chat panel open in Antigravity                   ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
   `);

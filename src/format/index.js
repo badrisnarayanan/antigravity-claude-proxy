@@ -9,7 +9,6 @@ export * from './response-converter.js';
 export * from './content-converter.js';
 export * from './schema-sanitizer.js';
 export * from './thinking-utils.js';
-export * from './openai-converter.js';
 
 // Default export for backward compatibility
 import { convertAnthropicToGoogle } from './request-converter.js';
