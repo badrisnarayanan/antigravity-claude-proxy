@@ -63,12 +63,8 @@ Add accounts using only a refresh token (no OAuth flow needed).
 
 Token location: `~/.gemini/oauth_creds.json`
 
-```javascript
-// Gemini CLI OAuth credentials
-OAUTH_CLIENT_ID = "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com";
-OAUTH_CLIENT_SECRET = "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";
-CODE_ASSIST_ENDPOINT = "https://cloudcode-pa.googleapis.com";
-```
+Uses standard Gemini CLI OAuth credentials (see Gemini CLI source for values).
+Endpoint: `https://cloudcode-pa.googleapis.com`
 
 ### Claude Code OAuth (different system)
 

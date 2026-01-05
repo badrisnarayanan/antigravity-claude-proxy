@@ -21,6 +21,7 @@ log.txt
 tests/utils/*.png
 tests/utils/*.jpg
 tests/utils/*.jpeg
+coverage/
 
 # Environment
 .env
@@ -29,3 +30,10 @@ tests/utils/*.jpeg
 # Build output
 dist/
 build/
+
+# Account data (contains tokens)
+data/accounts.json
+antigravity_accounts_*.json
+
+# Temp files
+error.md
