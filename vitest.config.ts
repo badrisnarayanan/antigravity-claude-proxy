@@ -35,7 +35,7 @@ export default defineConfig({
     // Test configuration
     globals: true,
     environment: "node",
-    include: ["tests/**/*.test.ts", "tests/**/*.fuzz.test.ts", "tests/**/*.contract.test.ts", "tests/**/*.chaos.test.ts", "tests/**/*.golden.test.ts", "tests/**/*.snap.test.ts"],
+    include: ["tests/**/*.test.ts", "tests/**/*.fuzz.test.ts", "tests/**/*.contract.test.ts", "tests/**/*.chaos.test.ts", "tests/**/*.golden.test.ts", "tests/**/*.snap.test.ts", "tests/**/*.security.test.ts"],
     exclude: ["node_modules", "dist", "tests/**/*.cjs"],
 
     // Timeout for integration tests
