@@ -1,0 +1,221 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Response Format Snapshots > Edge Cases > matches snapshot for cached response > cached-response 1`] = `
+{
+  "content": [
+    {
+      "text": "Cached response",
+      "type": "text",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 80,
+    "input_tokens": 20,
+    "output_tokens": 5,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Edge Cases > matches snapshot for empty response > empty-response 1`] = `
+{
+  "content": [
+    {
+      "text": "",
+      "type": "text",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 5,
+    "output_tokens": 0,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Edge Cases > matches snapshot for max_tokens stop reason > max-tokens-response 1`] = `
+{
+  "content": [
+    {
+      "text": "This response was truncat",
+      "type": "text",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 10,
+    "output_tokens": 5,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Mixed Content Response > matches snapshot for thinking + text + tool > mixed-content-response 1`] = `
+{
+  "content": [
+    {
+      "signature": "sig_think",
+      "thinking": "Planning my approach...",
+      "type": "thinking",
+    },
+    {
+      "text": "I'll execute that for you.",
+      "type": "text",
+    },
+    {
+      "id": "toolu_01ABC123_2",
+      "input": {
+        "cmd": "test",
+      },
+      "name": "execute",
+      "type": "tool_use",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-opus-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 30,
+    "output_tokens": 35,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Simple Text Response > matches snapshot for basic text response > simple-text-response 1`] = `
+{
+  "content": [
+    {
+      "text": "Hello! How can I help you today?",
+      "type": "text",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 10,
+    "output_tokens": 12,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Thinking Block Response > matches snapshot for response with thinking > thinking-block-response 1`] = `
+{
+  "content": [
+    {
+      "signature": "sig_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "thinking": "Let me analyze this step by step...",
+      "type": "thinking",
+    },
+    {
+      "text": "Based on my analysis, the answer is 42.",
+      "type": "text",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 15,
+    "output_tokens": 25,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Tool Use Response > matches snapshot for multiple tool uses > multiple-tool-use-response 1`] = `
+{
+  "content": [
+    {
+      "id": "toolu_01ABC123_0",
+      "input": {
+        "query": "weather",
+      },
+      "name": "search",
+      "type": "tool_use",
+    },
+    {
+      "id": "toolu_01ABC123_1",
+      "input": {
+        "timezone": "UTC",
+      },
+      "name": "get_time",
+      "type": "tool_use",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 25,
+    "output_tokens": 20,
+  },
+}
+`;
+
+exports[`Response Format Snapshots > Tool Use Response > matches snapshot for single tool use > single-tool-use-response 1`] = `
+{
+  "content": [
+    {
+      "id": "toolu_01ABC123",
+      "input": {
+        "location": "San Francisco",
+        "units": "celsius",
+      },
+      "name": "get_weather",
+      "thoughtSignature": "sig_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "type": "tool_use",
+    },
+  ],
+  "id": "msg_01XYZ789ABC",
+  "model": "claude-sonnet-4-5-thinking",
+  "role": "assistant",
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 20,
+    "output_tokens": 15,
+  },
+}
+`;
