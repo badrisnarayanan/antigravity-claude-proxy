@@ -138,7 +138,7 @@ function createProgram(): Command {
     .description("Setup wizard for initial configuration")
     .action(async () => {
       const { initCommand } = await import("./commands/init.js");
-      initCommand();
+      await initCommand();
     });
 
   return program;
