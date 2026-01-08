@@ -7,6 +7,7 @@
 import crypto from 'crypto';
 import {
     ANTIGRAVITY_HEADERS,
+    ANTIGRAVITY_SYSTEM_INSTRUCTION,
     getModelFamily,
     isThinkingModel
 } from '../constants.js';
@@ -27,12 +28,32 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
     // Use stable session ID derived from first user message for cache continuity
     googleRequest.sessionId = deriveSessionId(anthropicRequest);
 
+    // Build systemInstruction with role: "user" (CLIProxyAPI v6.6.89 compatibility)
+    // Prepend Antigravity identity to any existing system instructions
+    let systemInstructionText = ANTIGRAVITY_SYSTEM_INSTRUCTION;
+    if (googleRequest.systemInstruction && googleRequest.systemInstruction.parts) {
+        const existingText = googleRequest.systemInstruction.parts
+            .map(p => p.text || '')
+            .filter(t => t)
+            .join('\n');
+        if (existingText) {
+            systemInstructionText = ANTIGRAVITY_SYSTEM_INSTRUCTION + '\n\n' + existingText;
+        }
+    }
+
     const payload = {
         project: projectId,
         model: model,
         request: googleRequest,
         userAgent: 'antigravity',
+        requestType: 'agent',  // CLIProxyAPI v6.6.89 compatibility
         requestId: 'agent-' + crypto.randomUUID()
+    };
+
+    // Inject systemInstruction with role: "user" at the top level (CLIProxyAPI v6.6.89 behavior)
+    payload.request.systemInstruction = {
+        role: 'user',
+        parts: [{ text: systemInstructionText }]
     };
 
     return payload;
