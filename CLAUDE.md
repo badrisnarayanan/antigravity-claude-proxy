@@ -87,6 +87,9 @@ src/
 │   ├── token-extractor.js      # Legacy token extraction from DB
 │   └── database.js             # SQLite database access
 │
+├── webui/                      # Web Management Interface
+│   └── index.js                # Express router and API endpoints
+│
 ├── cli/                        # CLI tools
 │   └── accounts.js             # Account management CLI
 │
@@ -105,9 +108,31 @@ src/
     └── native-module-helper.js # Auto-rebuild for native modules
 ```
 
+**Frontend Structure (public/):**
+
+```
+public/
+├── index.html                  # Main entry point
+├── js/
+│   ├── app.js                  # Main application logic (Alpine.js)
+│   ├── store.js                # Global state management
+│   ├── components/             # UI Components
+│   │   ├── dashboard.js        # Real-time stats & charts
+│   │   ├── account-manager.js  # Account list & OAuth handling
+│   │   ├── logs-viewer.js      # Live log streaming
+│   │   └── claude-config.js    # CLI settings editor
+│   └── utils/                  # Frontend utilities
+└── views/                      # HTML partials (loaded dynamically)
+    ├── dashboard.html
+    ├── accounts.html
+    ├── settings.html
+    └── logs.html
+```
+
 **Key Modules:**
 
-- **src/server.js**: Express server exposing Anthropic-compatible endpoints (`/v1/messages`, `/v1/models`, `/health`, `/account-limits`)
+- **src/server.js**: Express server exposing Anthropic-compatible endpoints (`/v1/messages`, `/v1/models`, `/health`, `/account-limits`) and mounting WebUI
+- **src/webui/index.js**: WebUI backend handling API routes (`/api/*`) for config, accounts, and logs
 - **src/cloudcode/**: Cloud Code API client with retry/failover logic, streaming and non-streaming support
 - **src/account-manager/**: Multi-account pool with sticky selection, rate limit handling, and automatic cooldown
 - **src/auth/**: Authentication including Google OAuth, token extraction, database access, and auto-rebuild of native modules
@@ -152,6 +177,18 @@ src/
 - If rebuild succeeds, the module is reloaded; if reload fails, a server restart is required
 - Implementation in `src/utils/native-module-helper.js` and lazy loading in `src/auth/database.js`
 
+**Web Management UI:**
+
+- **Stack**: Vanilla JS + Alpine.js + Tailwind CSS (via CDN)
+- **Architecture**: Single Page Application (SPA) with dynamic view loading
+- **State Management**: Alpine.store for global state (accounts, settings, logs)
+- **Features**:
+  - Real-time dashboard with Chart.js visualization
+  - OAuth flow handling via popup window
+  - Live log streaming via Server-Sent Events (SSE)
+  - Config editor for both Proxy and Claude CLI (`~/.claude/settings.json`)
+- **Security**: Optional password protection via `WEBUI_PASSWORD` env var
+
 ## Testing Notes
 
 - Tests require the server to be running (`npm start` in separate terminal)
@@ -194,6 +231,14 @@ src/
 - `logger.debug(msg)` - Debug output (magenta, only when enabled)
 - `logger.setDebug(true)` - Enable debug mode
 - `logger.isDebugEnabled` - Check if debug mode is on
+
+**WebUI APIs:**
+
+- `/api/accounts/*` - Account management (list, add, remove, refresh)
+- `/api/config/*` - Server configuration (read/write)
+- `/api/claude/config` - Claude CLI settings
+- `/api/logs/stream` - SSE endpoint for real-time logs
+- `/api/auth/url` - Generate Google OAuth URL
 
 ## Maintenance
 

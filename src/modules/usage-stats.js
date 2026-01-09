@@ -1,9 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 
+import { USAGE_HISTORY_PATH } from '../constants.js';
+
 // Persistence path
-const DATA_DIR = path.join(process.cwd(), 'data');
-const HISTORY_FILE = path.join(DATA_DIR, 'usage-history.json');
+const HISTORY_FILE = USAGE_HISTORY_PATH;
+const DATA_DIR = path.dirname(HISTORY_FILE);
+const OLD_DATA_DIR = path.join(process.cwd(), 'data');
+const OLD_HISTORY_FILE = path.join(OLD_DATA_DIR, 'usage-history.json');
 
 // In-memory storage
 // Structure: { "YYYY-MM-DDTHH:00:00.000Z": { "claude": { "model-name": count, "_subtotal": count }, "_total": count } }
@@ -35,10 +39,22 @@ function getShortName(modelId, family) {
 }
 
 /**
- * Ensure data directory exists and load history
+ * Ensure data directory exists and load history.
+ * Includes migration from legacy local data directory.
  */
 function load() {
     try {
+        // Migration logic: if old file exists and new one doesn't
+        if (fs.existsSync(OLD_HISTORY_FILE) && !fs.existsSync(HISTORY_FILE)) {
+            console.log('[UsageStats] Migrating legacy usage data...');
+            if (!fs.existsSync(DATA_DIR)) {
+                fs.mkdirSync(DATA_DIR, { recursive: true });
+            }
+            fs.copyFileSync(OLD_HISTORY_FILE, HISTORY_FILE);
+            // We keep the old file for safety initially, but could delete it
+            console.log(`[UsageStats] Migration complete: ${OLD_HISTORY_FILE} -> ${HISTORY_FILE}`);
+        }
+
         if (!fs.existsSync(DATA_DIR)) {
             fs.mkdirSync(DATA_DIR, { recursive: true });
         }

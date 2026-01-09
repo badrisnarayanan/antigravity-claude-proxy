@@ -567,6 +567,19 @@ app.post('/v1/messages', async (req, res) => {
         // Ensure account manager is initialized
         await ensureInitialized();
 
+        const {
+            model,
+            messages,
+            stream,
+            system,
+            max_tokens,
+            tools,
+            tool_choice,
+            thinking,
+            top_p,
+            top_k,
+            temperature
+        } = req.body;
 
         // Resolve model mapping if configured
         let requestedModel = model || 'claude-3-5-sonnet-20241022';

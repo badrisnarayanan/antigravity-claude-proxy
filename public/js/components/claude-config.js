@@ -57,7 +57,8 @@ window.Components.claudeConfig = () => ({
     toggleGemini1mSuffix(enabled) {
         for (const field of this.geminiModelFields) {
             const val = this.config.env[field];
-            if (val && val.toLowerCase().includes('gemini')) {
+            // Fix: Case-insensitive check for gemini
+            if (val && /gemini/i.test(val)) {
                 if (enabled && !val.includes('[1m]')) {
                     this.config.env[field] = val.trim() + ' [1m]';
                 } else if (!enabled && val.includes('[1m]')) {
@@ -66,6 +67,25 @@ window.Components.claudeConfig = () => ({
             }
         }
         this.gemini1mSuffix = enabled;
+    },
+
+    /**
+     * Helper to select a model from the dropdown
+     * @param {string} field - The config.env field to update
+     * @param {string} modelId - The selected model ID
+     */
+    selectModel(field, modelId) {
+        if (!this.config.env) this.config.env = {};
+        
+        let finalModelId = modelId;
+        // If 1M mode is enabled and it's a Gemini model, append the suffix
+        if (this.gemini1mSuffix && modelId.toLowerCase().includes('gemini')) {
+            if (!finalModelId.includes('[1m]')) {
+                finalModelId = finalModelId.trim() + ' [1m]';
+            }
+        }
+        
+        this.config.env[field] = finalModelId;
     },
 
     async fetchConfig() {
