@@ -3,6 +3,10 @@
  *
  * Handles account picking logic (round-robin, sticky) for cache continuity.
  * All rate limit checks are model-specific.
+ *
+ * Load balancing strategy:
+ * - Within a conversation: stay on same account (cache continuity)
+ * - New conversations: rotate to next available account (load distribution)
  */
 
 import { MAX_WAIT_BEFORE_ERROR_MS, STICKY_COOLDOWN_THRESHOLD_MS, MAX_CONCURRENT_REQUESTS } from '../constants.js';

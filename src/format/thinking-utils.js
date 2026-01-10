@@ -433,13 +433,22 @@ export function needsThinkingRecovery(messages) {
  * @returns {Array<Object>} Messages with invalid thinking blocks removed
  */
 function stripInvalidThinkingBlocks(messages, targetFamily = null) {
+    // Handle null/undefined input
+    if (!Array.isArray(messages)) return messages || [];
+
     let strippedCount = 0;
 
     const result = messages.map(msg => {
+        // Skip null/undefined messages
+        if (!msg) return msg;
+
         const content = msg.content || msg.parts;
         if (!Array.isArray(content)) return msg;
 
         const filtered = content.filter(block => {
+            // Skip null/undefined blocks
+            if (!block) return false;
+
             // Keep non-thinking blocks
             if (!isThinkingPart(block)) return true;
 

@@ -136,14 +136,17 @@ export function isThinkingModel(modelName) {
 }
 
 // Google OAuth configuration (from opencode-antigravity-auth)
+// Client ID and Secret can be overridden via environment variables
 export const OAUTH_CONFIG = {
   clientId:
+    process.env.OAUTH_CLIENT_ID ||
     "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
-  clientSecret: "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",
+  clientSecret:
+    process.env.OAUTH_CLIENT_SECRET || "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",
   authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
   tokenUrl: "https://oauth2.googleapis.com/token",
   userInfoUrl: "https://www.googleapis.com/oauth2/v1/userinfo",
-  callbackPort: 51121,
+  callbackPort: parseInt(process.env.OAUTH_CALLBACK_PORT) || 51121,
   scopes: [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -162,11 +165,11 @@ export const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, a powerful a
 // Model fallback mapping - maps primary model to fallback when quota exhausted
 export const MODEL_FALLBACK_MAP = {
   "gemini-3-pro-high": "claude-opus-4-5-thinking",
+  "claude-opus-4-5-thinking": "gemini-3-pro-low",
   "gemini-3-pro-low": "claude-sonnet-4-5",
-  "gemini-3-flash": "claude-sonnet-4-5-thinking",
-  "claude-opus-4-5-thinking": "gemini-3-pro-high",
   "claude-sonnet-4-5-thinking": "gemini-3-flash",
   "claude-sonnet-4-5": "gemini-3-flash",
+  "gemini-3-flash": null,
 };
 
 export default {

@@ -98,33 +98,30 @@ export function loadDefaultAccount(dbPath) {
  * @param {Array} accounts - Array of account objects
  * @param {Object} settings - Settings object
  * @param {number} activeIndex - Current active account index
+ * @throws {Error} If the save fails (caller should handle)
  */
 export async function saveAccounts(configPath, accounts, settings, activeIndex) {
-    try {
-        // Ensure directory exists
-        const dir = dirname(configPath);
-        await mkdir(dir, { recursive: true });
+    // Ensure directory exists
+    const dir = dirname(configPath);
+    await mkdir(dir, { recursive: true });
 
-        const config = {
-            accounts: accounts.map(acc => ({
-                email: acc.email,
-                source: acc.source,
-                dbPath: acc.dbPath || null,
-                refreshToken: acc.source === 'oauth' ? acc.refreshToken : undefined,
-                apiKey: acc.source === 'manual' ? acc.apiKey : undefined,
-                projectId: acc.projectId || undefined,
-                addedAt: acc.addedAt || undefined,
-                isInvalid: acc.isInvalid || false,
-                invalidReason: acc.invalidReason || null,
-                modelRateLimits: acc.modelRateLimits || {},
-                lastUsed: acc.lastUsed
-            })),
-            settings: settings,
-            activeIndex: activeIndex
-        };
+    const config = {
+        accounts: accounts.map(acc => ({
+            email: acc.email,
+            source: acc.source,
+            dbPath: acc.dbPath || null,
+            refreshToken: acc.source === 'oauth' ? acc.refreshToken : undefined,
+            apiKey: acc.source === 'manual' ? acc.apiKey : undefined,
+            projectId: acc.projectId || undefined,
+            addedAt: acc.addedAt || undefined,
+            isInvalid: acc.isInvalid || false,
+            invalidReason: acc.invalidReason || null,
+            modelRateLimits: acc.modelRateLimits || {},
+            lastUsed: acc.lastUsed
+        })),
+        settings: settings,
+        activeIndex: activeIndex
+    };
 
-        await writeFile(configPath, JSON.stringify(config, null, 2));
-    } catch (error) {
-        logger.error('[AccountManager] Failed to save config:', error.message);
-    }
+    await writeFile(configPath, JSON.stringify(config, null, 2));
 }

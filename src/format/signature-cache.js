@@ -11,9 +11,14 @@
  */
 
 import { GEMINI_SIGNATURE_CACHE_TTL_MS, MIN_SIGNATURE_LENGTH } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 const signatureCache = new Map();
 const thinkingSignatureCache = new Map();
+
+// Cleanup interval reference
+let cleanupInterval = null;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Store a signature for a tool_use_id
@@ -50,18 +55,58 @@ export function getCachedSignature(toolUseId) {
 /**
  * Clear expired entries from the cache
  * Can be called periodically to prevent memory buildup
+ * @returns {number} Number of entries cleaned up
  */
 export function cleanupCache() {
     const now = Date.now();
+    let cleaned = 0;
+
     for (const [key, entry] of signatureCache) {
         if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
             signatureCache.delete(key);
+            cleaned++;
         }
     }
     for (const [key, entry] of thinkingSignatureCache) {
         if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
             thinkingSignatureCache.delete(key);
+            cleaned++;
         }
+    }
+
+    if (cleaned > 0) {
+        logger.debug(`[SignatureCache] Cleaned up ${cleaned} expired entries. Remaining: signatures=${signatureCache.size}, thinking=${thinkingSignatureCache.size}`);
+    }
+
+    return cleaned;
+}
+
+/**
+ * Start automatic cache cleanup interval
+ * Should be called once at server startup
+ */
+export function startCacheCleanup() {
+    if (cleanupInterval) return; // Already running
+
+    cleanupInterval = setInterval(() => {
+        cleanupCache();
+    }, CLEANUP_INTERVAL_MS);
+
+    // Don't prevent Node from exiting
+    cleanupInterval.unref();
+
+    logger.debug('[SignatureCache] Started automatic cleanup interval');
+}
+
+/**
+ * Stop automatic cache cleanup interval
+ * Should be called on graceful shutdown
+ */
+export function stopCacheCleanup() {
+    if (cleanupInterval) {
+        clearInterval(cleanupInterval);
+        cleanupInterval = null;
+        logger.debug('[SignatureCache] Stopped automatic cleanup interval');
     }
 }
 

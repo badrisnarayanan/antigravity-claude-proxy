@@ -8,10 +8,15 @@ import express from 'express';
 import cors from 'cors';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas } from './cloudcode/index.js';
 import { forceRefresh } from './auth/token-extractor.js';
-import { REQUEST_BODY_LIMIT, MAX_CONCURRENT_REQUESTS } from './constants.js';
+import { REQUEST_BODY_LIMIT, MAX_CONCURRENT_REQUESTS, MODEL_FALLBACK_MAP } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
+import {
+    requestIdMiddleware,
+    contentTypeMiddleware,
+    messagesValidationMiddleware
+} from './middleware/validation.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -22,29 +27,29 @@ const app = express();
 // Initialize account manager (will be fully initialized on first request or startup)
 const accountManager = new AccountManager();
 
-// Track initialization status
-let isInitialized = false;
-let initError = null;
+// Track initialization - use only the promise for proper synchronization
 let initPromise = null;
 
 /**
  * Ensure account manager is initialized (with race condition protection)
+ * Uses a single promise pattern to ensure initialization only runs once
+ * and all callers wait for the same promise.
  */
 async function ensureInitialized() {
-    if (isInitialized) return;
+    // If already initialized, return immediately
+    if (initPromise) {
+        return initPromise;
+    }
 
-    // If initialization is already in progress, wait for it
-    if (initPromise) return initPromise;
-
+    // Create the initialization promise
     initPromise = (async () => {
         try {
             await accountManager.initialize();
-            isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
         } catch (error) {
-            initError = error;
-            initPromise = null; // Allow retry on failure
+            // Reset promise on failure to allow retry
+            initPromise = null;
             logger.error('[Server] Failed to initialize account manager:', error.message);
             throw error;
         }
@@ -53,9 +58,68 @@ async function ensureInitialized() {
     return initPromise;
 }
 
+/**
+ * Validate the fallback map for cycles at startup
+ * Throws an error if a cycle is detected
+ */
+function validateFallbackMap() {
+    for (const [model, fallback] of Object.entries(MODEL_FALLBACK_MAP)) {
+        const visited = new Set([model]);
+        let current = fallback;
+
+        while (current && MODEL_FALLBACK_MAP[current]) {
+            if (visited.has(current)) {
+                const cycle = [...visited, current].join(' -> ');
+                throw new Error(`Fallback cycle detected: ${cycle}`);
+            }
+            visited.add(current);
+            current = MODEL_FALLBACK_MAP[current];
+        }
+    }
+    logger.debug('[Server] Fallback map validated - no cycles detected');
+}
+
+// Validate fallback map at module load time
+try {
+    validateFallbackMap();
+} catch (error) {
+    logger.error(`[Server] ${error.message}`);
+    process.exit(1);
+}
+
 // Middleware
-app.use(cors());
+app.use(requestIdMiddleware); // Add request ID to all requests
+
+// CORS configuration - restrict to localhost by default for security
+// Can be overridden via CORS_ORIGIN environment variable
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:*';
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+
+        // Allow localhost origins
+        if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            return callback(null, true);
+        }
+
+        // Allow if CORS_ORIGIN is set to '*'
+        if (corsOrigin === '*') {
+            return callback(null, true);
+        }
+
+        // Allow if origin matches configured CORS_ORIGIN
+        if (origin === corsOrigin) {
+            return callback(null, true);
+        }
+
+        callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+}));
+
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+app.use('/v1/messages', contentTypeMiddleware); // Validate Content-Type for messages endpoint
 
 /**
  * Parse error message to extract error type, status code, and user-friendly message
@@ -107,10 +171,10 @@ app.use((req, res, next) => {
     // Skip logging for event logging batch unless in debug mode
     if (req.path === '/api/event_logging/batch') {
         if (logger.isDebugEnabled) {
-             logger.debug(`[${req.method}] ${req.path}`);
+             logger.debug(`[${req.requestId}] ${req.method} ${req.path}`);
         }
     } else {
-        logger.info(`[${req.method}] ${req.path}`);
+        logger.info(`[${req.requestId}] ${req.method} ${req.path}`);
     }
     next();
 });
@@ -529,7 +593,7 @@ app.post('/v1/messages/count_tokens', (req, res) => {
  * Anthropic-compatible Messages API
  * POST /v1/messages
  */
-app.post('/v1/messages', async (req, res) => {
+app.post('/v1/messages', messagesValidationMiddleware, async (req, res) => {
     try {
         // Ensure account manager is initialized
         await ensureInitialized();
@@ -553,19 +617,8 @@ app.post('/v1/messages', async (req, res) => {
         // If we have some available accounts, we try them first.
         const modelId = model || 'claude-3-5-sonnet-20241022';
         if (accountManager.isAllRateLimited(modelId)) {
-            logger.warn(`[Server] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
+            logger.warn(`[${req.requestId}] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
             accountManager.resetAllRateLimits();
-        }
-
-        // Validate required fields
-        if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({
-                type: 'error',
-                error: {
-                    type: 'invalid_request_error',
-                    message: 'messages is required and must be an array'
-                }
-            });
         }
 
         // Build the request object
@@ -580,10 +633,11 @@ app.post('/v1/messages', async (req, res) => {
             thinking,
             top_p,
             top_k,
-            temperature
+            temperature,
+            _requestId: req.requestId // Internal: for logging correlation
         };
 
-        logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
+        logger.info(`[${req.requestId}] Request for model: ${request.model}, stream: ${!!stream}`);
 
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
         if (logger.isDebugEnabled) {

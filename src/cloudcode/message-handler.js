@@ -106,6 +106,12 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
         accountManager.incrementActiveRequests(account);
 
+        // Log which account is being used for this request
+        const requestId = anthropicRequest._requestId || 'unknown';
+        const accountIndex = accountManager.getAccountIndex?.(account.email) ?? '?';
+        const accountCount = accountManager.getAccountCount();
+        logger.info(`[${requestId}] Using account: ${account.email} (${accountIndex + 1}/${accountCount})`);
+
         try {
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);

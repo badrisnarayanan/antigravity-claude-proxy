@@ -9,6 +9,12 @@
 import { formatDuration } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 
+// Maximum input length to parse (prevents regex DoS)
+const MAX_ERROR_LENGTH = 2000;
+
+// Minimum wait time in ms (prevents "Available in 0s" loops)
+const MIN_WAIT_MS = 2000;
+
 /**
  * Parse reset time from HTTP response or error
  * Checks headers first, then error message body
@@ -74,7 +80,9 @@ export function parseResetTime(responseOrError, errorText = '') {
 
     // If no header found, try parsing from error message/body
     if (!resetMs) {
-        const msg = (responseOrError instanceof Error ? responseOrError.message : errorText) || '';
+        // Truncate message to prevent regex DoS attacks
+        const rawMsg = (responseOrError instanceof Error ? responseOrError.message : errorText) || '';
+        const msg = rawMsg.length > MAX_ERROR_LENGTH ? rawMsg.substring(0, MAX_ERROR_LENGTH) : rawMsg;
 
         // Try to extract "quotaResetDelay" first (e.g. "754.431528ms" or "1.5s")
         // This is Google's preferred format for rate limit reset delay
@@ -171,9 +179,9 @@ export function parseResetTime(responseOrError, errorText = '') {
     // If we found a reset time, but it's very small (e.g. < 1s) or negative,
     // explicitly bump it up to avoid "Available in 0s" loops.
     if (resetMs !== null) {
-        if (resetMs < 1000) {
-            logger.debug(`[CloudCode] Reset time too small (${resetMs}ms), enforcing 2s buffer`);
-            resetMs = 2000;
+        if (resetMs < MIN_WAIT_MS) {
+            logger.debug(`[CloudCode] Reset time too small (${resetMs}ms), enforcing ${MIN_WAIT_MS}ms minimum`);
+            resetMs = MIN_WAIT_MS;
         }
     }
 

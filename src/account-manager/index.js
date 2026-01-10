@@ -42,6 +42,12 @@ export class AccountManager {
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
 
+    // Save state tracking
+    #savePromise = null;
+    #pendingSave = false;
+    #lastSaveError = null;
+    #saveErrorCount = 0;
+
     constructor(configPath = ACCOUNT_CONFIG_PATH) {
         this.#configPath = configPath;
     }
@@ -78,6 +84,15 @@ export class AccountManager {
      */
     getAccountCount() {
         return this.#accounts.length;
+    }
+
+    /**
+     * Get the index of an account by email
+     * @param {string} email - Email of the account
+     * @returns {number} Index of the account, or -1 if not found
+     */
+    getAccountIndex(email) {
+        return this.#accounts.findIndex(a => a.email === email);
     }
 
     /**
@@ -221,21 +236,43 @@ export class AccountManager {
     /**
      * Increment active requests for an account
      * @param {Object} account - Account object
+     * @returns {number} The new count after incrementing
      */
     incrementActiveRequests(account) {
-        if (!account) return;
-        account.activeRequests = (account.activeRequests || 0) + 1;
-        logger.debug(`[AccountManager] Account ${account.email} concurrency: ${account.activeRequests}`);
+        if (!account) return 0;
+        const newCount = (account.activeRequests || 0) + 1;
+        account.activeRequests = newCount;
+        logger.debug(`[AccountManager] Account ${account.email} concurrency: ${newCount}`);
+        return newCount;
     }
 
     /**
      * Decrement active requests for an account
      * @param {Object} account - Account object
+     * @returns {number} The new count after decrementing
      */
     decrementActiveRequests(account) {
-        if (!account) return;
-        account.activeRequests = Math.max(0, (account.activeRequests || 0) - 1);
-        logger.debug(`[AccountManager] Account ${account.email} concurrency: ${account.activeRequests}`);
+        if (!account) return 0;
+        // Ensure we never go below 0
+        const currentCount = account.activeRequests || 0;
+        const newCount = Math.max(0, currentCount - 1);
+        account.activeRequests = newCount;
+
+        // Log warning if we tried to decrement below 0
+        if (currentCount === 0) {
+            logger.warn(`[AccountManager] Attempted to decrement activeRequests below 0 for ${account.email}`);
+        } else {
+            logger.debug(`[AccountManager] Account ${account.email} concurrency: ${newCount}`);
+        }
+        return newCount;
+    }
+
+    /**
+     * Check if there are any active requests across all accounts
+     * @returns {boolean} True if any account has active requests
+     */
+    hasActiveRequests() {
+        return this.#accounts.some(a => (a.activeRequests || 0) > 0);
     }
 
     /**
@@ -280,11 +317,56 @@ export class AccountManager {
     }
 
     /**
-     * Save current state to disk (async)
+     * Save current state to disk (async with debouncing and error tracking)
+     * Uses a debounce pattern to coalesce rapid saves and avoid blocking
      * @returns {Promise<void>}
      */
     async saveToDisk() {
-        await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
+        // If a save is already in progress, mark that we need another save after it completes
+        if (this.#savePromise) {
+            this.#pendingSave = true;
+            return this.#savePromise;
+        }
+
+        this.#savePromise = (async () => {
+            try {
+                await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
+                this.#lastSaveError = null;
+                this.#saveErrorCount = 0;
+            } catch (error) {
+                this.#lastSaveError = error;
+                this.#saveErrorCount++;
+                logger.error(`[AccountManager] Failed to save config (attempt ${this.#saveErrorCount}): ${error.message}`);
+
+                // Log warning if errors persist
+                if (this.#saveErrorCount >= 3) {
+                    logger.warn('[AccountManager] Persistent save failures - account state may not be persisted');
+                }
+            } finally {
+                this.#savePromise = null;
+
+                // If another save was requested while we were saving, do it now
+                if (this.#pendingSave) {
+                    this.#pendingSave = false;
+                    // Use setImmediate to avoid deep recursion
+                    setImmediate(() => this.saveToDisk());
+                }
+            }
+        })();
+
+        return this.#savePromise;
+    }
+
+    /**
+     * Check if there have been recent save errors
+     * @returns {{hasError: boolean, errorCount: number, lastError: Error|null}}
+     */
+    getSaveStatus() {
+        return {
+            hasError: this.#lastSaveError !== null,
+            errorCount: this.#saveErrorCount,
+            lastError: this.#lastSaveError
+        };
     }
 
     /**

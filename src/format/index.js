@@ -9,6 +9,8 @@ export * from './response-converter.js';
 export * from './content-converter.js';
 export * from './schema-sanitizer.js';
 export * from './thinking-utils.js';
+export * from './signature-cache.js';
+export * from './response-utils.js';
 
 // Default export for backward compatibility
 import { convertAnthropicToGoogle } from './request-converter.js';

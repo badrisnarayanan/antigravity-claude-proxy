@@ -4,6 +4,9 @@
  * General-purpose helper functions used across multiple modules.
  */
 
+// Re-export fetch utilities
+export { fetchWithTimeout, isTimeoutError } from './fetch-with-timeout.js';
+
 /**
  * Format duration in milliseconds to human-readable string
  * @param {number} ms - Duration in milliseconds
@@ -39,12 +42,18 @@ export function sleep(ms) {
  * @returns {boolean} True if it is a network error
  */
 export function isNetworkError(error) {
-    const msg = error.message.toLowerCase();
+    // Check for timeout errors first
+    if (error?.isTimeout === true || error?.code === 'ETIMEDOUT') {
+        return true;
+    }
+
+    const msg = (error?.message || '').toLowerCase();
     return (
         msg.includes('fetch failed') ||
         msg.includes('network error') ||
         msg.includes('econnreset') ||
         msg.includes('etimedout') ||
+        msg.includes('econnrefused') ||
         msg.includes('socket hang up') ||
         msg.includes('timeout')
     );
