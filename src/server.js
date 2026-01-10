@@ -224,14 +224,41 @@ app.get('/health', async (req, res) => {
                     const token = await accountManager.getTokenForAccount(account);
                     const quotas = await getModelQuotas(token);
 
+                    // Merge local rate limit tracking with API quotas
+                    // Local tracking takes precedence when rate-limited
+                    const now = Date.now();
+                    const localLimits = account.modelRateLimits || {};
+
                     // Format quotas for readability
                     const formattedQuotas = {};
                     for (const [modelId, info] of Object.entries(quotas)) {
-                        formattedQuotas[modelId] = {
-                            remaining: info.remainingFraction !== null ? `${Math.round(info.remainingFraction * 100)}%` : 'N/A',
-                            remainingFraction: info.remainingFraction,
-                            resetTime: info.resetTime || null
-                        };
+                        // Check if locally rate-limited for this model
+                        const localLimit = localLimits[modelId];
+                        if (localLimit?.isRateLimited && localLimit.resetTime > now) {
+                            // Override with local rate limit data
+                            formattedQuotas[modelId] = {
+                                remaining: '0%',
+                                remainingFraction: 0,
+                                resetTime: new Date(localLimit.resetTime).toISOString()
+                            };
+                        } else {
+                            formattedQuotas[modelId] = {
+                                remaining: info.remainingFraction !== null ? `${Math.round(info.remainingFraction * 100)}%` : 'N/A',
+                                remainingFraction: info.remainingFraction,
+                                resetTime: info.resetTime || null
+                            };
+                        }
+                    }
+
+                    // Add models that are locally rate-limited but not in API response
+                    for (const [modelId, limit] of Object.entries(localLimits)) {
+                        if (limit.isRateLimited && limit.resetTime > now && !formattedQuotas[modelId]) {
+                            formattedQuotas[modelId] = {
+                                remaining: '0%',
+                                remainingFraction: 0,
+                                resetTime: new Date(limit.resetTime).toISOString()
+                            };
+                        }
                     }
 
                     return {
@@ -309,7 +336,8 @@ app.get('/account-limits', async (req, res) => {
                         email: account.email,
                         status: 'invalid',
                         error: account.invalidReason,
-                        models: {}
+                        models: {},
+                        localRateLimits: account.modelRateLimits || {}
                     };
                 }
 
@@ -317,17 +345,35 @@ app.get('/account-limits', async (req, res) => {
                     const token = await accountManager.getTokenForAccount(account);
                     const quotas = await getModelQuotas(token);
 
+                    // Merge local rate limit tracking with API quotas
+                    // Local tracking takes precedence when rate-limited
+                    const now = Date.now();
+                    const localLimits = account.modelRateLimits || {};
+                    const mergedQuotas = { ...quotas };
+
+                    for (const [modelId, limit] of Object.entries(localLimits)) {
+                        if (limit.isRateLimited && limit.resetTime > now) {
+                            // Override API quota with local rate limit
+                            mergedQuotas[modelId] = {
+                                remainingFraction: 0,
+                                resetTime: new Date(limit.resetTime).toISOString()
+                            };
+                        }
+                    }
+
                     return {
                         email: account.email,
                         status: 'ok',
-                        models: quotas
+                        models: mergedQuotas,
+                        localRateLimits: localLimits
                     };
                 } catch (error) {
                     return {
                         email: account.email,
                         status: 'error',
                         error: error.message,
-                        models: {}
+                        models: {},
+                        localRateLimits: account.modelRateLimits || {}
                     };
                 }
             })
@@ -338,19 +384,25 @@ app.get('/account-limits', async (req, res) => {
             if (result.status === 'fulfilled') {
                 return result.value;
             } else {
+                const acc = allAccounts[index];
                 return {
-                    email: allAccounts[index].email,
+                    email: acc.email,
                     status: 'error',
                     error: result.reason?.message || 'Unknown error',
-                    models: {}
+                    models: {},
+                    localRateLimits: acc.modelRateLimits || {}
                 };
             }
         });
 
-        // Collect all unique model IDs
+        // Collect all unique model IDs (from both API and local rate limits)
         const allModelIds = new Set();
         for (const account of accountLimits) {
             for (const modelId of Object.keys(account.models || {})) {
+                allModelIds.add(modelId);
+            }
+            // Also include models from local rate limits that might not be in API response
+            for (const modelId of Object.keys(account.localRateLimits || {})) {
                 allModelIds.add(modelId);
             }
         }
