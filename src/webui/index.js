@@ -445,16 +445,27 @@ export function mountWebUI(app, dirname, accountManager) {
         try {
             const claudeConfig = await readClaudeConfig();
 
+            // Proxy-related environment variables to remove when restoring defaults
+            const PROXY_ENV_VARS = [
+                'ANTHROPIC_BASE_URL',
+                'ANTHROPIC_AUTH_TOKEN',
+                'ANTHROPIC_MODEL',
+                'CLAUDE_CODE_SUBAGENT_MODEL',
+                'ANTHROPIC_DEFAULT_OPUS_MODEL',
+                'ANTHROPIC_DEFAULT_SONNET_MODEL',
+                'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+                'ENABLE_EXPERIMENTAL_MCP_CLI'
+            ];
+
             // Remove proxy-related environment variables to restore defaults
             if (claudeConfig.env) {
-                delete claudeConfig.env.ANTHROPIC_BASE_URL;
-                delete claudeConfig.env.ANTHROPIC_AUTH_TOKEN;
-                delete claudeConfig.env.ANTHROPIC_MODEL;
-                delete claudeConfig.env.CLAUDE_CODE_SUBAGENT_MODEL;
-                delete claudeConfig.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
-                delete claudeConfig.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
-                delete claudeConfig.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
-                delete claudeConfig.env.ENABLE_EXPERIMENTAL_MCP_CLI;
+                for (const key of PROXY_ENV_VARS) {
+                    delete claudeConfig.env[key];
+                }
+                // Remove env entirely if empty to truly restore defaults
+                if (Object.keys(claudeConfig.env).length === 0) {
+                    delete claudeConfig.env;
+                }
             }
 
             // Use replaceClaudeConfig to completely overwrite the config (not merge)
