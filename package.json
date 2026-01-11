@@ -55,7 +55,8 @@
       "src/**/*",
       "public/**/*",
       "node_modules/**/*",
-      "assets/icon.ico"
+      "assets/icon.ico",
+      "assets/icon.png"
     ],
     "portable": {
       "artifactName": "${productName} ${version}.${ext}"

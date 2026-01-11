@@ -11,6 +11,7 @@ import { app as electronApp, BrowserWindow, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DEFAULT_PORT } from './src/constants.js';
+import { initTray, setupCloseToTray, setQuitting, destroyTray } from './src/electron/tray.js';
 
 // Start backend server in the same process
 // This imports index.js which calls app.listen()
@@ -60,6 +61,10 @@ function createWindow() {
     // Show window when content is ready (prevents white flash)
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
+
+        // Initialize system tray after window is ready
+        initTray(mainWindow);
+        setupCloseToTray(mainWindow);
     });
 
     // Open DevTools if --debug flag is passed
@@ -76,12 +81,11 @@ function createWindow() {
 // Electron app lifecycle
 electronApp.whenReady().then(createWindow);
 
-// Quit when all windows are closed
+// Quit when all windows are closed (only when explicitly quitting)
 electronApp.on('window-all-closed', () => {
     // On macOS, apps typically stay active until Cmd+Q
-    if (process.platform !== 'darwin') {
-        electronApp.quit();
-    }
+    // On other platforms, closing all windows means quit only if explicitly requested
+    // The tray keeps the app running otherwise
 });
 
 // macOS: Re-create window when dock icon is clicked
@@ -93,6 +97,8 @@ electronApp.on('activate', () => {
 
 // Graceful shutdown handling
 electronApp.on('before-quit', () => {
-    // The Express server will be terminated when the process exits
-    // Any cleanup can be added here if needed
+    // Mark as quitting so window close event allows exit
+    setQuitting(true);
+    // Clean up tray icon
+    destroyTray();
 });
