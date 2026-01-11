@@ -82,10 +82,10 @@
                     ? 'bg-neon-green/10 border-neon-green/20 text-neon-green'
                     : (connectionStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 'bg-red-500/10 border-red-500/20 text-red-500')">
                 <div class="w-1.5 h-1.5 rounded-full"
-                    :class="connectionStatus === 'connected' ? 'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)]' : (connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')">
+                    :class="$store.data.connectionStatus === 'connected' ? 'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)]' : ($store.data.connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')">
                 </div>
                 <span
-                    x-text="$store.global.connectionStatus === 'connected' ? $store.global.t('online') : ($store.global.connectionStatus === 'disconnected' ? $store.global.t('offline') : $store.global.t('connecting'))"></span>
+                    x-text="$store.data.connectionStatus === 'connected' ? $store.global.t('online') : ($store.data.connectionStatus === 'connecting' ? $store.global.t('connecting') : $store.global.t('offline'))"></span>
             </div>
 
             <div class="h-4 w-px bg-space-border"></div>

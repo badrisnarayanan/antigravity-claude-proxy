@@ -34,7 +34,7 @@ document.addEventListener('alpine:init', () => {
             this.startAutoRefresh();
             document.addEventListener('refresh-interval-changed', () => this.startAutoRefresh());
 
-            // Initial Fetch
+            // Initial Data Fetch (separate from health check)
             Alpine.store('data').fetchData();
         },
 
