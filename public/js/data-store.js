@@ -14,9 +14,9 @@ document.addEventListener('alpine:init', () => {
         quotaRows: [], // Filtered view
         usageHistory: {}, // Usage statistics history (from /account-limits?includeHistory=true)
         loading: false,
-        initialLoad: true, // Track first load for skeleton screen
         connectionStatus: 'connecting',
         lastUpdated: '-',
+        healthCheckTimer: null,
 
         // Filters state
         filters: {
@@ -31,16 +31,12 @@ document.addEventListener('alpine:init', () => {
         // For simplicity, let's keep relevant filters here.
 
         init() {
-            // Watch filters to recompute
-            // Alpine stores don't have $watch automatically unless inside a component?
-            // We can manually call compute when filters change.
+            // Start health check monitoring
+            this.startHealthCheck();
         },
 
         async fetchData() {
-            // Only show skeleton on initial load, not on refresh
-            if (this.initialLoad) {
-                this.loading = true;
-            }
+            this.loading = true;
             try {
                 // Get password from global store
                 const password = Alpine.store('global').webuiPassword;
@@ -67,35 +63,74 @@ document.addEventListener('alpine:init', () => {
 
                 this.computeQuotaRows();
 
-                this.connectionStatus = 'connected';
                 this.lastUpdated = new Date().toLocaleTimeString();
-
-                // Fetch version from config endpoint if not already loaded
-                if (this.initialLoad) {
-                    this.fetchVersion(password);
-                }
             } catch (error) {
                 console.error('Fetch error:', error);
-                this.connectionStatus = 'disconnected';
                 const store = Alpine.store('global');
                 store.showToast(store.t('connectionLost'), 'error');
             } finally {
                 this.loading = false;
-                this.initialLoad = false; // Mark initial load as complete
             }
         },
 
-        async fetchVersion(password) {
+        async performHealthCheck() {
             try {
-                const { response } = await window.utils.request('/api/config', {}, password);
+                // Get password from global store
+                const password = Alpine.store('global').webuiPassword;
+                
+                // Use lightweight endpoint (no quota fetching)
+                const { response, newPassword } = await window.utils.request('/api/config', {}, password);
+                
+                if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+                
                 if (response.ok) {
-                    const data = await response.json();
-                    if (data.version) {
-                        Alpine.store('global').version = data.version;
-                    }
+                    this.connectionStatus = 'connected';
+                } else {
+                    this.connectionStatus = 'disconnected';
                 }
             } catch (error) {
-                console.warn('Failed to fetch version:', error);
+                console.error('Health check error:', error);
+                this.connectionStatus = 'disconnected';
+            }
+        },
+
+        startHealthCheck() {
+            // Clear existing timer
+            if (this.healthCheckTimer) {
+                clearInterval(this.healthCheckTimer);
+            }
+
+            // Setup visibility change listener (only once)
+            if (!this._healthVisibilitySetup) {
+                this._healthVisibilitySetup = true;
+                this._visibilityHandler = () => {
+                    if (document.hidden) {
+                        // Tab hidden - stop health checks
+                        this.stopHealthCheck();
+                    } else {
+                        // Tab visible - restart health checks
+                        this.startHealthCheck();
+                    }
+                };
+                document.addEventListener('visibilitychange', this._visibilityHandler);
+            }
+
+            // Perform immediate health check
+            this.performHealthCheck();
+
+            // Schedule regular health checks every 15 seconds
+            this.healthCheckTimer = setInterval(() => {
+                // Only perform health check if tab is visible
+                if (!document.hidden) {
+                    this.performHealthCheck();
+                }
+            }, 15000);
+        },
+
+        stopHealthCheck() {
+            if (this.healthCheckTimer) {
+                clearInterval(this.healthCheckTimer);
+                this.healthCheckTimer = null;
             }
         },
 
@@ -233,6 +268,13 @@ document.addEventListener('alpine:init', () => {
             });
 
             return rows;
+        },
+
+        destroy() {
+            this.stopHealthCheck();
+            if (this._visibilityHandler) {
+                document.removeEventListener('visibilitychange', this._visibilityHandler);
+            }
         }
     });
 });
