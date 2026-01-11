@@ -7,6 +7,10 @@ window.Components = window.Components || {};
 window.Components.accountManager = () => ({
     searchQuery: '',
     deleteTarget: '',
+    refreshing: false,
+    toggling: false,
+    deleting: false,
+    reloading: false,
 
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
@@ -36,11 +40,15 @@ window.Components.accountManager = () => ({
     },
 
     async refreshAccount(email) {
-        const store = Alpine.store('global');
-        store.showToast(store.t('refreshingAccount', { email }), 'info');
-        const password = store.webuiPassword;
-        try {
-            const { response, newPassword } = await window.utils.request(`/api/accounts/${encodeURIComponent(email)}/refresh`, { method: 'POST' }, password);
+        return await window.ErrorHandler.withLoading(async () => {
+            const store = Alpine.store('global');
+            store.showToast(store.t('refreshingAccount', { email }), 'info');
+
+            const { response, newPassword } = await window.utils.request(
+                `/api/accounts/${encodeURIComponent(email)}/refresh`,
+                { method: 'POST' },
+                store.webuiPassword
+            );
             if (newPassword) store.webuiPassword = newPassword;
 
             const data = await response.json();
@@ -48,11 +56,9 @@ window.Components.accountManager = () => ({
                 store.showToast(store.t('refreshedAccount', { email }), 'success');
                 Alpine.store('data').fetchData();
             } else {
-                store.showToast(data.error || store.t('refreshFailed'), 'error');
+                throw new Error(data.error || store.t('refreshFailed'));
             }
-        } catch (e) {
-            store.showToast(store.t('refreshFailed') + ': ' + e.message, 'error');
-        }
+        }, this, 'refreshing', { errorMessage: 'Failed to refresh account' });
     },
 
     async toggleAccount(email, enabled) {
@@ -125,11 +131,14 @@ window.Components.accountManager = () => ({
 
     async executeDelete() {
         const email = this.deleteTarget;
-        const store = Alpine.store('global');
-        const password = store.webuiPassword;
+        return await window.ErrorHandler.withLoading(async () => {
+            const store = Alpine.store('global');
 
-        try {
-            const { response, newPassword } = await window.utils.request(`/api/accounts/${encodeURIComponent(email)}`, { method: 'DELETE' }, password);
+            const { response, newPassword } = await window.utils.request(
+                `/api/accounts/${encodeURIComponent(email)}`,
+                { method: 'DELETE' },
+                store.webuiPassword
+            );
             if (newPassword) store.webuiPassword = newPassword;
 
             const data = await response.json();
@@ -139,18 +148,20 @@ window.Components.accountManager = () => ({
                 document.getElementById('delete_account_modal').close();
                 this.deleteTarget = '';
             } else {
-                store.showToast(data.error || store.t('deleteFailed'), 'error');
+                throw new Error(data.error || store.t('deleteFailed'));
             }
-        } catch (e) {
-            store.showToast(store.t('deleteFailed') + ': ' + e.message, 'error');
-        }
+        }, this, 'deleting', { errorMessage: 'Failed to delete account' });
     },
 
     async reloadAccounts() {
-        const store = Alpine.store('global');
-        const password = store.webuiPassword;
-        try {
-            const { response, newPassword } = await window.utils.request('/api/accounts/reload', { method: 'POST' }, password);
+        return await window.ErrorHandler.withLoading(async () => {
+            const store = Alpine.store('global');
+
+            const { response, newPassword } = await window.utils.request(
+                '/api/accounts/reload',
+                { method: 'POST' },
+                store.webuiPassword
+            );
             if (newPassword) store.webuiPassword = newPassword;
 
             const data = await response.json();
@@ -158,11 +169,9 @@ window.Components.accountManager = () => ({
                 store.showToast(store.t('accountsReloaded'), 'success');
                 Alpine.store('data').fetchData();
             } else {
-                store.showToast(data.error || store.t('reloadFailed'), 'error');
+                throw new Error(data.error || store.t('reloadFailed'));
             }
-        } catch (e) {
-            store.showToast(store.t('reloadFailed') + ': ' + e.message, 'error');
-        }
+        }, this, 'reloading', { errorMessage: 'Failed to reload accounts' });
     },
 
     /**

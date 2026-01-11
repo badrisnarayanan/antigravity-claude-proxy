@@ -105,3 +105,41 @@ window.ErrorHandler.apiCall = async function(apiCall, successMessage = null, err
 
     return result;
 };
+
+/**
+ * Execute an async function with automatic loading state management
+ * @param {Function} asyncFn - Async function to execute
+ * @param {object} context - Component context (this) that contains the loading state
+ * @param {string} loadingKey - Name of the loading state property (default: 'loading')
+ * @param {object} options - Additional options (same as safeAsync)
+ * @returns {Promise<any>} Result of the function or undefined on error
+ *
+ * @example
+ * // In your Alpine component:
+ * async refreshAccount(email) {
+ *   return await window.ErrorHandler.withLoading(async () => {
+ *     const response = await window.utils.request(`/api/accounts/${email}/refresh`, { method: 'POST' });
+ *     this.$store.global.showToast('Account refreshed', 'success');
+ *     return response;
+ *   }, this, 'refreshing');
+ * }
+ *
+ * // In HTML:
+ * // <button @click="refreshAccount(email)" :disabled="refreshing">
+ * //   <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+ * //   Refresh
+ * // </button>
+ */
+window.ErrorHandler.withLoading = async function(asyncFn, context, loadingKey = 'loading', options = {}) {
+    // Set loading state to true
+    context[loadingKey] = true;
+
+    try {
+        // Execute the async function with error handling
+        const result = await window.ErrorHandler.safeAsync(asyncFn, options.errorMessage, options);
+        return result;
+    } finally {
+        // Always reset loading state, even if there was an error
+        context[loadingKey] = false;
+    }
+};

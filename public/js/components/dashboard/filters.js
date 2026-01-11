@@ -1,6 +1,21 @@
 /**
  * Dashboard Filters Module
- * Handles model/family filter selection and persistence
+ * 职责：管理图表筛选器的状态和持久化
+ *
+ * 功能：
+ *   1. 时间范围筛选（1h/6h/24h/7d/all）
+ *   2. 显示模式切换（按家族/按模型）
+ *   3. 模型/家族多选筛选
+ *   4. 筛选器状态持久化到 localStorage
+ *
+ * 调用时机：
+ *   - 组件初始化时加载用户偏好
+ *   - 筛选器变化时保存并触发图表更新
+ *
+ * 持久化键：
+ *   - localStorage['dashboard_chart_prefs']
+ *
+ * @module DashboardFilters
  */
 window.DashboardFilters = window.DashboardFilters || {};
 

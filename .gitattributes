@@ -1,0 +1,2 @@
+# Mark generated CSS file to reduce diff noise
+public/css/style.css linguist-generated=true -diff

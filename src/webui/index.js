@@ -13,12 +13,26 @@
  */
 
 import path from 'path';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, getClaudeConfigPath } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
+
+// Get package version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+let packageVersion = '1.0.0';
+try {
+    const packageJsonPath = path.join(__dirname, '../../package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    packageVersion = packageJson.version;
+} catch (error) {
+    logger.warn('[WebUI] Could not read package.json version, using default');
+}
 
 // OAuth state storage (state -> { server, verifier, state, timestamp })
 // Maps state ID to active OAuth flow data
@@ -234,6 +248,7 @@ export function mountWebUI(app, dirname, accountManager) {
             res.json({
                 status: 'ok',
                 config: publicConfig,
+                version: packageVersion,
                 note: 'Edit ~/.config/antigravity-proxy/config.json or use env vars to change these values'
             });
         } catch (error) {

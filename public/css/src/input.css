@@ -1,0 +1,491 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* === Background Layers === */
+  --color-space-950: #09090b;
+  --color-space-900: #0f0f11;
+  --color-space-850: #121214;
+  --color-space-800: #18181b;
+  --color-space-border: #27272a;
+
+  /* === Neon Accents (Full Saturation) === */
+  --color-neon-purple: #a855f7;
+  --color-neon-green: #22c55e;
+  --color-neon-cyan: #06b6d4;
+  --color-neon-yellow: #eab308;
+  --color-neon-red: #ef4444;
+
+  /* === Soft Neon (Reduced Saturation for Fills) === */
+  --color-neon-purple-soft: #9333ea;
+  --color-neon-green-soft: #16a34a;
+  --color-neon-cyan-soft: #0891b2;
+
+  /* === Text Hierarchy (WCAG AA Compliant) === */
+  --color-text-primary: #ffffff; /* Emphasis: Titles, Key Numbers */
+  --color-text-secondary: #d4d4d8; /* Content: Body Text (zinc-300) */
+  --color-text-tertiary: #a1a1aa; /* Metadata: Timestamps, Labels (zinc-400) */
+  --color-text-quaternary: #71717a; /* Subtle: Decorative (zinc-500) */
+
+  /* === Legacy Aliases (Backward Compatibility) === */
+  --color-text-main: var(--color-text-secondary);
+  --color-text-dim: var(--color-text-tertiary);
+  --color-text-muted: var(--color-text-tertiary);
+  --color-text-bright: var(--color-text-primary);
+
+  /* Gradient Accents */
+  --color-green-400: #4ade80;
+  --color-yellow-400: #facc15;
+  --color-red-400: #f87171;
+
+  /* Chart Colors */
+  --color-chart-1: #a855f7;
+  --color-chart-2: #c084fc;
+  --color-chart-3: #e879f9;
+  --color-chart-4: #d946ef;
+  --color-chart-5: #22c55e;
+  --color-chart-6: #4ade80;
+  --color-chart-7: #86efac;
+  --color-chart-8: #10b981;
+  --color-chart-9: #06b6d4;
+  --color-chart-10: #f59e0b;
+  --color-chart-11: #ef4444;
+  --color-chart-12: #ec4899;
+  --color-chart-13: #8b5cf6;
+  --color-chart-14: #14b8a6;
+  --color-chart-15: #f97316;
+  --color-chart-16: #6366f1;
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(9, 9, 11, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #3f3f46 0%, #27272a 100%);
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+/* Animations */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Note: .glass-panel has been deprecated. Use .view-card instead for consistency. */
+
+.nav-item.active {
+  background: linear-gradient(
+    90deg,
+    theme("colors.neon.purple / 15%") 0%,
+    transparent 100%
+  );
+  @apply border-l-4 border-neon-purple text-white;
+}
+
+.nav-item {
+  @apply border-l-4 border-transparent transition-all duration-200;
+}
+
+.progress-gradient-success::-webkit-progress-value {
+  background-image: linear-gradient(
+    to right,
+    var(--color-neon-green),
+    var(--color-green-400)
+  );
+}
+
+.progress-gradient-warning::-webkit-progress-value {
+  background-image: linear-gradient(
+    to right,
+    var(--color-neon-yellow),
+    var(--color-yellow-400)
+  );
+}
+
+.progress-gradient-error::-webkit-progress-value {
+  background-image: linear-gradient(
+    to right,
+    var(--color-neon-red),
+    var(--color-red-400)
+  );
+}
+
+/* Dashboard Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Tooltip Customization */
+.tooltip:before {
+  @apply bg-space-800 border border-space-border text-gray-200 font-mono text-xs;
+}
+
+.tooltip-left:before {
+  margin-right: 0.5rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Refactored Global Utilities                                                */
+/* -------------------------------------------------------------------------- */
+
+/* Standard Layout Constants */
+:root {
+  --view-padding: 2rem; /* 32px - Standard Padding */
+  --view-gap: 2rem; /* 32px - Standard component gap */
+  --card-radius: 0.75rem; /* 12px */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --view-padding: 1rem;
+    --view-gap: 1.25rem;
+  }
+}
+
+/* Base View Container */
+.view-container {
+    display: flex;
+    flex-direction: column;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    padding: var(--view-padding);
+    gap: var(--view-gap);
+    min-height: calc(100vh - 56px); /* Align with navbar height */
+    max-width: 1400px;
+    scrollbar-gutter: stable;
+}
+
+/* Specialized container for data-heavy pages (Logs) */
+.view-container-full {
+  @apply w-full animate-fade-in flex flex-col;
+  padding: var(--view-padding);
+  gap: var(--view-gap);
+  min-height: calc(100vh - 56px);
+  max-width: 100%;
+}
+
+/* Centered container for form-heavy pages (Settings/Accounts) */
+.view-container-centered {
+  @apply mx-auto w-full animate-fade-in flex flex-col;
+  padding: var(--view-padding);
+  gap: var(--view-gap);
+  min-height: calc(100vh - 56px);
+  max-width: 900px; /* Comfortable reading width for forms */
+}
+
+/* Standard Section Header */
+.view-header {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .view-header {
+        flex-direction: row;
+        align-items: flex-end;
+    }
+}
+
+.view-header-title {
+  @apply flex flex-col;
+}
+
+.view-header-title h2 {
+  @apply text-2xl font-bold text-white tracking-tight;
+}
+
+.view-header-title p {
+  @apply text-sm text-gray-500 mt-1;
+}
+
+.view-header-actions {
+  @apply flex items-center gap-3;
+}
+
+/* Standard Card Panel */
+.view-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--card-radius);
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg,
+        rgba(15, 15, 17, 0.75) 0%,
+        rgba(18, 18, 20, 0.70) 100%
+    );
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+        0 4px 24px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.view-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.view-card-header {
+  @apply flex items-center justify-between mb-4 pb-4 border-b border-[rgba(39,39,42,0.3)];
+}
+
+/* Component Unification */
+.standard-table {
+  @apply table w-full border-separate border-spacing-0;
+}
+.standard-table thead {
+  @apply bg-space-900/50 text-gray-500 font-mono text-xs uppercase border-b border-space-border;
+}
+.standard-table tbody tr {
+  @apply transition-all duration-200 border-b border-[rgba(39,39,42,0.3)] last:border-0;
+}
+
+.standard-table tbody tr:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom Range Slider - Simplified */
+.custom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-space-800);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.custom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--range-color, var(--color-neon-purple));
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.custom-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.custom-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--range-color, var(--color-neon-purple));
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.custom-range::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* Color Variants */
+.custom-range-purple {
+  --range-color: var(--color-neon-purple);
+}
+.custom-range-green {
+  --range-color: var(--color-neon-green);
+}
+.custom-range-cyan {
+  --range-color: var(--color-neon-cyan);
+}
+.custom-range-yellow {
+  --range-color: var(--color-neon-yellow);
+}
+.custom-range-accent {
+  --range-color: var(--color-neon-cyan);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Refactored UI Components (Phase 1.2)                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Action Buttons */
+.btn-action-ghost {
+  @apply btn btn-xs btn-ghost text-gray-400 hover:text-white transition-colors;
+}
+
+.btn-action-ghost-square {
+  @apply btn btn-xs btn-ghost btn-square text-gray-400 hover:text-white transition-colors;
+}
+
+.btn-action-primary {
+  @apply btn bg-gradient-to-r from-neon-purple to-indigo-600
+         border-none text-white shadow-lg shadow-neon-purple/20
+         hover:shadow-neon-purple/40 transition-all;
+}
+
+.btn-action-success {
+  @apply btn btn-xs btn-ghost btn-square text-green-500 hover:bg-green-500/20;
+}
+
+.btn-action-danger {
+  @apply btn btn-xs btn-ghost btn-square text-red-400 hover:bg-red-500/20;
+}
+
+.btn-action-neutral {
+  @apply btn btn-xs btn-ghost btn-square text-gray-500 hover:bg-gray-500/20;
+}
+
+/* Status Pills/Badges */
+.status-pill {
+  @apply px-2 py-1 text-[10px] font-mono font-bold uppercase rounded border;
+}
+
+.status-pill-purple {
+  @apply status-pill bg-neon-purple/10 text-neon-purple border-neon-purple/30;
+}
+
+.status-pill-ultra {
+  @apply status-pill bg-yellow-500/10 text-yellow-400 border-yellow-500/30;
+}
+
+.status-pill-pro {
+  @apply status-pill bg-blue-500/10 text-blue-400 border-blue-500/30;
+}
+
+.status-pill-free {
+  @apply status-pill bg-gray-500/10 text-gray-400 border-gray-500/30;
+}
+
+.status-pill-success {
+  @apply status-pill bg-neon-green/10 text-neon-green border-neon-green/30;
+}
+
+.status-pill-warning {
+  @apply status-pill bg-yellow-500/10 text-yellow-400 border-yellow-500/30;
+}
+
+.status-pill-error {
+  @apply status-pill bg-red-500/10 text-red-400 border-red-500/30;
+}
+
+/* Input Components */
+.input-search {
+  @apply w-full bg-space-900/50 border border-[rgba(39,39,42,0.5)] text-gray-300
+         rounded-lg pl-10 pr-4 py-2
+         focus:outline-none focus:bg-space-800 focus:border-neon-purple/50
+         hover:border-space-border hover:bg-space-800/80
+         transition-all placeholder-gray-600/80;
+}
+
+.input-search-sm {
+  @apply input-search h-8 text-xs font-normal;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Skeleton Loading (Phase 4.1)                                               */
+/* -------------------------------------------------------------------------- */
+
+/* Skeleton animation */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Base skeleton element */
+.skeleton {
+  @apply bg-gradient-to-r from-space-900/60 via-space-800/40 to-space-900/60;
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: 0.375rem;
+}
+
+/* Skeleton variants */
+.skeleton-text {
+  @apply skeleton h-4 w-full;
+}
+
+.skeleton-text-sm {
+  @apply skeleton h-3 w-3/4;
+}
+
+.skeleton-title {
+  @apply skeleton h-6 w-1/2;
+}
+
+.skeleton-circle {
+  @apply skeleton rounded-full;
+}
+
+.skeleton-stat-card {
+  @apply skeleton h-32 w-full rounded-xl;
+}
+
+.skeleton-chart {
+  @apply skeleton h-64 w-full rounded-xl;
+}
+
+.skeleton-table-row {
+  @apply skeleton h-12 w-full mb-2;
+}

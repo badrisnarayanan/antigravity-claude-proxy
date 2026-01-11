@@ -27,7 +27,7 @@ export async function* streamSSEResponse(response, originalModel) {
     let inputTokens = 0;
     let outputTokens = 0;
     let cacheReadTokens = 0;
-    let stopReason = 'end_turn';
+    let stopReason = null;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -212,8 +212,8 @@ export async function* streamSSEResponse(response, originalModel) {
                     }
                 }
 
-                // Check finish reason
-                if (firstCandidate.finishReason) {
+                // Check finish reason (only if not already set by tool_use)
+                if (firstCandidate.finishReason && !stopReason) {
                     if (firstCandidate.finishReason === 'MAX_TOKENS') {
                         stopReason = 'max_tokens';
                     } else if (firstCandidate.finishReason === 'STOP') {
@@ -248,7 +248,7 @@ export async function* streamSSEResponse(response, originalModel) {
     // Emit message_delta and message_stop
     yield {
         type: 'message_delta',
-        delta: { stop_reason: stopReason, stop_sequence: null },
+        delta: { stop_reason: stopReason || 'end_turn', stop_sequence: null },
         usage: {
             output_tokens: outputTokens,
             cache_read_input_tokens: cacheReadTokens,

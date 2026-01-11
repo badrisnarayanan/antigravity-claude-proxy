@@ -2,7 +2,7 @@
     activeTab: 'ui'
 }" class="view-container">
     <!-- Header & Tabs -->
-    <div class="glass-panel rounded-xl border border-space-border flex flex-col overflow-hidden">
+    <div class="view-card !p-0 flex flex-col overflow-hidden">
         <div class="bg-space-900/50 border-b border-space-border px-8 pt-8 pb-0 shrink-0">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-xl font-bold text-white flex items-center gap-2">
@@ -53,7 +53,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
                     </svg>
                     <span x-text="$store.global.t('tabServer')">Server</span>
                 </button>
@@ -197,9 +197,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <span class="text-gray-400" x-text="$store.global.t('claudeSettingsAlert')">Settings below directly
-                        modify <code class="text-neon-cyan font-mono">~/.claude/settings.json</code>. Restart Claude CLI
-                        to apply.</span>
+                    <span class="text-gray-400">
+                        <span x-text="$store.global.t('claudeSettingsAlertPrefix')">Settings below directly modify</span>
+                        <code class="text-neon-cyan font-mono" x-text="configPath">~/.claude/settings.json</code>.
+                        <span x-text="$store.global.t('claudeSettingsAlertSuffix')">Restart Claude CLI to apply.</span>
+                    </span>
                 </div>
 
                 <!-- Base URL -->
@@ -255,7 +257,7 @@
                                     <li>
                                         <a @mousedown.prevent="selectModel('ANTHROPIC_MODEL', modelId); open = false; searchTerm = ''"
                                             class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_MODEL === modelId || config.env.ANTHROPIC_MODEL === modelId + ' [1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
+                                            :class="config.env.ANTHROPIC_MODEL === modelId || config.env.ANTHROPIC_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-1.5 h-1.5 rounded-full"
                                                     :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
@@ -304,7 +306,7 @@
                                     <li>
                                         <a @mousedown.prevent="selectModel('CLAUDE_CODE_SUBAGENT_MODEL', modelId); open = false; searchTerm = ''"
                                             class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId || config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId + ' [1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
+                                            :class="config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId || config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-1.5 h-1.5 rounded-full"
                                                     :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
@@ -358,7 +360,7 @@
                                     <li>
                                         <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_OPUS_MODEL', modelId); open = false; searchTerm = ''"
                                             class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId + ' [1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
+                                            :class="config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-1.5 h-1.5 rounded-full"
                                                     :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
@@ -404,7 +406,7 @@
                                     <li>
                                         <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_SONNET_MODEL', modelId); open = false; searchTerm = ''"
                                             class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId + ' [1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
+                                            :class="config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-1.5 h-1.5 rounded-full"
                                                     :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
@@ -450,7 +452,7 @@
                                     <li>
                                         <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_HAIKU_MODEL', modelId); open = false; searchTerm = ''"
                                             class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId + ' [1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
+                                            :class="config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-1.5 h-1.5 rounded-full"
                                                     :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
@@ -558,7 +560,7 @@
                 </div>
 
                 <!-- Models List -->
-                <div class="glass-panel rounded-lg overflow-hidden">
+                <div class="view-card !p-0">
                     <table class="standard-table">
                         <thead>
                             <tr>
@@ -609,7 +611,7 @@
                                                 placeholder="e.g. claude-sonnet-4-5 or gemini-3-flash"
                                                 @keydown.enter="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
                                                 @keydown.escape="newMapping = config.mapping || ''; stopEditing()">
-                                            <button class="btn btn-xs btn-ghost btn-square text-green-500 hover:bg-green-500/20"
+                                            <button class="btn-action-success"
                                                 @click="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
                                                 title="Save">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
@@ -618,7 +620,7 @@
                                                         stroke-width="2" d="M5 13l4 4L19 7" />
                                                 </svg>
                                             </button>
-                                            <button class="btn btn-xs btn-ghost btn-square text-gray-500 hover:bg-gray-500/20"
+                                            <button class="btn-action-neutral"
                                                 @click="newMapping = config.mapping || ''; stopEditing()"
                                                 title="Cancel">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
@@ -628,7 +630,7 @@
                                                 </svg>
                                             </button>
                                             <button x-show="config.mapping"
-                                                    class="btn btn-xs btn-ghost btn-square text-red-400 hover:bg-red-500/20"
+                                                    class="btn-action-danger"
                                                     @click="await updateModelConfig(modelId, { mapping: '' }); stopEditing()"
                                                     title="Clear mapping">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
@@ -700,7 +702,7 @@
             <div x-show="activeTab === 'server'" x-data="window.Components.serverConfig()"
                 class="space-y-6 max-w-2xl animate-fade-in pb-10">
                 <!-- 🔐 Security Section -->
-                <div class="glass-panel p-6 border border-neon-yellow/20 bg-neon-yellow/5">
+                <div class="view-card border-neon-yellow/20 bg-neon-yellow/5">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">
                             <div
@@ -741,7 +743,7 @@
 
                     <!-- Debug Mode -->
                     <div
-                        class="form-control glass-panel p-4 border border-space-border/50 hover:border-neon-purple/50 transition-all">
+                        class="form-control view-card border-space-border/50 hover:border-neon-purple/50">
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col gap-1">
                                 <span class="text-sm font-medium text-gray-200"
@@ -763,7 +765,7 @@
 
                     <!-- Token Cache -->
                     <div
-                        class="form-control glass-panel p-4 border border-space-border/50 hover:border-neon-green/50 transition-all">
+                        class="form-control view-card border-space-border/50 hover:border-neon-green/50">
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col gap-1">
                                 <span class="text-sm font-medium text-gray-200"
@@ -787,7 +789,7 @@
                 </div>
 
                 <!-- ▼ Advanced Tuning (Fixed Logic) -->
-                <div class="glass-panel border border-space-border/50 overflow-hidden">
+                <div class="view-card !p-0 border-space-border/50">
                     <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                         @click="advancedExpanded = !advancedExpanded">
                         <div class="flex items-center gap-3">

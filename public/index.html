@@ -9,57 +9,10 @@
 
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <!-- Alpine.js must be deferred so stores register their listeners first -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- Custom Config -->
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
-                        sans: ['Inter', 'system-ui', 'sans-serif']
-                    },
-                    colors: {
-                        // Deep Space Palette
-                        space: {
-                            950: 'var(--color-space-950)', // Deep background
-                            900: 'var(--color-space-900)', // Panel background
-                            850: 'var(--color-space-850)', // Hover states
-                            800: 'var(--color-space-800)', // UI elements
-                            border: 'var(--color-space-border)'
-                        },
-                        neon: {
-                            purple: 'var(--color-neon-purple)',
-                            cyan: 'var(--color-neon-cyan)',
-                            green: 'var(--color-neon-green)',
-                            yellow: 'var(--color-neon-yellow)',
-                            red: 'var(--color-neon-red)'
-                        }
-                    }
-                }
-            },
-            daisyui: {
-                themes: [{
-                    antigravity: {
-                        "primary": "var(--color-neon-purple)",   // Neon Purple
-                        "secondary": "var(--color-neon-green)", // Neon Green
-                        "accent": "var(--color-neon-cyan)",    // Neon Cyan
-                        "neutral": "var(--color-space-800)",   // space-800
-                        "base-100": "var(--color-space-950)",  // space-950
-                        "info": "var(--color-neon-cyan)",
-                        "success": "var(--color-neon-green)",
-                        "warning": "var(--color-neon-yellow)",
-                        "error": "var(--color-neon-red)",
-                    }
-                }]
-            }
-        }
-    </script>
+    <!-- Compiled Tailwind CSS (includes DaisyUI) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -138,8 +91,8 @@
             <div class="h-4 w-px bg-space-border"></div>
 
             <!-- Refresh Button -->
-            <button class="btn btn-ghost btn-xs btn-square text-gray-400 hover:text-white hover:bg-white/5"
-                @click="fetchData" :disabled="loading" :title="$store.global.t('refreshData')">
+            <button type="button" class="btn btn-ghost btn-xs btn-square text-gray-400 hover:text-white hover:bg-white/5"
+                @click="fetchData" :disabled="loading" :title="$store.global.t('refreshData')" aria-label="Refresh data">
                 <svg class="w-4 h-4" :class="{'animate-spin': loading}" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -218,15 +171,15 @@
             <!-- Footer Info -->
             <div class="mt-auto px-6 text-[10px] text-gray-700 font-mono">
                 <div class="flex justify-between">
-                    <span>V 1.0.0</span>
-                    <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank"
+                    <span x-text="'V ' + $store.global.version">V 1.0.0</span>
+                    <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank" rel="noopener noreferrer"
                         class="hover:text-neon-purple transition-colors">GitHub</a>
                 </div>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-auto bg-space-950 relative custom-scrollbar" style="scrollbar-gutter: stable;">
+        <div class="flex-1 overflow-auto bg-space-950 relative custom-scrollbar">
 
             <!-- Views Container -->
             <!-- Dashboard -->
@@ -304,12 +257,12 @@
 
             <div class="modal-action mt-6">
                 <form method="dialog">
-                    <button class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
+                    <button type="button" class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
                 </form>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button x-text="$store.global.t('close')">close</button>
+            <button type="button" x-text="$store.global.t('close')">close</button>
         </form>
     </dialog>
 
@@ -354,6 +307,7 @@
     <script src="js/config/constants.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/utils/error-handler.js"></script>
+    <script src="js/utils/account-actions.js"></script>
     <script src="js/utils/validators.js"></script>
     <script src="js/utils/model-config.js"></script>
     <!-- 2. Alpine Stores (register alpine:init listeners) -->

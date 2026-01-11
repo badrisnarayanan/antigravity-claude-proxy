@@ -11,7 +11,7 @@ The proxy translates requests from Anthropic Messages API format → Google Gene
 ## Commands
 
 ```bash
-# Install dependencies
+# Install dependencies (automatically builds CSS via prepare hook)
 npm install
 
 # Start server (runs on port 8672)
@@ -23,8 +23,13 @@ npm start -- --fallback
 # Start with debug logging
 npm start -- --debug
 
-# Start with file watching for development
-npm run dev
+# Development mode (file watching)
+npm run dev              # Watch server files only
+npm run dev:full         # Watch both CSS and server files (recommended for frontend dev)
+
+# CSS build commands
+npm run build:css        # Build CSS once (minified)
+npm run watch:css        # Watch CSS files for changes
 
 # Account management
 npm run accounts         # Interactive account management
@@ -114,18 +119,35 @@ src/
 ```
 public/
 ├── index.html                  # Main entry point
+├── css/
+│   ├── style.css               # Compiled Tailwind CSS (generated, do not edit)
+│   └── src/
+│       └── input.css           # Tailwind source with @apply directives
 ├── js/
 │   ├── app.js                  # Main application logic (Alpine.js)
 │   ├── store.js                # Global state management
+│   ├── data-store.js           # Shared data store (accounts, models, quotas)
+│   ├── settings-store.js       # Settings management store
 │   ├── components/             # UI Components
-│   │   ├── dashboard.js        # Real-time stats & charts
+│   │   ├── dashboard.js        # Main dashboard orchestrator
 │   │   ├── account-manager.js  # Account list & OAuth handling
 │   │   ├── logs-viewer.js      # Live log streaming
-│   │   └── claude-config.js    # CLI settings editor
+│   │   ├── claude-config.js    # CLI settings editor
+│   │   ├── model-manager.js    # Model configuration UI
+│   │   ├── server-config.js    # Server settings UI
+│   │   └── dashboard/          # Dashboard sub-modules
+│   │       ├── stats.js        # Account statistics calculation
+│   │       ├── charts.js       # Chart.js visualizations
+│   │       └── filters.js      # Chart filter state management
 │   └── utils/                  # Frontend utilities
+│       ├── error-handler.js    # Centralized error handling with ErrorHandler.withLoading
+│       ├── account-actions.js  # Account operations service layer (NEW)
+│       ├── validators.js       # Input validation
+│       └── model-config.js     # Model configuration helpers
 └── views/                      # HTML partials (loaded dynamically)
     ├── dashboard.html
     ├── accounts.html
+    ├── models.html
     ├── settings.html
     └── logs.html
 ```
@@ -197,15 +219,29 @@ Each account object in `accounts.json` contains:
 
 **Web Management UI:**
 
-- **Stack**: Vanilla JS + Alpine.js + Tailwind CSS (via CDN)
+- **Stack**: Vanilla JS + Alpine.js + Tailwind CSS (local build with PostCSS)
+- **Build System**:
+  - Tailwind CLI with JIT compilation
+  - PostCSS + Autoprefixer
+  - DaisyUI component library
+  - Custom `@apply` directives in `public/css/src/input.css`
+  - Compiled output: `public/css/style.css` (auto-generated on `npm install`)
 - **Architecture**: Single Page Application (SPA) with dynamic view loading
-- **State Management**: Alpine.store for global state (accounts, settings, logs)
+- **State Management**:
+  - Alpine.store for global state (accounts, settings, logs)
+  - Layered architecture: Service Layer (`account-actions.js`) → Component Layer → UI
 - **Features**:
   - Real-time dashboard with Chart.js visualization and subscription tier distribution
   - Account list with tier badges (Ultra/Pro/Free) and quota progress bars
   - OAuth flow handling via popup window
   - Live log streaming via Server-Sent Events (SSE)
   - Config editor for both Proxy and Claude CLI (`~/.claude/settings.json`)
+  - Skeleton loading screens for improved perceived performance
+  - Empty state UX with actionable prompts
+  - Loading states for all async operations
+- **Accessibility**:
+  - ARIA labels on search inputs and icon buttons
+  - Keyboard navigation support (Escape to clear search)
 - **Security**: Optional password protection via `WEBUI_PASSWORD` env var
 - **Smart Refresh**: Client-side polling with ±20% jitter and tab visibility detection (3x slower when hidden)
 
@@ -273,6 +309,95 @@ Each account object in `accounts.json` contains:
 - `/account-limits` - Fetch account quotas and subscription data
   - Returns: `{ accounts: [{ email, subscription: { tier, projectId }, limits: {...} }], models: [...] }`
   - Query params: `?format=table` (ASCII table) or `?includeHistory=true` (adds usage stats)
+
+## Frontend Development
+
+### CSS Build System
+
+**Workflow:**
+1. Edit styles in `public/css/src/input.css` (Tailwind source with `@apply` directives)
+2. Run `npm run build:css` to compile (or `npm run watch:css` for auto-rebuild)
+3. Compiled CSS output: `public/css/style.css` (minified, committed to git)
+
+**Component Styles:**
+- Use `@apply` to abstract common Tailwind patterns into reusable classes
+- Example: `.btn-action-ghost`, `.status-pill-success`, `.input-search`
+- Skeleton loading: `.skeleton`, `.skeleton-stat-card`, `.skeleton-chart`
+
+**When to rebuild:**
+- After modifying `public/css/src/input.css`
+- After pulling changes that updated CSS source
+- Automatically on `npm install` (via `prepare` hook)
+
+### Error Handling Pattern
+
+Use `window.ErrorHandler.withLoading()` for async operations:
+
+```javascript
+async myOperation() {
+  return await window.ErrorHandler.withLoading(async () => {
+    // Your async code here
+    const result = await someApiCall();
+    if (!result.ok) {
+      throw new Error('Operation failed');
+    }
+    return result;
+  }, this, 'loading', { errorMessage: 'Failed to complete operation' });
+}
+```
+
+- Automatically manages `this.loading` state
+- Shows error toast on failure
+- Always resets loading state in `finally` block
+
+### Account Operations Service Layer
+
+Use `window.AccountActions` for account operations instead of direct API calls:
+
+```javascript
+// ✅ Good: Use service layer
+const result = await window.AccountActions.refreshAccount(email);
+if (result.success) {
+  this.$store.global.showToast('Account refreshed', 'success');
+} else {
+  this.$store.global.showToast(result.error, 'error');
+}
+
+// ❌ Bad: Direct API call in component
+const response = await fetch(`/api/accounts/${email}/refresh`);
+```
+
+**Available methods:**
+- `refreshAccount(email)` - Refresh token and quota
+- `toggleAccount(email, enabled)` - Enable/disable account (with optimistic update)
+- `deleteAccount(email)` - Delete account
+- `getFixAccountUrl(email)` - Get OAuth re-auth URL
+- `reloadAccounts()` - Reload from disk
+- `canDelete(account)` - Check if account is deletable
+
+All methods return `{success: boolean, data?: object, error?: string}`
+
+### Dashboard Modules
+
+Dashboard is split into three modules for maintainability:
+
+1. **stats.js** - Account statistics calculation
+   - `updateStats(component)` - Computes active/limited/total counts
+   - Updates subscription tier distribution
+
+2. **charts.js** - Chart.js visualizations
+   - `initQuotaChart(component)` - Initialize quota distribution pie chart
+   - `initTrendChart(component)` - Initialize usage trend line chart
+   - `updateQuotaChart(component)` - Update quota chart data
+   - `updateTrendChart(component)` - Update trend chart (with concurrency lock)
+
+3. **filters.js** - Filter state management
+   - `getInitialState()` - Default filter values
+   - `loadPreferences(component)` - Load from localStorage
+   - `savePreferences(component)` - Save to localStorage
+   - Filter types: time range, display mode, family/model selection
+
+Each module is well-documented with JSDoc comments.
 
 ## Maintenance
 

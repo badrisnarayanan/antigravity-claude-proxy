@@ -26,8 +26,27 @@
         </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Skeleton Loading (仅在首次加载时显示) -->
+    <div x-show="$store.data.initialLoad" class="space-y-6">
+        <!-- Skeleton Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="skeleton-stat-card"></div>
+            <div class="skeleton-stat-card"></div>
+            <div class="skeleton-stat-card"></div>
+            <div class="skeleton-stat-card"></div>
+        </div>
+
+        <!-- Skeleton Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="skeleton-chart"></div>
+            <div class="skeleton-chart"></div>
+        </div>
+    </div>
+
+    <!-- Actual Content (首次加载完成后显示) -->
+    <div x-show="!$store.data.initialLoad" class="space-y-6">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
             class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-6 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer"
             @click="$store.global.activeTab = 'accounts'"
@@ -434,4 +453,5 @@
             </div>
         </div>
     </div>
+    </div> <!-- End of x-show="!$store.data.loading" -->
 </div>
