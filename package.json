@@ -46,6 +46,7 @@
   "build": {
     "appId": "com.antigravity.claude-proxy",
     "productName": "Antigravity Claude Proxy",
+    "icon": "assets/icon.ico",
     "directories": {
       "output": "dist"
     },
@@ -53,17 +54,26 @@
       "main.js",
       "src/**/*",
       "public/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "assets/icon.ico"
     ],
+    "portable": {
+      "artifactName": "${productName} ${version}.${ext}"
+    },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -74,11 +84,17 @@
       "createStartMenuShortcut": true
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.developer-tools"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Development"
     }
   },
@@ -117,7 +133,9 @@
     "electron": "^39.2.7",
     "electron-builder": "^26.4.0",
     "electron-rebuild": "^3.2.9",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.4.32",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.0"
   }
 }

@@ -33,3 +33,4 @@ tests/utils/*.jpeg
 # Build output
 dist/
 build/
+nul
