@@ -144,7 +144,11 @@ window.Components.claudeConfig = () => ({
         }
     },
 
-    async restoreDefaultClaudeConfig() {
+    restoreDefaultClaudeConfig() {
+        document.getElementById('restore_defaults_modal').showModal();
+    },
+
+    async executeRestore() {
         this.restoring = true;
         const password = Alpine.store('global').webuiPassword;
         try {
@@ -156,6 +160,9 @@ window.Components.claudeConfig = () => ({
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             Alpine.store('global').showToast(Alpine.store('global').t('claudeConfigRestored'), 'success');
+
+            // Close modal
+            document.getElementById('restore_defaults_modal').close();
 
             // Reload the config to reflect the changes
             await this.fetchConfig();
