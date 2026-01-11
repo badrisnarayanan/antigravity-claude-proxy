@@ -107,6 +107,10 @@ export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
 // Default max tokens for requests if not specified
 export const DEFAULT_MAX_TOKENS = config?.defaultMaxTokens || 4096;
 
+// Default max context tokens (0 = unlimited/disabled)
+// Set to 30k as requested to balance context retention and cost savings
+export const DEFAULT_MAX_CONTEXT_TOKENS = config?.maxContextTokens || 30000;
+
 // Gemini signature handling
 // Sentinel value to skip thought signature validation when Claude Code strips the field
 // See: https://ai.google.dev/gemini-api/docs/thought-signatures

@@ -187,7 +187,7 @@ export function shouldWaitForCurrentAccount(
  * @param {Function} onSave - Callback to save changes
  * @param {string} [modelId] - Model ID to check rate limits for
  * @param {string} [sessionId] - Current session ID
- * @param {string} [lastSessionId] - Previously seen session ID
+ * @param {Map} [sessionMap] - Map of sessionId -> accountEmail
  * @returns {{account: Object|null, waitMs: number, newIndex: number}}
  */
 export function pickStickyAccount(
@@ -196,91 +196,69 @@ export function pickStickyAccount(
   onSave,
   modelId = null,
   sessionId = null,
-  lastSessionId = null
+  sessionMap = null
 ) {
-  // If session has changed, force pickNext to balance load for new conversations
-  if (sessionId && lastSessionId && sessionId !== lastSessionId) {
-    logger.debug(
-      `[AccountManager] Session changed (${lastSessionId?.substring(
-        0,
-        8
-      )}... -> ${sessionId?.substring(0, 8)}...), picking next account`
-    );
-    const { account: nextAccount, newIndex } = pickNext(
-      accounts,
-      currentIndex,
-      onSave,
-      modelId
-    );
-    if (nextAccount) {
-      return { account: nextAccount, waitMs: 0, newIndex };
+  let stickyAccount = null;
+  let stickyIndex = -1;
+
+  // 1. Try to find mapped account for this session
+  if (sessionId && sessionMap && sessionMap.has(sessionId)) {
+    const email = sessionMap.get(sessionId);
+    const index = accounts.findIndex(a => a.email === email);
+
+    if (index !== -1) {
+      const account = accounts[index];
+      // Check if it's usable
+      if (isAccountUsable(account, modelId)) {
+        stickyAccount = account;
+        stickyIndex = index;
+      } else {
+        // Mapped account is unusable (rate limited/invalid)
+        // We must switch.
+        logger.debug(`[AccountManager] Mapped account ${email} is unusable, switching.`);
+      }
     }
-    // If pickNext failed (e.g. all rate limited), fall through to standard sticky logic
-    // which has wait/retry logic
   }
 
-  // First try to get the current sticky account
-  const { account: stickyAccount, newIndex: stickyIndex } =
-    getCurrentStickyAccount(accounts, currentIndex, onSave, modelId);
+  // 2. If mapped account is found and usable, use it
   if (stickyAccount) {
-    return { account: stickyAccount, waitMs: 0, newIndex: stickyIndex };
+    stickyAccount.lastUsed = Date.now();
+    if (onSave) onSave();
+    return { account: stickyAccount, waitMs: 0, newIndex: currentIndex };
   }
 
-  // Current account is rate-limited or invalid.
-
-  // Check if we should wait for the current account (to preserve cache)
-  const waitInfo = shouldWaitForCurrentAccount(accounts, currentIndex, modelId);
-
-  // Optimization: If the wait is short (<= 15s), prefer waiting over switching accounts.
-  // This preserves the prompt cache which saves significant tokens/latency on the next turn.
-  if (waitInfo.shouldWait && waitInfo.waitMs <= STICKY_COOLDOWN_THRESHOLD_MS) {
-    logger.info(
-      `[AccountManager] Waiting ${formatDuration(
-        waitInfo.waitMs
-      )} for sticky account to preserve cache: ${waitInfo.account.email}`
-    );
-    return { account: null, waitMs: waitInfo.waitMs, newIndex: currentIndex };
-  }
-
-  // If wait is long, CHECK IF OTHERS ARE AVAILABLE before deciding to wait.
-  const available = getAvailableAccounts(accounts, modelId);
-  if (available.length > 0) {
-    // Found a free account! Switch immediately.
-    const { account: nextAccount, newIndex } = pickNext(
-      accounts,
-      currentIndex,
-      onSave,
-      modelId
-    );
-    if (nextAccount) {
-      logger.info(
-        `[AccountManager] Switched to new account (failover): ${nextAccount.email}`
-      );
-      return { account: nextAccount, waitMs: 0, newIndex };
-    }
-  }
-
-  // No other accounts available. Now checking if we should wait for current account (standard threshold).
-  if (waitInfo.shouldWait) {
-    logger.info(
-      `[AccountManager] Waiting ${formatDuration(
-        waitInfo.waitMs
-      )} for sticky account: ${waitInfo.account.email}`
-    );
-    return { account: null, waitMs: waitInfo.waitMs, newIndex: currentIndex };
-  }
-
-  // Current account unavailable for too long/invalid, and no others available?
+  // 3. Fallback: Pick NEXT available account (Round Robin)
+  // This balances load for new sessions or when sticky account fails
   const { account: nextAccount, newIndex } = pickNext(
     accounts,
     currentIndex,
     onSave,
     modelId
   );
+
   if (nextAccount) {
-    logger.info(
-      `[AccountManager] Switched to new account for cache: ${nextAccount.email}`
-    );
+    if (sessionId && sessionMap) {
+      sessionMap.set(sessionId, nextAccount.email);
+      logger.info(`[AccountManager] Assigned session ${sessionId.substring(0,8)}... to ${nextAccount.email}`);
+    }
+    return { account: nextAccount, waitMs: 0, newIndex };
   }
-  return { account: nextAccount, waitMs: 0, newIndex };
+
+  // 4. No accounts available at all?
+  // Check if we should wait for the *originally mapped* account if it exists
+  if (sessionId && sessionMap && sessionMap.has(sessionId)) {
+     const email = sessionMap.get(sessionId);
+     const index = accounts.findIndex(a => a.email === email);
+     if (index !== -1) {
+         const account = accounts[index];
+         const waitInfo = shouldWaitForCurrentAccount(accounts, index, modelId);
+         if (waitInfo.shouldWait) {
+             return { account: null, waitMs: waitInfo.waitMs, newIndex: currentIndex };
+         }
+     }
+  }
+
+  // Last resort: check global current index wait time
+  const waitInfo = shouldWaitForCurrentAccount(accounts, currentIndex, modelId);
+  return { account: null, waitMs: waitInfo.waitMs, newIndex: currentIndex };
 }

@@ -36,7 +36,8 @@ export class AccountManager {
     #configPath;
     #settings = {};
     #initialized = false;
-    #lastSessionId = null;
+    // Map to track sticky accounts per session: sessionId -> accountEmail
+    #sessionMap = new Map();
 
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
@@ -301,19 +302,26 @@ export class AccountManager {
      * @returns {{account: Object|null, waitMs: number}} Account to use and optional wait time
      */
     pickStickyAccount(modelId = null, sessionId = null) {
+        // Prune session map if it grows too large (prevent memory leaks)
+        if (this.#sessionMap.size > 1000) {
+            // Remove the first 200 entries (oldest insertion order)
+            let count = 0;
+            for (const key of this.#sessionMap.keys()) {
+                if (count++ > 200) break;
+                this.#sessionMap.delete(key);
+            }
+        }
+
         const { account, waitMs, newIndex } = selectSticky(
             this.#accounts,
             this.#currentIndex,
             () => this.saveToDisk(),
             modelId,
             sessionId,
-            this.#lastSessionId
+            this.#sessionMap
         );
 
         this.#currentIndex = newIndex;
-        if (sessionId) {
-            this.#lastSessionId = sessionId;
-        }
         return { account, waitMs };
     }
 

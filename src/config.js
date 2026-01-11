@@ -14,6 +14,7 @@ const DEFAULT_CONFIG = {
     persistTokenCache: false,
     defaultCooldownMs: 60000,  // 1 minute
     maxWaitBeforeErrorMs: 120000, // 2 minutes
+    maxContextTokens: 30000, // Default to 30k tokens for context window
     modelMapping: {}
 };
 
@@ -27,7 +28,8 @@ const ENV_MAPPING = {
     'RETRY_MAX_MS': 'retryMaxMs',
     'PERSIST_TOKEN_CACHE': 'persistTokenCache',
     'DEFAULT_COOLDOWN_MS': 'defaultCooldownMs',
-    'MAX_WAIT_BEFORE_ERROR_MS': 'maxWaitBeforeErrorMs'
+    'MAX_WAIT_BEFORE_ERROR_MS': 'maxWaitBeforeErrorMs',
+    'MAX_CONTEXT_TOKENS': 'maxContextTokens'
 };
 
 // Config locations

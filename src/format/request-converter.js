@@ -5,11 +5,14 @@
 
 import {
     GEMINI_MAX_OUTPUT_TOKENS,
+    DEFAULT_MAX_CONTEXT_TOKENS,
     getModelFamily,
     isThinkingModel
 } from '../constants.js';
 import { convertContentToParts, convertRole } from './content-converter.js';
 import { sanitizeSchema, cleanSchema } from './schema-sanitizer.js';
+import { estimateTokens } from '../utils/helpers.js';
+import { config } from '../config.js';
 import {
     restoreThinkingSignatures,
     removeTrailingThinkingBlocks,
@@ -93,6 +96,63 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         logger.debug('[RequestConverter] Applying thinking recovery for Claude (cross-model from Gemini)');
         processedMessages = closeToolLoopForThinking(messages, 'claude');
     }
+
+    // --- Context Truncation Logic ---
+    // Check if context limit is enabled (config takes precedence, then constant default)
+    const maxContextTokens = config.maxContextTokens || DEFAULT_MAX_CONTEXT_TOKENS;
+
+    if (maxContextTokens > 0) {
+        let currentTokens = 0;
+        // Always include system prompt cost in the budget
+        if (googleRequest.systemInstruction) {
+             const systemTokens = estimateTokens(googleRequest.systemInstruction.parts);
+             currentTokens += systemTokens;
+        }
+
+        const messagesToKeep = [];
+        // Iterate backwards from the newest message
+        for (let i = processedMessages.length - 1; i >= 0; i--) {
+            const msg = processedMessages[i];
+            const msgTokens = estimateTokens(msg);
+
+            // Check if adding this message exceeds the budget
+            if (currentTokens + msgTokens > maxContextTokens) {
+                logger.warn(`[RequestConverter] Context limit (${maxContextTokens}) reached. Truncating history. Keeping last ${messagesToKeep.length} messages.`);
+                break;
+            }
+
+            // TOOL LOOP PROTECTION:
+            // If we keep a 'tool_result' (user), we MUST keep the preceding 'tool_use' (assistant)
+            // regardless of token budget, otherwise the API call will fail.
+            if (msg.role === 'user' && Array.isArray(msg.content) && msg.content.some(c => c.type === 'tool_result')) {
+                 // Current message is a tool result.
+                 // Add it.
+                 messagesToKeep.unshift(msg);
+                 currentTokens += msgTokens;
+
+                 // Look at the PREVIOUS message (which should be the assistant's tool_use)
+                 if (i > 0) {
+                     const prevMsg = processedMessages[i-1];
+                     // Verify it's an assistant message
+                     if (prevMsg.role === 'assistant' || prevMsg.role === 'model') {
+                          const prevTokens = estimateTokens(prevMsg);
+                          // Force include the assistant message even if it goes slightly over budget
+                          messagesToKeep.unshift(prevMsg);
+                          currentTokens += prevTokens;
+                          i--; // Skip the previous message in the loop since we just added it
+                     }
+                 }
+                 continue; // Move to next iteration
+            }
+
+            // Normal message handling
+            messagesToKeep.unshift(msg);
+            currentTokens += msgTokens;
+        }
+        // Replace processedMessages with our truncated list
+        processedMessages = messagesToKeep;
+    }
+    // -------------------------------
 
     // Convert messages to contents, then filter unsigned thinking blocks
     for (let i = 0; i < processedMessages.length; i++) {
