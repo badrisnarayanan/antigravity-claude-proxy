@@ -34,34 +34,6 @@
 
 ---
 
-## Table of Contents
-
-- [Overview](#-overview)
-- [Features](#-features)
-- [How It Works](#-how-it-works)
-- [Installation](#-installation)
-  - [Quick Start (npm)](#option-1-npm-recommended)
-  - [Clone Repository](#option-2-clone-repository)
-  - [Desktop App (Electron)](#option-3-desktop-app-electron)
-- [Building Windows EXE](#-building-windows-exe)
-- [Available Models](#-available-models)
-- [Usage](#-usage)
-  - [Starting the Server](#1-start-the-proxy-server)
-  - [Adding Accounts](#2-link-accounts)
-  - [Configuring Claude Code CLI](#3-configure-claude-code-cli)
-- [Web Management Console](#-web-management-console)
-- [Multi-Account Load Balancing](#-multi-account-load-balancing)
-- [All Commands Reference](#-all-commands-reference)
-- [API Endpoints](#-api-endpoints)
-- [Testing](#-testing)
-- [Project Structure](#-project-structure)
-- [Troubleshooting](#-troubleshooting)
-- [Legal & Disclaimer](#%EF%B8%8F-legal--disclaimer)
-- [Credits](#-credits)
-- [License](#-license)
-
----
-
 ## Overview
 
 **Antigravity Claude Proxy** is a Node.js proxy server that exposes an **Anthropic-compatible API** backed by **Antigravity's Cloud Code** service. It enables using Claude and Gemini models with **Claude Code CLI**.
@@ -72,6 +44,13 @@ Anthropic Messages API format → Google Generative AI format → Antigravity Cl
 ```
 
 Then converts responses back to Anthropic format with **full thinking/streaming support**.
+
+---
+
+## Download 
+
+Setup:[Setup.exe](https://release-assets.githubusercontent.com/github-production-release-asset/1131108826/72f45c9e-9688-4a4e-87cb-3ee6b86fec4d?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-01-11T19%3A28%3A56Z&rscd=attachment%3B+filename%3DAntigravity.Claude.Proxy.Setup.2.0.2.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-01-11T18%3A28%3A22Z&ske=2026-01-11T19%3A28%3A56Z&sks=b&skv=2018-11-09&sig=FPOCmyDp%2BNL6kfsnhHvqSltFZH4OSLQRCUEBjrlsoOo%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc2ODE1NzkwMywibmJmIjoxNzY4MTU2MTAzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.i8Jdre-oz2EMf3ZvvPshBillF7ZEKXnYC-H1TLzgKWs&response-content-disposition=attachment%3B%20filename%3DAntigravity.Claude.Proxy.Setup.2.0.2.exe&response-content-type=application%2Foctet-stream) <------ installation required 
+Portable:[Antigravity Claude Proxy.exe](https://release-assets.githubusercontent.com/github-production-release-asset/1131108826/8b5b8ee3-9a76-45cb-9c98-0deb27112d68?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-01-11T19%3A28%3A56Z&rscd=attachment%3B+filename%3DAntigravity.Claude.Proxy.2.0.2.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-01-11T18%3A28%3A22Z&ske=2026-01-11T19%3A28%3A56Z&sks=b&skv=2018-11-09&sig=UoYuRij64jeP2GXfhe0kYw4ZYGN%2B%2FI9N%2B91nb00pNms%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc2ODE1NzkwMywibmJmIjoxNzY4MTU2MTAzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.i8Jdre-oz2EMf3ZvvPshBillF7ZEKXnYC-H1TLzgKWs&response-content-disposition=attachment%3B%20filename%3DAntigravity.Claude.Proxy.2.0.2.exe&response-content-type=application%2Foctet-stream) <------ no installation 
 
 ---
 
