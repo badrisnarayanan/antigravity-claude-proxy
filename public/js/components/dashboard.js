@@ -86,7 +86,13 @@ window.Components.dashboard = () => ({
         const currentHour = new Date(now);
         currentHour.setMinutes(0, 0, 0);
 
-        Object.entries(history).forEach(([iso, hourData]) => {
+        // Limit history to last 7 days to prevent performance issues with large datasets
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const filteredEntries = Object.entries(history)
+            .filter(([iso]) => new Date(iso) >= sevenDaysAgo)
+            .slice(-1000); // Also limit to max 1000 entries as safety
+
+        filteredEntries.forEach(([iso, hourData]) => {
             const timestamp = new Date(iso);
 
             // Process each family in the hour data

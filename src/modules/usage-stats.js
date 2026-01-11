@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { USAGE_HISTORY_PATH } from '../constants.js';
+import { USAGE_HISTORY_PATH, getModelFamily } from '../constants.js';
 
 // Persistence path
 const HISTORY_FILE = USAGE_HISTORY_PATH;
@@ -13,17 +13,16 @@ const OLD_HISTORY_FILE = path.join(OLD_DATA_DIR, 'usage-history.json');
 // Structure: { "YYYY-MM-DDTHH:00:00.000Z": { "claude": { "model-name": count, "_subtotal": count }, "_total": count } }
 let history = {};
 let isDirty = false;
+let isSaving = false;  // Mutex to prevent concurrent writes
 
 /**
- * Extract model family from model ID
- * @param {string} modelId - The model identifier (e.g., "claude-opus-4-5-thinking")
+ * Wrapper for getModelFamily that maps 'unknown' to 'other' for usage stats
+ * @param {string} modelId - The model identifier
  * @returns {string} The family name (claude, gemini, or other)
  */
 function getFamily(modelId) {
-    const lower = (modelId || '').toLowerCase();
-    if (lower.includes('claude')) return 'claude';
-    if (lower.includes('gemini')) return 'gemini';
-    return 'other';
+    const family = getModelFamily(modelId);
+    return family === 'unknown' ? 'other' : family;
 }
 
 /**
@@ -69,15 +68,18 @@ function load() {
 }
 
 /**
- * Save history to disk
+ * Save history to disk (with mutex to prevent concurrent writes)
  */
 function save() {
-    if (!isDirty) return;
+    if (!isDirty || isSaving) return;
+    isSaving = true;
     try {
         fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
         isDirty = false;
     } catch (err) {
         console.error('[UsageStats] Failed to save history:', err);
+    } finally {
+        isSaving = false;
     }
 }
 

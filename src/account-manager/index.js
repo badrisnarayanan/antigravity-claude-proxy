@@ -48,6 +48,9 @@ export class AccountManager {
     #lastSaveError = null;
     #saveErrorCount = 0;
 
+    // Reload lock to prevent concurrent reload operations
+    #reloadPromise = null;
+
     constructor(configPath = ACCOUNT_CONFIG_PATH) {
         this.#configPath = configPath;
     }
@@ -81,11 +84,112 @@ export class AccountManager {
     /**
      * Reload accounts from disk (force re-initialization)
      * Useful when accounts.json is modified externally (e.g., by WebUI)
+     * Uses a lock to prevent concurrent reload operations
      */
     async reload() {
-        this.#initialized = false;
-        await this.initialize();
-        logger.info('[AccountManager] Accounts reloaded from disk');
+        // If a reload is already in progress, wait for it
+        if (this.#reloadPromise) {
+            return this.#reloadPromise;
+        }
+
+        this.#reloadPromise = (async () => {
+            try {
+                this.#initialized = false;
+                await this.initialize();
+                logger.info('[AccountManager] Accounts reloaded from disk');
+            } finally {
+                this.#reloadPromise = null;
+            }
+        })();
+
+        return this.#reloadPromise;
+    }
+
+    /**
+     * Add a new account
+     * @param {Object} accountData - Account data
+     * @returns {Promise<void>}
+     */
+    async addAccount(accountData) {
+        // Check if account already exists
+        const existingIndex = this.#accounts.findIndex(a => a.email === accountData.email);
+
+        if (existingIndex !== -1) {
+             // Update existing account
+             this.#accounts[existingIndex] = {
+                 ...this.#accounts[existingIndex],
+                 ...accountData,
+                 enabled: true,
+                 isInvalid: false,
+                 invalidReason: null,
+                 addedAt: this.#accounts[existingIndex].addedAt || new Date().toISOString()
+             };
+             logger.info(`[AccountManager] Account ${accountData.email} updated`);
+        } else {
+             // Add new account
+             this.#accounts.push({
+                 ...accountData,
+                 enabled: true,
+                 isInvalid: false,
+                 invalidReason: null,
+                 modelRateLimits: {},
+                 lastUsed: null,
+                 activeRequests: 0,
+                 addedAt: new Date().toISOString()
+             });
+             logger.info(`[AccountManager] Account ${accountData.email} added`);
+        }
+
+        return this.saveToDisk();
+    }
+
+    /**
+     * Remove an account
+     * @param {string} email - Email of the account to remove
+     * @returns {Promise<void>}
+     */
+    async removeAccount(email) {
+        const index = this.#accounts.findIndex(a => a.email === email);
+        if (index === -1) {
+            throw new Error(`Account ${email} not found`);
+        }
+
+        this.#accounts.splice(index, 1);
+
+        // Adjust activeIndex if needed
+        if (this.#currentIndex >= this.#accounts.length) {
+            this.#currentIndex = Math.max(0, this.#accounts.length - 1);
+        }
+
+        logger.info(`[AccountManager] Account ${email} removed`);
+        return this.saveToDisk();
+    }
+
+    /**
+     * Update account details
+     * @param {string} email - Email of the account
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<void>}
+     */
+    async updateAccount(email, updates) {
+        const index = this.#accounts.findIndex(a => a.email === email);
+        if (index === -1) {
+            throw new Error(`Account ${email} not found`);
+        }
+
+        this.#accounts[index] = { ...this.#accounts[index], ...updates };
+        return this.saveToDisk();
+    }
+
+    /**
+     * Toggle account enabled state
+     * @param {string} email - Email of the account
+     * @param {boolean} enabled - New enabled state
+     * @returns {Promise<void>}
+     */
+    async toggleAccount(email, enabled) {
+        await this.updateAccount(email, { enabled });
+        logger.info(`[AccountManager] Account ${email} ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     /**

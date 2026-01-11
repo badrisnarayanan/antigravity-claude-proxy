@@ -15,93 +15,38 @@
 import path from 'path';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { DEFAULT_PORT } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, getClaudeConfigPath } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
-import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
 
 // OAuth state storage (state -> { server, verifier, state, timestamp })
 // Maps state ID to active OAuth flow data
 const pendingOAuthFlows = new Map();
 
-/**
- * WebUI Helper Functions - Direct account manipulation
- * These functions work around AccountManager's limited API by directly
- * manipulating the accounts.json config file (non-invasive approach for PR)
- */
+// Rate limiting for auth attempts (IP -> { count, resetAt })
+const authAttempts = new Map();
+const AUTH_RATE_LIMIT = {
+    maxAttempts: 5,      // Max failed attempts
+    windowMs: 60000,     // 1 minute window
+    cleanupIntervalMs: 300000  // Cleanup every 5 minutes
+};
 
 /**
- * Set account enabled/disabled state
- */
-async function setAccountEnabled(email, enabled) {
-    const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
-    const account = accounts.find(a => a.email === email);
-    if (!account) {
-        throw new Error(`Account ${email} not found`);
-    }
-    account.enabled = enabled;
-    await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex);
-    logger.info(`[WebUI] Account ${email} ${enabled ? 'enabled' : 'disabled'}`);
-}
-
-/**
- * Remove account from config
- */
-async function removeAccount(email) {
-    const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
-    const index = accounts.findIndex(a => a.email === email);
-    if (index === -1) {
-        throw new Error(`Account ${email} not found`);
-    }
-    accounts.splice(index, 1);
-    // Adjust activeIndex if needed
-    const newActiveIndex = activeIndex >= accounts.length ? Math.max(0, accounts.length - 1) : activeIndex;
-    await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, newActiveIndex);
-    logger.info(`[WebUI] Account ${email} removed`);
-}
-
-/**
- * Add new account to config
- */
-async function addAccount(accountData) {
-    const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
-
-    // Check if account already exists
-    const existingIndex = accounts.findIndex(a => a.email === accountData.email);
-    if (existingIndex !== -1) {
-        // Update existing account
-        accounts[existingIndex] = {
-            ...accounts[existingIndex],
-            ...accountData,
-            enabled: true,
-            isInvalid: false,
-            invalidReason: null,
-            addedAt: accounts[existingIndex].addedAt || new Date().toISOString()
-        };
-        logger.info(`[WebUI] Account ${accountData.email} updated`);
-    } else {
-        // Add new account
-        accounts.push({
-            ...accountData,
-            enabled: true,
-            isInvalid: false,
-            invalidReason: null,
-            modelRateLimits: {},
-            lastUsed: null,
-            addedAt: new Date().toISOString()
-        });
-        logger.info(`[WebUI] Account ${accountData.email} added`);
-    }
-
-    await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex);
-}
-
-/**
- * Auth Middleware - Optional password protection for WebUI
+ * Auth Middleware - Optional password protection for WebUI with rate limiting
  * Password can be set via WEBUI_PASSWORD env var or config.json
  */
 function createAuthMiddleware() {
+    // Periodic cleanup of old rate limit entries
+    setInterval(() => {
+        const now = Date.now();
+        for (const [ip, data] of authAttempts.entries()) {
+            if (now > data.resetAt) {
+                authAttempts.delete(ip);
+            }
+        }
+    }, AUTH_RATE_LIMIT.cleanupIntervalMs);
+
     return (req, res, next) => {
         const password = config.webuiPassword;
         if (!password) return next();
@@ -112,8 +57,34 @@ function createAuthMiddleware() {
         const isProtected = (isApiRoute && !isException) || req.path === '/account-limits' || req.path === '/health';
 
         if (isProtected) {
+            const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+            // Check rate limit
+            const attempts = authAttempts.get(clientIp);
+            if (attempts && Date.now() < attempts.resetAt && attempts.count >= AUTH_RATE_LIMIT.maxAttempts) {
+                const waitSec = Math.ceil((attempts.resetAt - Date.now()) / 1000);
+                logger.warn(`[WebUI] Rate limited auth attempt from ${clientIp}`);
+                return res.status(429).json({
+                    status: 'error',
+                    error: `Too many failed attempts. Try again in ${waitSec} seconds.`
+                });
+            }
+
             const providedPassword = req.headers['x-webui-password'] || req.query.password;
             if (providedPassword !== password) {
+                // Track failed attempt
+                const now = Date.now();
+                const current = authAttempts.get(clientIp) || { count: 0, resetAt: now + AUTH_RATE_LIMIT.windowMs };
+                if (now > current.resetAt) {
+                    // Window expired, reset
+                    current.count = 1;
+                    current.resetAt = now + AUTH_RATE_LIMIT.windowMs;
+                } else {
+                    current.count++;
+                }
+                authAttempts.set(clientIp, current);
+
+                logger.debug(`[WebUI] Failed auth attempt from ${clientIp} (${current.count}/${AUTH_RATE_LIMIT.maxAttempts})`);
                 return res.status(401).json({ status: 'error', error: 'Unauthorized: Password required' });
             }
         }
@@ -133,6 +104,21 @@ export function mountWebUI(app, dirname, accountManager) {
 
     // Serve static files from public directory
     app.use(express.static(path.join(dirname, '../public')));
+
+    // Periodic cleanup of stale OAuth flows (every minute)
+    setInterval(() => {
+        const now = Date.now();
+        let cleaned = 0;
+        for (const [key, val] of pendingOAuthFlows.entries()) {
+            if (now - val.timestamp > 10 * 60 * 1000) { // 10 minutes
+                pendingOAuthFlows.delete(key);
+                cleaned++;
+            }
+        }
+        if (cleaned > 0) {
+            logger.debug(`[WebUI] Cleaned up ${cleaned} stale OAuth flows`);
+        }
+    }, 60000);
 
     // ==========================================
     // Account Management API
@@ -188,10 +174,7 @@ export function mountWebUI(app, dirname, accountManager) {
                 return res.status(400).json({ status: 'error', error: 'enabled must be a boolean' });
             }
 
-            await setAccountEnabled(email, enabled);
-
-            // Reload AccountManager to pick up changes
-            await accountManager.reload();
+            await accountManager.toggleAccount(email, enabled);
 
             res.json({
                 status: 'ok',
@@ -208,10 +191,7 @@ export function mountWebUI(app, dirname, accountManager) {
     app.delete('/api/accounts/:email', async (req, res) => {
         try {
             const { email } = req.params;
-            await removeAccount(email);
-
-            // Reload AccountManager to pick up changes
-            await accountManager.reload();
+            await accountManager.removeAccount(email);
 
             res.json({
                 status: 'ok',
@@ -434,13 +414,41 @@ export function mountWebUI(app, dirname, accountManager) {
                 return res.status(400).json({ status: 'error', error: 'Invalid parameters' });
             }
 
+            // Validate modelId format (alphanumeric, dashes, underscores, dots only)
+            if (!/^[a-zA-Z0-9._-]+$/.test(modelId)) {
+                return res.status(400).json({ status: 'error', error: 'Invalid model ID format' });
+            }
+
+            // Sanitize config - only allow specific keys with validated types
+            const allowedKeys = ['hidden', 'pinned', 'mapping', 'alias'];
+            const sanitizedConfig = {};
+            for (const key of allowedKeys) {
+                if (key in newModelConfig) {
+                    const value = newModelConfig[key];
+                    // Validate types
+                    if ((key === 'hidden' || key === 'pinned') && typeof value === 'boolean') {
+                        sanitizedConfig[key] = value;
+                    } else if ((key === 'mapping' || key === 'alias') && (typeof value === 'string' || value === null)) {
+                        // Validate mapping/alias format if provided
+                        if (value !== null && !/^[a-zA-Z0-9._-]*$/.test(value)) {
+                            return res.status(400).json({ status: 'error', error: `Invalid ${key} format` });
+                        }
+                        sanitizedConfig[key] = value;
+                    }
+                }
+            }
+
+            if (Object.keys(sanitizedConfig).length === 0) {
+                return res.status(400).json({ status: 'error', error: 'No valid configuration fields provided' });
+            }
+
             // Load current config
             const currentMapping = config.modelMapping || {};
 
             // Update specific model config
             currentMapping[modelId] = {
                 ...currentMapping[modelId],
-                ...newModelConfig
+                ...sanitizedConfig
             };
 
             // Save back to main config
@@ -544,15 +552,12 @@ export function mountWebUI(app, dirname, accountManager) {
                         const accountData = await completeOAuthFlow(code, verifier);
 
                         // Add or update the account
-                        await addAccount({
+                        await accountManager.addAccount({
                             email: accountData.email,
                             refreshToken: accountData.refreshToken,
                             projectId: accountData.projectId,
                             source: 'oauth'
                         });
-
-                        // Reload AccountManager to pick up the new account
-                        await accountManager.reload();
 
                         logger.success(`[WebUI] Account ${accountData.email} added successfully`);
                     } catch (err) {
@@ -566,11 +571,34 @@ export function mountWebUI(app, dirname, accountManager) {
                     pendingOAuthFlows.delete(state);
                 });
 
-            res.json({ status: 'ok', url });
+            res.json({ status: 'ok', url, state });
         } catch (error) {
             logger.error('[WebUI] Error generating auth URL:', error);
             res.status(500).json({ status: 'error', error: error.message });
         }
+    });
+
+    /**
+     * GET /api/auth/status/:state - Poll OAuth flow status
+     * Allows frontend to check if OAuth flow completed or failed
+     */
+    app.get('/api/auth/status/:state', (req, res) => {
+        const flow = pendingOAuthFlows.get(req.params.state);
+
+        if (!flow) {
+            // Flow doesn't exist - either completed, expired, or never existed
+            return res.json({ status: 'not_found', message: 'OAuth flow not found or already completed' });
+        }
+
+        // Flow exists and is still pending
+        const elapsed = Date.now() - flow.timestamp;
+        const remainingMs = Math.max(0, 120000 - elapsed); // 2 minute timeout
+
+        res.json({
+            status: 'pending',
+            elapsedMs: elapsed,
+            remainingMs: remainingMs
+        });
     });
 
     /**

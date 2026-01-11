@@ -104,6 +104,9 @@ export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature leng
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
 
+// Default max tokens for requests if not specified
+export const DEFAULT_MAX_TOKENS = config?.defaultMaxTokens || 4096;
+
 // Gemini signature handling
 // Sentinel value to skip thought signature validation when Claude Code strips the field
 // See: https://ai.google.dev/gemini-api/docs/thought-signatures
@@ -197,6 +200,7 @@ export default {
   MAX_WAIT_BEFORE_ERROR_MS,
   MIN_SIGNATURE_LENGTH,
   GEMINI_MAX_OUTPUT_TOKENS,
+  DEFAULT_MAX_TOKENS,
   GEMINI_SKIP_SIGNATURE,
   GEMINI_SIGNATURE_CACHE_TTL_MS,
   getModelFamily,

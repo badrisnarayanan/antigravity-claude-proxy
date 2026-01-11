@@ -8,7 +8,8 @@ document.addEventListener('alpine:init', () => {
         // App State
         version: '1.0.0',
         activeTab: 'dashboard',
-        webuiPassword: localStorage.getItem('antigravity_webui_password') || '',
+        // Use sessionStorage instead of localStorage for password (security: cleared on browser close)
+        webuiPassword: sessionStorage.getItem('antigravity_webui_password') || '',
 
         // i18n
         lang: localStorage.getItem('app_lang') || 'en',
@@ -510,6 +511,7 @@ document.addEventListener('alpine:init', () => {
 
         // Toast Messages
         toast: null,
+        _toastTimer: null,  // Track timer for cleanup
 
         // OAuth Progress
         oauthProgress: {
@@ -535,10 +537,19 @@ document.addEventListener('alpine:init', () => {
         },
 
         showToast(message, type = 'info') {
+            // Clear any existing timer to prevent race conditions
+            if (this._toastTimer) {
+                clearTimeout(this._toastTimer);
+                this._toastTimer = null;
+            }
+
             const id = Date.now();
             this.toast = { message, type, id };
-            setTimeout(() => {
-                if (this.toast && this.toast.id === id) this.toast = null;
+            this._toastTimer = setTimeout(() => {
+                if (this.toast && this.toast.id === id) {
+                    this.toast = null;
+                }
+                this._toastTimer = null;
             }, 3000);
         }
     });

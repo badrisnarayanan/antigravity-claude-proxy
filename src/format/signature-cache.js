@@ -16,6 +16,10 @@ import { logger } from '../utils/logger.js';
 const signatureCache = new Map();
 const thinkingSignatureCache = new Map();
 
+// Maximum cache sizes to prevent unbounded memory growth
+const MAX_SIGNATURE_CACHE_SIZE = 10000;
+const MAX_THINKING_CACHE_SIZE = 5000;
+
 // Cleanup interval reference
 let cleanupInterval = null;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -27,6 +31,14 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export function cacheSignature(toolUseId, signature) {
     if (!toolUseId || !signature) return;
+
+    // Evict oldest entries if over limit
+    if (signatureCache.size >= MAX_SIGNATURE_CACHE_SIZE) {
+        const oldestKey = signatureCache.keys().next().value;
+        signatureCache.delete(oldestKey);
+        logger.debug(`[SignatureCache] Evicted oldest entry, cache size: ${signatureCache.size}`);
+    }
+
     signatureCache.set(toolUseId, {
         signature,
         timestamp: Date.now()
@@ -125,6 +137,14 @@ export function getCacheSize() {
  */
 export function cacheThinkingSignature(signature, modelFamily) {
     if (!signature || signature.length < MIN_SIGNATURE_LENGTH) return;
+
+    // Evict oldest entries if over limit
+    if (thinkingSignatureCache.size >= MAX_THINKING_CACHE_SIZE) {
+        const oldestKey = thinkingSignatureCache.keys().next().value;
+        thinkingSignatureCache.delete(oldestKey);
+        logger.debug(`[SignatureCache] Evicted oldest thinking entry, cache size: ${thinkingSignatureCache.size}`);
+    }
+
     thinkingSignatureCache.set(signature, {
         modelFamily,
         timestamp: Date.now()

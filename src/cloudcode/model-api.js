@@ -6,6 +6,7 @@
 
 import { ANTIGRAVITY_ENDPOINT_FALLBACKS, ANTIGRAVITY_HEADERS, getModelFamily } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { retryWithBackoff, isRetryableError } from '../utils/retry.js';
 
 /**
  * Check if a model is supported (Claude or Gemini)
@@ -49,6 +50,7 @@ export async function listModels(token) {
 /**
  * Fetch available models with quota info from Cloud Code API
  * Returns model quotas including remaining fraction and reset time
+ * Uses retry logic with exponential backoff for network errors
  *
  * @param {string} token - OAuth access token
  * @returns {Promise<Object>} Raw response from fetchAvailableModels API
@@ -60,24 +62,49 @@ export async function fetchAvailableModels(token) {
         ...ANTIGRAVITY_HEADERS
     };
 
+    // Try each endpoint, with retry logic for transient errors
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
-            const url = `${endpoint}/v1internal:fetchAvailableModels`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({})
-            });
+            const result = await retryWithBackoff(
+                async (attempt) => {
+                    const url = `${endpoint}/v1internal:fetchAvailableModels`;
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({})
+                    });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                logger.warn(`[CloudCode] fetchAvailableModels error at ${endpoint}: ${response.status}`);
-                continue;
-            }
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        const error = new Error(`HTTP ${response.status}: ${errorText}`);
+                        // Add status for retry logic
+                        error.status = response.status;
+                        throw error;
+                    }
 
-            return await response.json();
+                    return await response.json();
+                },
+                {
+                    maxAttempts: 3,
+                    baseMs: 500,
+                    maxMs: 5000,
+                    shouldRetry: (error) => {
+                        // Don't retry 4xx errors (except 429)
+                        if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
+                            return false;
+                        }
+                        return isRetryableError(error);
+                    },
+                    onRetry: (error, attempt, backoffMs) => {
+                        logger.debug(`[CloudCode] fetchAvailableModels retry ${attempt + 1} at ${endpoint} in ${backoffMs}ms`);
+                    }
+                }
+            );
+
+            return result;
         } catch (error) {
             logger.warn(`[CloudCode] fetchAvailableModels failed at ${endpoint}:`, error.message);
+            // Continue to next endpoint
         }
     }
 
