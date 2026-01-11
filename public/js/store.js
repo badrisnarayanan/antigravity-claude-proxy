@@ -80,6 +80,7 @@ document.addEventListener('alpine:init', () => {
                 linkedAccounts: "Linked Accounts",
                 noSignal: "NO SIGNAL DETECTED",
                 establishingUplink: "ESTABLISHING UPLINK...",
+                goToAccounts: "Go to Accounts",
                 // Settings - Models
                 modelsDesc: "Configure model visibility, pinning, and request routing.",
                 modelsPageDesc: "Real-time quota and status for all available models.",
@@ -98,7 +99,8 @@ document.addEventListener('alpine:init', () => {
                 opusAlias: "Opus Alias",
                 sonnetAlias: "Sonnet Alias",
                 haikuAlias: "Haiku Alias",
-                claudeSettingsAlert: "Settings below directly modify ~/.claude/settings.json. Restart Claude CLI to apply.",
+                claudeSettingsAlertPrefix: "Settings below directly modify",
+        claudeSettingsAlertSuffix: "Restart Claude CLI to apply.",
                 applyToClaude: "Apply to Claude CLI",
                 // Settings - Server
                 port: "Port",
@@ -118,7 +120,7 @@ document.addEventListener('alpine:init', () => {
                 sonnetModel: "Sonnet Model",
                 haikuModel: "Haiku Model",
                 authToken: "Auth Token",
-                saveConfig: "Save to ~/.claude/settings.json",
+                saveConfig: "Save to Claude CLI settings",
                 envVar: "Env",
                 // New Keys
                 systemName: "ANTIGRAVITY",
@@ -327,6 +329,7 @@ document.addEventListener('alpine:init', () => {
                 linkedAccounts: "已关联账号",
                 noSignal: "无信号连接",
                 establishingUplink: "正在建立上行链路...",
+                goToAccounts: "前往账号管理",
                 // Settings - Models
                 modelsDesc: "配置模型的可见性、置顶和请求路由。",
                 modelsPageDesc: "所有可用模型的实时配额和状态。",
@@ -345,7 +348,8 @@ document.addEventListener('alpine:init', () => {
                 opusAlias: "Opus 别名",
                 sonnetAlias: "Sonnet 别名",
                 haikuAlias: "Haiku 别名",
-                claudeSettingsAlert: "以下设置直接修改 ~/.claude/settings.json。重启 Claude CLI 生效。",
+                claudeSettingsAlertPrefix: "以下设置直接修改",
+        claudeSettingsAlertSuffix: "重启 Claude CLI 生效。",
                 applyToClaude: "应用到 Claude CLI",
                 // Settings - Server
                 port: "端口",
@@ -365,7 +369,7 @@ document.addEventListener('alpine:init', () => {
                 sonnetModel: "Sonnet 模型",
                 haikuModel: "Haiku 模型",
                 authToken: "认证令牌",
-                saveConfig: "保存到 ~/.claude/settings.json",
+                saveConfig: "保存到 Claude CLI 设置",
                 envVar: "环境变量",
                 // New Keys
                 systemName: "ANTIGRAVITY",

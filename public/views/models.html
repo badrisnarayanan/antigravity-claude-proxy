@@ -20,9 +20,12 @@
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
             </div>
-            <input type="text" :placeholder="$store.global.t('searchPlaceholder')"
-                class="w-full h-full bg-space-800 border border-space-border text-gray-300 rounded-lg pl-10 pr-10 focus:outline-none focus:border-neon-purple focus:ring-1 focus:ring-neon-purple transition-all text-xs placeholder-gray-600"
-                x-model.debounce="$store.data.filters.search" @input="$store.data.computeQuotaRows()">
+            <input type="text"
+                :placeholder="$store.global.t('searchPlaceholder')"
+                :aria-label="$store.global.t('searchPlaceholder')"
+                class="input-search-sm pr-10"
+                x-model.debounce="$store.data.filters.search"
+                @input="$store.data.computeQuotaRows()">
             <button x-show="$store.data.filters.search"
                     x-transition:enter="transition ease-out duration-100"
                     x-transition:enter-start="opacity-0 scale-75"
@@ -237,11 +240,28 @@
                         </div>
                     </td>
                 </tr>
-                <!-- Empty -->
-                <tr x-show="!$store.data.loading && $store.data.quotaRows.length === 0">
-                    <td colspan="6" class="h-64 text-center text-gray-600 font-mono text-xs"
-                        x-text="$store.global.t('noSignal')">
-                        NO SIGNAL DETECTED
+                <!-- Empty State -->
+                <tr x-show="!$store.data.initialLoad && $store.data.quotaRows.length === 0">
+                    <td colspan="6" class="py-16 text-center">
+                        <div class="flex flex-col items-center gap-4 max-w-lg mx-auto">
+                            <svg class="w-20 h-20 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                            <h3 class="text-xl font-semibold text-gray-400" x-text="$store.global.t('noSignal')">
+                                NO SIGNAL DETECTED
+                            </h3>
+                            <p class="text-sm text-gray-600 max-w-md leading-relaxed">
+                                No model data available. Add accounts to see available models and quota information.
+                            </p>
+                            <button class="btn bg-neon-purple hover:bg-purple-600 border-none text-white btn-sm gap-2 shadow-lg shadow-neon-purple/20"
+                                @click="$store.global.activeTab = 'accounts'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span x-text="$store.global.t('goToAccounts')">Go to Accounts</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             </tbody>

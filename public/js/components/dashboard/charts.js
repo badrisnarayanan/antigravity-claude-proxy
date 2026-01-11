@@ -1,6 +1,22 @@
 /**
  * Dashboard Charts Module
- * Handles Chart.js visualizations (quota distribution & usage trend)
+ * 职责：使用 Chart.js 渲染配额分布图和使用趋势图
+ *
+ * 调用时机：
+ *   - dashboard 组件 init() 时初始化图表
+ *   - 筛选器变化时更新图表数据
+ *   - $store.data 更新时刷新图表
+ *
+ * 图表类型：
+ *   1. Quota Distribution（饼图）：按模型家族或具体模型显示配额分布
+ *   2. Usage Trend（折线图）：显示历史使用趋势
+ *
+ * 特殊处理：
+ *   - 使用 _trendChartUpdateLock 防止并发更新导致的竞争条件
+ *   - 通过 debounce 优化频繁更新的性能
+ *   - 响应式处理：移动端自动调整图表大小和标签显示
+ *
+ * @module DashboardCharts
  */
 window.DashboardCharts = window.DashboardCharts || {};
 
@@ -133,7 +149,7 @@ window.DashboardCharts.updateCharts = function (component) {
 
   // Safety checks
   if (!canvas) {
-    console.warn("quotaChart canvas not found");
+    console.debug("quotaChart canvas not found");
     return;
   }
   if (typeof Chart === "undefined") {
@@ -141,7 +157,7 @@ window.DashboardCharts.updateCharts = function (component) {
     return;
   }
   if (!isCanvasReady(canvas)) {
-    console.warn("quotaChart canvas not ready, skipping update");
+    console.debug("quotaChart canvas not ready, skipping update");
     return;
   }
 
@@ -158,7 +174,7 @@ window.DashboardCharts.updateCharts = function (component) {
     if (!healthByFamily[family]) {
       healthByFamily[family] = { total: 0, weighted: 0 };
     }
-    
+
     // Calculate average health from quotaInfo (each entry has { pct })
     // Health = average of all account quotas for this model
     const quotaInfo = row.quotaInfo || [];
@@ -172,8 +188,8 @@ window.DashboardCharts.updateCharts = function (component) {
   });
 
   // Update overall health for dashboard display
-  component.stats.overallHealth = totalModelCount > 0 
-    ? Math.round(totalHealthSum / totalModelCount) 
+  component.stats.overallHealth = totalModelCount > 0
+    ? Math.round(totalHealthSum / totalModelCount)
     : 0;
 
   const familyColors = {
@@ -355,13 +371,13 @@ window.DashboardCharts.updateTrendChart = function (component) {
 
   // Determine if data spans multiple days (for smart label formatting)
   const timestamps = sortedEntries.map(([iso]) => new Date(iso));
-  const isMultiDay = timestamps.length > 1 && 
+  const isMultiDay = timestamps.length > 1 &&
     timestamps[0].toDateString() !== timestamps[timestamps.length - 1].toDateString();
 
   // Helper to format X-axis labels based on time range and multi-day status
   const formatLabel = (date) => {
     const timeRange = component.timeRange || '24h';
-    
+
     if (timeRange === '7d') {
       // Week view: show MM/DD
       return date.toLocaleDateString([], { month: '2-digit', day: '2-digit' });

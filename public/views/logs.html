@@ -1,5 +1,5 @@
 <div x-data="logsViewer" class="view-container h-full flex flex-col">
-    <div class="glass-panel rounded-xl overflow-hidden border-space-border flex flex-col flex-1 min-h-0">
+    <div class="view-card !p-0 flex flex-col flex-1 min-h-0">
         <!-- Toolbar -->
         <div class="bg-space-900 flex flex-wrap gap-y-2 justify-between items-center p-2 px-4 border-b border-space-border select-none min-h-[48px] shrink-0">
 
@@ -53,7 +53,7 @@
                     x-text="$store.global.t('autoScroll')">Auto-Scroll</span>
                 <input type="checkbox" class="toggle toggle-xs toggle-success" x-model="isAutoScroll">
             </label>
-            <button class="btn btn-xs btn-ghost btn-square text-gray-400 hover:text-white" @click="clearLogs" :title="$store.global.t('clearLogs')">
+            <button class="btn-action-ghost-square" @click="clearLogs" :title="$store.global.t('clearLogs')">
                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
