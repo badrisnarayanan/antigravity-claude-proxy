@@ -9,6 +9,7 @@ window.Components.claudeConfig = () => ({
     configPath: '', // Dynamic path from backend
     models: [],
     loading: false,
+    restoring: false,
     gemini1mSuffix: false,
 
     // Model fields that may contain Gemini model names
@@ -140,6 +141,28 @@ window.Components.claudeConfig = () => ({
             Alpine.store('global').showToast(Alpine.store('global').t('saveConfigFailed') + ': ' + e.message, 'error');
         } finally {
             this.loading = false;
+        }
+    },
+
+    async restoreDefaultClaudeConfig() {
+        this.restoring = true;
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/claude/config/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            Alpine.store('global').showToast(Alpine.store('global').t('claudeConfigRestored'), 'success');
+
+            // Reload the config to reflect the changes
+            await this.fetchConfig();
+        } catch (e) {
+            Alpine.store('global').showToast(Alpine.store('global').t('restoreConfigFailed') + ': ' + e.message, 'error');
+        } finally {
+            this.restoring = false;
         }
     }
 });

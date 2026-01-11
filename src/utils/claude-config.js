@@ -84,6 +84,35 @@ export async function updateClaudeConfig(updates) {
 }
 
 /**
+ * Replace the global Claude CLI configuration entirely
+ * Unlike updateClaudeConfig, this replaces the config instead of merging.
+ *
+ * @param {Object} config - The new configuration to write
+ * @returns {Promise<Object>} The written configuration
+ */
+export async function replaceClaudeConfig(config) {
+    const configPath = getClaudeConfigPath();
+
+    // 1. Ensure .claude directory exists
+    const configDir = path.dirname(configPath);
+    try {
+        await fs.mkdir(configDir, { recursive: true });
+    } catch (error) {
+        // Ignore if exists
+    }
+
+    // 2. Write config directly (no merge)
+    try {
+        await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
+        logger.info(`[ClaudeConfig] Replaced config at ${configPath}`);
+        return config;
+    } catch (error) {
+        logger.error(`[ClaudeConfig] Failed to write config:`, error.message);
+        throw error;
+    }
+}
+
+/**
  * Simple deep merge for objects
  */
 function deepMerge(target, source) {

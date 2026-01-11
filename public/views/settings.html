@@ -523,7 +523,16 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end pt-2">
+                <div class="flex justify-end pt-2 gap-3">
+                    <button class="btn btn-sm btn-ghost border border-space-border/50 hover:border-red-500/30 hover:bg-red-500/5 text-gray-400 hover:text-red-400 px-6 gap-2"
+                        @click="restoreDefaultClaudeConfig" :disabled="restoring">
+                        <svg x-show="!restoring" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span x-show="!restoring" x-text="$store.global.t('restoreDefault')">Restore Default</span>
+                        <span x-show="restoring" class="loading loading-spinner loading-xs"></span>
+                    </button>
                     <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white px-6 gap-2"
                         @click="saveClaudeConfig" :disabled="loading">
                         <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
