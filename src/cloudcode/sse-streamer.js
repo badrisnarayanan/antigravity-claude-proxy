@@ -213,7 +213,7 @@ export async function* streamSSEResponse(response, originalModel) {
                 }
 
                 // Check finish reason
-                if (firstCandidate.finishReason) {
+                if (firstCandidate.finishReason && !stopReason) {
                     if (firstCandidate.finishReason === 'MAX_TOKENS') {
                         stopReason = 'max_tokens';
                     } else if (firstCandidate.finishReason === 'STOP') {
