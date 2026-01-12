@@ -6,7 +6,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.store('global', {
         // App State
-        version: '1.0.0',
+        version: '2.0.2',
         activeTab: 'dashboard',
         webuiPassword: localStorage.getItem('antigravity_webui_password') || '',
 

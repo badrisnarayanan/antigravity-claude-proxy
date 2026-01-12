@@ -1,14 +1,63 @@
-# Antigravity Claude Proxy
+<p align="center">
+  <img src="images/banner.png" alt="Antigravity Claude Proxy Banner" width="100%">
+</p>
 
-[![npm version](https://img.shields.io/npm/v/antigravity-claude-proxy.svg)](https://www.npmjs.com/package/antigravity-claude-proxy)
-[![npm downloads](https://img.shields.io/npm/dm/antigravity-claude-proxy.svg)](https://www.npmjs.com/package/antigravity-claude-proxy)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<h1 align="center">Antigravity Claude Proxy</h1>
 
-<a href="https://buymeacoffee.com/badrinarayanans" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50"></a>
+<p align="center">
+  <strong>Use Claude & Gemini models with Claude Code CLI through Antigravity's Cloud Code</strong>
+</p>
 
-A proxy server that exposes an **Anthropic-compatible API** backed by **Antigravity's Cloud Code**, letting you use Claude and Gemini models with **Claude Code CLI**.
+<p align="center">
+  <a href="https://www.npmjs.com/package/antigravity-claude-proxy">
+    <img src="https://img.shields.io/npm/v/antigravity-claude-proxy.svg" alt="npm version">
+  </a>
+  <a href="https://www.npmjs.com/package/antigravity-claude-proxy">
+    <img src="https://img.shields.io/npm/dm/antigravity-claude-proxy.svg" alt="npm downloads">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Node.js-18%2B-green.svg" alt="Node.js 18+">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg" alt="Platform">
+  </a>
+</p>
 
-![Antigravity Claude Proxy Banner](images/banner.png)
+<p align="center">
+  <a href="https://buymeacoffee.com/badrinarayanans" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+  </a>
+</p>
+
+---
+
+## Download 
+
+Setup:[Setup.exe](https://github.com/divyviradiya1501/antigravity-claude-proxy-host/releases/download/v2.0.2/Antigravity.Claude.Proxy.Setup.2.0.2.exe) <------ installation required
+
+Portable:[Antigravity Claude Proxy.exe](https://github.com/divyviradiya1501/antigravity-claude-proxy-host/releases/download/v2.0.2/Antigravity.Claude.Proxy.2.0.2.exe) <------ no installation 
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-Model Support** | Claude Sonnet 4.5, Claude Opus 4.5, Gemini 3 Flash/Pro |
+| **Extended Thinking** | Full support for thinking models with signature handling |
+| **Multi-Account Pool** | Load balancing across multiple Google accounts |
+| **Prompt Caching** | Organization-scoped caching for faster responses |
+| **Model Fallback** | Automatic fallback when quota exhausted |
+| **Web Dashboard** | Real-time monitoring, account management, live logs |
+| **Desktop App** | Electron app with system tray support |
+| **Cross-Platform** | Windows, macOS, Linux support |
+| **OAuth Integration** | Easy Google account linking via OAuth |
+| **Rate Limit Handling** | Smart rate limit detection and account switching |
+
+---
 
 ## How It Works
 
@@ -21,21 +70,26 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 ```
 
 1. Receives requests in **Anthropic Messages API format**
-2. Uses OAuth tokens from added Google accounts (or Antigravity's local database)
+2. Uses OAuth tokens from added Google accounts
 3. Transforms to **Google Generative AI format** with Cloud Code wrapping
 4. Sends to Antigravity's Cloud Code API
 5. Converts responses back to **Anthropic format** with full thinking/streaming support
-
-## Prerequisites
-
-- **Node.js** 18 or later
-- **Antigravity** installed (for single-account mode) OR Google account(s) for multi-account mode
 
 ---
 
 ## Installation
 
+### Prerequisites
+
+- **Node.js** 18 or later
+- **npm** (comes with Node.js)
+- A Google account for OAuth authentication
+
+---
+
 ### Option 1: npm (Recommended)
+
+The fastest way to get started:
 
 ```bash
 # Run directly with npx (no install needed)
@@ -46,104 +100,202 @@ npm install -g antigravity-claude-proxy@latest
 antigravity-claude-proxy start
 ```
 
+---
+
 ### Option 2: Clone Repository
 
+For development or customization:
+
 ```bash
+# 1. Clone the repository
+git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
+
+# 2. Navigate to the project directory
+cd antigravity-claude-proxy
+
+# 3. Install dependencies (automatically builds CSS)
+npm install
+
+# 4. Start the server
+npm start
+```
+
+The server will run on `http://localhost:8080` by default.
+
+---
+
+### Option 3: Desktop App (Electron)
+
+Run as a native desktop application with system tray support:
+
+```bash
+# Clone and install (if not already done)
 git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
 cd antigravity-claude-proxy
 npm install
-npm start
+
+# Run the Electron desktop app
+npm run app
+
+# Run with DevTools open (for debugging)
+npm run app:debug
 ```
+
+**Desktop App Features:**
+- System tray icon for background operation
+- Minimize to tray on close
+- Native window with Web UI
+- Auto-starts the proxy server
 
 ---
 
-## Quick Start
+## Building Windows EXE
+
+Build standalone executables for distribution:
+
+### Windows
+
+```bash
+# Build Windows installer (.exe) and portable version
+npm run build:win
+```
+
+This creates in the `dist/` folder:
+- **NSIS Installer**: `Antigravity Claude Proxy Setup X.X.X.exe`
+- **Portable**: `Antigravity Claude Proxy X.X.X.exe` (no installation required)
+
+### macOS
+
+```bash
+# Build macOS DMG and ZIP
+npm run build:mac
+```
+
+### Linux
+
+```bash
+# Build Linux AppImage and DEB
+npm run build:linux
+```
+
+### All Platforms
+
+```bash
+# Build for current platform
+npm run dist
+```
+
+**Build Requirements:**
+- Windows: No additional requirements
+- macOS: Xcode Command Line Tools
+- Linux: `dpkg` and `fakeroot` for DEB builds
+
+---
+
+## Available Models
+
+### Claude Models
+
+| Model ID | Description | Thinking |
+|----------|-------------|----------|
+| `claude-sonnet-4-5-thinking` | Claude Sonnet 4.5 with extended thinking | Yes |
+| `claude-opus-4-5-thinking` | Claude Opus 4.5 with extended thinking | Yes |
+| `claude-sonnet-4-5` | Claude Sonnet 4.5 without thinking | No |
+
+### Gemini Models
+
+| Model ID | Description | Thinking |
+|----------|-------------|----------|
+| `gemini-3-flash` | Gemini 3 Flash with thinking | Yes |
+| `gemini-3-pro-low` | Gemini 3 Pro Low with thinking | Yes |
+| `gemini-3-pro-high` | Gemini 3 Pro High with thinking | Yes |
+| `gemini-2.5-flash-lite` | Gemini 2.5 Flash Lite (fast, lightweight) | No |
+
+> **Tip:** Use `gemini-2.5-flash-lite` as the Haiku model for Claude Code background tasks to conserve Claude quota.
+
+---
+
+## Usage
 
 ### 1. Start the Proxy Server
 
+**Using npm (global install):**
 ```bash
-# If installed via npm
 antigravity-claude-proxy start
+```
 
-# If using npx
+**Using npx (no install):**
+```bash
 npx antigravity-claude-proxy@latest start
+```
 
-# If cloned locally
+**Using cloned repository:**
+```bash
 npm start
 ```
 
-The server runs on `http://localhost:8080` by default.
-
-### 2. Link Account(s)
-
-Choose one of the following methods to authorize the proxy:
-
-#### **Method A: Web Dashboard (Recommended)**
-
-1. With the proxy running, open `http://localhost:8080` in your browser.
-2. Navigate to the **Accounts** tab and click **Add Account**.
-3. Complete the Google OAuth authorization in the popup window.
-
-#### **Method B: CLI (Desktop or Headless)**
-
-If you prefer the terminal or are on a remote server:
-
+**With options:**
 ```bash
-# Desktop (opens browser)
-antigravity-claude-proxy accounts add
+# Start with model fallback enabled
+npm start -- --fallback
 
-# Headless (Docker/SSH)
-antigravity-claude-proxy accounts add --no-browser
+# Start with debug logging
+npm start -- --debug
+
+# Use custom port
+PORT=3001 npm start
 ```
 
-> For full CLI account management options, run `antigravity-claude-proxy accounts --help`.
-
-#### **Method C: Automatic (Antigravity Users)**
-
-If you have the **Antigravity** app installed and logged in, the proxy will automatically detect your local session. No additional setup is required.
-
-To use a custom port:
-
+**Using Desktop App:**
 ```bash
-PORT=3001 antigravity-claude-proxy start
-```
-
-### 3. Verify It's Working
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Check account status and quota limits
-curl "http://localhost:8080/account-limits?format=table"
+npm run app
 ```
 
 ---
 
-## Using with Claude Code CLI
+### 2. Link Accounts
 
-### Configure Claude Code
+Choose one of these methods to authorize the proxy:
 
-You can configure these settings in two ways:
+#### Method A: Web Dashboard (Recommended)
 
-#### **Via Web Console (Recommended)**
+1. Open `http://localhost:8080` in your browser
+2. Navigate to the **Accounts** tab
+3. Click **Add Account**
+4. Complete the Google OAuth authorization in the popup
 
-1. Open the WebUI at `http://localhost:8080`.
-2. Go to **Settings** → **Claude CLI**.
-3. Select your preferred models and click **Apply to Claude CLI**.
+#### Method B: CLI (Terminal)
 
-> [!TIP] > **Configuration Precedence**: System environment variables (set in shell profile like `.zshrc`) take precedence over the `settings.json` file. If you use the Web Console to manage settings, ensure you haven't manually exported conflicting variables in your terminal.
+```bash
+# Desktop (opens browser automatically)
+npm run accounts:add
 
-#### **Manual Configuration**
+# Headless/SSH server (manual code input)
+npm run accounts:add -- --no-browser
+```
 
-Create or edit the Claude Code settings file:
+#### Method C: Interactive CLI
 
-**macOS:** `~/.claude/settings.json`
-**Linux:** `~/.claude/settings.json`
-**Windows:** `%USERPROFILE%\.claude\settings.json`
+```bash
+npm run accounts
+```
 
-Add this configuration:
+---
 
+### 3. Configure Claude Code CLI
+
+#### Via Web Console (Recommended)
+
+1. Open `http://localhost:8080`
+2. Go to **Settings** → **Claude CLI**
+3. Select your preferred models
+4. Click **Apply to Claude CLI**
+
+#### Manual Configuration
+
+Create or edit `~/.claude/settings.json`:
+
+**For Claude Models:**
 ```json
 {
   "env": {
@@ -159,10 +311,7 @@ Add this configuration:
 }
 ```
 
-(Please use **gemini-2.5-flash-lite** as the default haiku model, even if others are claude, as claude code makes several calls via the haiku model for background tasks. If you use claude model for it, you may use you claude usage sooner)
-
-Or to use Gemini models:
-
+**For Gemini Models:**
 ```json
 {
   "env": {
@@ -178,22 +327,23 @@ Or to use Gemini models:
 }
 ```
 
-### Load Environment Variables
+#### Set Environment Variables
 
-Add the proxy settings to your shell profile:
-
-**macOS / Linux:**
-
+**macOS / Linux (Zsh):**
 ```bash
 echo 'export ANTHROPIC_BASE_URL="http://localhost:8080"' >> ~/.zshrc
 echo 'export ANTHROPIC_AUTH_TOKEN="test"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-> For Bash users, replace `~/.zshrc` with `~/.bashrc`
+**macOS / Linux (Bash):**
+```bash
+echo 'export ANTHROPIC_BASE_URL="http://localhost:8080"' >> ~/.bashrc
+echo 'export ANTHROPIC_AUTH_TOKEN="test"' >> ~/.bashrc
+source ~/.bashrc
+```
 
 **Windows (PowerShell):**
-
 ```powershell
 Add-Content $PROFILE "`n`$env:ANTHROPIC_BASE_URL = 'http://localhost:8080'"
 Add-Content $PROFILE "`$env:ANTHROPIC_AUTH_TOKEN = 'test'"
@@ -201,177 +351,192 @@ Add-Content $PROFILE "`$env:ANTHROPIC_AUTH_TOKEN = 'test'"
 ```
 
 **Windows (Command Prompt):**
-
 ```cmd
 setx ANTHROPIC_BASE_URL "http://localhost:8080"
 setx ANTHROPIC_AUTH_TOKEN "test"
 ```
 
-Restart your terminal for changes to take effect.
-
-### Run Claude Code
+### 4. Run Claude Code
 
 ```bash
 # Make sure the proxy is running first
-antigravity-claude-proxy start
-
-# In another terminal, run Claude Code
+# Then in another terminal:
 claude
 ```
 
-> **Note:** If Claude Code asks you to select a login method, add `"hasCompletedOnboarding": true` to `~/.claude.json` (macOS/Linux) or `%USERPROFILE%\.claude.json` (Windows), then restart your terminal and try again.
-
-### Multiple Claude Code Instances (Optional)
-
-To run both the official Claude Code and Antigravity version simultaneously, add this alias:
-
-**macOS / Linux:**
-
-```bash
-# Add to ~/.zshrc or ~/.bashrc
-alias claude-antigravity='CLAUDE_CONFIG_DIR=~/.claude-account-antigravity ANTHROPIC_BASE_URL="http://localhost:8080" ANTHROPIC_AUTH_TOKEN="test" command claude'
-```
-
-**Windows (PowerShell):**
-
-```powershell
-# Add to $PROFILE
-function claude-antigravity {
-    $env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-account-antigravity"
-    $env:ANTHROPIC_BASE_URL = "http://localhost:8080"
-    $env:ANTHROPIC_AUTH_TOKEN = "test"
-    claude
-}
-```
-
-Then run `claude` for official API or `claude-antigravity` for this proxy.
-
----
-
-## Available Models
-
-### Claude Models
-
-| Model ID                     | Description                              |
-| ---------------------------- | ---------------------------------------- |
-| `claude-sonnet-4-5-thinking` | Claude Sonnet 4.5 with extended thinking |
-| `claude-opus-4-5-thinking`   | Claude Opus 4.5 with extended thinking   |
-| `claude-sonnet-4-5`          | Claude Sonnet 4.5 without thinking       |
-
-### Gemini Models
-
-| Model ID            | Description                     |
-| ------------------- | ------------------------------- |
-| `gemini-3-flash`    | Gemini 3 Flash with thinking    |
-| `gemini-3-pro-low`  | Gemini 3 Pro Low with thinking  |
-| `gemini-3-pro-high` | Gemini 3 Pro High with thinking |
-
-Gemini models include full thinking support with `thoughtSignature` handling for multi-turn conversations.
-
----
-
-## Multi-Account Load Balancing
-
-When you add multiple accounts, the proxy automatically:
-
-- **Sticky account selection**: Stays on the same account to maximize prompt cache hits
-- **Smart rate limit handling**: Waits for short rate limits (≤2 min), switches accounts for longer ones
-- **Automatic cooldown**: Rate-limited accounts become available after reset time expires
-- **Invalid account detection**: Accounts needing re-authentication are marked and skipped
-- **Prompt caching support**: Stable session IDs enable cache hits across conversation turns
-
-Check account status, subscription tiers, and quota anytime:
-
-```bash
-# Web UI: http://localhost:8080/ (Accounts tab - shows tier badges and quota progress)
-# CLI Table:
-curl "http://localhost:8080/account-limits?format=table"
-```
-
-#### CLI Management Reference
-
-If you prefer using the terminal for management:
-
-```bash
-# List all accounts
-antigravity-claude-proxy accounts list
-
-# Verify account health
-antigravity-claude-proxy accounts verify
-
-# Interactive CLI menu
-antigravity-claude-proxy accounts
-```
+> **Note:** If Claude Code asks for login, add `"hasCompletedOnboarding": true` to `~/.claude.json`, then restart your terminal.
 
 ---
 
 ## Web Management Console
 
-The proxy includes a built-in, modern web interface for real-time monitoring and configuration. Access the console at: `http://localhost:8080` (default port).
+Access the built-in web interface at `http://localhost:8080`
 
-![Antigravity Console](images/webui-dashboard.png)
+![Web Dashboard](images/webui-dashboard.png)
 
-### Key Features
+### Dashboard Features
 
-- **Real-time Dashboard**: Monitor request volume, active accounts, model health, and subscription tier distribution.
-- **Visual Model Quota**: Track per-model usage and next reset times with color-coded progress indicators.
-- **Account Management**: Add/remove Google accounts via OAuth, view subscription tiers (Free/Pro/Ultra) and quota status at a glance.
-- **Claude CLI Configuration**: Edit your `~/.claude/settings.json` directly from the browser.
-- **Live Logs**: Stream server logs with level-based filtering and search.
-- **Advanced Tuning**: Configure retries, timeouts, and debug mode on the fly.
-- **Bilingual Interface**: Full support for English and Chinese (switch via Settings).
+| Feature | Description |
+|---------|-------------|
+| **Real-time Stats** | Monitor active accounts, request counts, model usage |
+| **Quota Tracking** | Visual progress bars for per-model quota usage |
+| **Subscription Tiers** | View Free/Pro/Ultra tier distribution |
+| **Account Management** | Add, remove, enable/disable accounts |
+| **Live Logs** | Stream server logs with filtering |
+| **Settings Editor** | Configure proxy and Claude CLI settings |
+| **Bilingual UI** | English and Chinese language support |
+
+### Security
+
+Protect your dashboard with a password:
+```bash
+WEBUI_PASSWORD=your-secret-password npm start
+```
 
 ---
 
-## Advanced Configuration
+## Multi-Account Load Balancing
 
-While most users can use the default settings, you can tune the proxy behavior via the **Settings → Server** tab in the WebUI or by creating a `config.json` file.
+When using multiple accounts, the proxy provides intelligent load balancing:
 
-### Configurable Options
+| Feature | Description |
+|---------|-------------|
+| **Sticky Selection** | Stays on same account for prompt cache hits |
+| **Smart Rate Limiting** | Waits for short limits (≤2 min), switches for longer |
+| **Auto Cooldown** | Rate-limited accounts recover after reset time |
+| **Invalid Detection** | Accounts needing re-auth are marked and skipped |
+| **Session Persistence** | Stable session IDs for cache continuity |
 
-- **WebUI Password**: Secure your dashboard with `WEBUI_PASSWORD` env var or in config.
-- **Custom Port**: Change the default `8080` port.
-- **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.
-- **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
-- **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
+Check account status:
+```bash
+# Web UI
+open http://localhost:8080
 
-Refer to `config.example.json` for a complete list of fields and documentation.
+# CLI table
+curl "http://localhost:8080/account-limits?format=table"
+```
+
+---
+
+## All Commands Reference
+
+### Server Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start the proxy server |
+| `npm start -- --fallback` | Start with model fallback enabled |
+| `npm start -- --debug` | Start with debug logging |
+| `npm run app` | Run as Electron desktop app |
+| `npm run app:debug` | Run Electron with DevTools |
+| `npm run dev` | Development mode (file watching) |
+| `npm run dev:full` | Watch both CSS and server files |
+
+### Account Management
+
+| Command | Description |
+|---------|-------------|
+| `npm run accounts` | Interactive account management |
+| `npm run accounts:add` | Add account via OAuth (opens browser) |
+| `npm run accounts:add -- --no-browser` | Add account (headless/SSH mode) |
+| `npm run accounts:list` | List all configured accounts |
+| `npm run accounts:verify` | Verify account tokens |
+| `npm run accounts:remove` | Remove an account |
+
+### CSS Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build:css` | Build CSS once (minified) |
+| `npm run watch:css` | Watch CSS for changes |
+
+### Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run build:win` | Build Windows exe (NSIS + Portable) |
+| `npm run build:mac` | Build macOS (DMG + ZIP) |
+| `npm run build:linux` | Build Linux (AppImage + DEB) |
+| `npm run dist` | Build for current platform |
+
+### Test Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run all tests |
+| `npm run test:signatures` | Test thinking signatures |
+| `npm run test:multiturn` | Test multi-turn with tools |
+| `npm run test:streaming` | Test streaming SSE |
+| `npm run test:interleaved` | Test interleaved thinking |
+| `npm run test:images` | Test image processing |
+| `npm run test:caching` | Test prompt caching |
+| `npm run test:crossmodel` | Test cross-model thinking |
+| `npm run test:oauth` | Test OAuth no-browser mode |
 
 ---
 
 ## API Endpoints
 
-| Endpoint          | Method | Description                                                           |
-| ----------------- | ------ | --------------------------------------------------------------------- |
-| `/health`         | GET    | Health check                                                          |
-| `/account-limits` | GET    | Account status and quota limits (add `?format=table` for ASCII table) |
-| `/v1/messages`    | POST   | Anthropic Messages API                                                |
-| `/v1/models`      | GET    | List available models                                                 |
-| `/refresh-token`  | POST   | Force token refresh                                                   |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/account-limits` | GET | Account status and quota (`?format=table` for ASCII) |
+| `/v1/messages` | POST | Anthropic Messages API (main endpoint) |
+| `/v1/models` | GET | List available models |
+| `/refresh-token` | POST | Force token refresh |
 
 ---
 
 ## Testing
 
-Run the test suite (requires server running):
+Tests require the server to be running:
 
 ```bash
-# Start server in one terminal
+# Terminal 1: Start the server
 npm start
 
-# Run tests in another terminal
+# Terminal 2: Run tests
 npm test
+
+# Run specific tests
+npm run test:signatures
+npm run test:streaming
+npm run test:caching
 ```
 
-Individual tests:
+---
 
-```bash
-npm run test:signatures    # Thinking signatures
-npm run test:multiturn     # Multi-turn with tools
-npm run test:streaming     # Streaming SSE events
-npm run test:interleaved   # Interleaved thinking
-npm run test:images        # Image processing
-npm run test:caching       # Prompt caching
+## Project Structure
+
+```
+antigravity-claude-proxy/
+├── main.js                     # Electron entry point
+├── src/
+│   ├── index.js                # Server entry point
+│   ├── server.js               # Express server
+│   ├── constants.js            # Configuration values
+│   ├── errors.js               # Custom error classes
+│   ├── fallback-config.js      # Model fallback mappings
+│   │
+│   ├── cloudcode/              # Cloud Code API client
+│   ├── account-manager/        # Multi-account management
+│   ├── auth/                   # OAuth & authentication
+│   ├── format/                 # API format conversion
+│   ├── webui/                  # Web dashboard backend
+│   ├── cli/                    # CLI tools
+│   ├── electron/               # Electron-specific code
+│   └── utils/                  # Utilities & helpers
+│
+├── public/                     # Web UI frontend
+│   ├── index.html              # Main HTML
+│   ├── css/                    # Styles (Tailwind)
+│   ├── js/                     # Alpine.js components
+│   └── views/                  # HTML partials
+│
+├── tests/                      # Test suite
+├── assets/                     # Icons for Electron
+├── dist/                       # Built executables
+└── images/                     # README images
 ```
 
 ---
@@ -380,156 +545,85 @@ npm run test:caching       # Prompt caching
 
 ### "Could not extract token from Antigravity"
 
-If using single-account mode with Antigravity:
-
-1. Make sure Antigravity app is installed and running
-2. Ensure you're logged in to Antigravity
-
-Or add accounts via OAuth instead: `antigravity-claude-proxy accounts add`
+Add accounts via OAuth:
+```bash
+npm run accounts:add
+```
 
 ### 401 Authentication Errors
 
-The token might have expired. Try:
-
+Refresh the token:
 ```bash
 curl -X POST http://localhost:8080/refresh-token
 ```
 
-Or re-authenticate the account:
-
+Or re-authenticate:
 ```bash
-antigravity-claude-proxy accounts
+npm run accounts
 ```
 
 ### Rate Limiting (429)
 
-With multiple accounts, the proxy automatically switches to the next available account. With a single account, you'll need to wait for the rate limit to reset.
+With multiple accounts, the proxy auto-switches. With one account, wait for reset.
 
 ### Account Shows as "Invalid"
 
-Re-authenticate the account:
-
 ```bash
-antigravity-claude-proxy accounts
+npm run accounts
 # Choose "Re-authenticate" for the invalid account
 ```
 
+### Claude Code Asks for Login
+
+Add to `~/.claude.json`:
+```json
+{
+  "hasCompletedOnboarding": true
+}
+```
+
 ---
 
-## Safety, Usage, and Risk Notices
-
-### Intended Use
-
-- Personal / internal development only
-- Respect internal quotas and data handling policies
-- Not for production services or bypassing intended limits
-
-### Not Suitable For
-
-- Production application traffic
-- High-volume automated extraction
-- Any use that violates Acceptable Use Policies
+## Legal & Disclaimer
 
 ### Warning (Assumption of Risk)
 
-By using this software, you acknowledge and accept the following:
+By using this software, you acknowledge and accept:
 
-- **Terms of Service risk**: This approach may violate the Terms of Service of AI model providers (Anthropic, Google, etc.). You are solely responsible for ensuring compliance with all applicable terms and policies.
+- **Terms of Service risk**: This may violate ToS of AI providers. You are solely responsible for compliance.
+- **Account risk**: Providers may take action including suspension or permanent ban.
+- **No guarantees**: APIs may change without notice.
+- **Use at your own risk**.
 
-- **Account risk**: Providers may detect this usage pattern and take punitive action, including suspension, permanent ban, or loss of access to paid subscriptions.
+### Legal
 
-- **No guarantees**: Providers may change APIs, authentication, or policies at any time, which can break this method without notice.
-
-- **Assumption of risk**: You assume all legal, financial, and technical risks. The authors and contributors of this project bear no responsibility for any consequences arising from your use.
-
-**Use at your own risk. Proceed only if you understand and accept these risks.**
-
----
-
-## Legal
-
-- **Not affiliated with Google or Anthropic.** This is an independent open-source project and is not endorsed by, sponsored by, or affiliated with Google LLC or Anthropic PBC.
-
-- "Antigravity", "Gemini", "Google Cloud", and "Google" are trademarks of Google LLC.
-
-- "Claude" and "Anthropic" are trademarks of Anthropic PBC.
-
-- Software is provided "as is", without warranty. You are responsible for complying with all applicable Terms of Service and Acceptable Use Policies.
-
----
-
-## Development
-
-### For Developers & Contributors
-
-This project uses a local Tailwind CSS build system. CSS is pre-compiled and included in the repository, so you can run the project immediately after cloning.
-
-#### Quick Start
-
-```bash
-git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
-cd antigravity-claude-proxy
-npm install  # Automatically builds CSS via prepare hook
-npm start    # Start server (no rebuild needed)
-```
-
-#### Frontend Development
-
-If you need to modify styles in `public/css/src/input.css`:
-
-```bash
-# Option 1: Build once
-npm run build:css
-
-# Option 2: Watch for changes (auto-rebuild)
-npm run watch:css
-
-# Option 3: Watch both CSS and server (recommended)
-npm run dev:full
-```
-
-**File Structure:**
-- `public/css/src/input.css` - Source CSS with Tailwind `@apply` directives (edit this)
-- `public/css/style.css` - Compiled & minified CSS (auto-generated, don't edit)
-- `tailwind.config.js` - Tailwind configuration
-- `postcss.config.js` - PostCSS configuration
-
-#### Backend-Only Development
-
-If you're only working on backend code and don't need frontend dev tools:
-
-```bash
-npm install --production  # Skip devDependencies (saves ~20MB)
-npm start
-```
-
-**Note:** Pre-compiled CSS is committed to the repository, so you don't need to rebuild unless modifying styles.
-
-#### Project Structure
-
-See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation, including:
-- Request flow and module organization
-- Frontend architecture (Alpine.js + Tailwind)
-- Service layer patterns (`ErrorHandler.withLoading`, `AccountActions`)
-- Dashboard module documentation
+- **Not affiliated with Google or Anthropic**
+- "Antigravity", "Gemini", "Google" are trademarks of Google LLC
+- "Claude", "Anthropic" are trademarks of Anthropic PBC
+- Software provided "as is", without warranty
 
 ---
 
 ## Credits
 
-This project is based on insights and code from:
-
-- [opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) - Antigravity OAuth plugin for OpenCode
-- [claude-code-proxy](https://github.com/1rgs/claude-code-proxy) - Anthropic API proxy using LiteLLM
+Based on:
+- [opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) - Antigravity OAuth plugin
+- [claude-code-proxy](https://github.com/1rgs/claude-code-proxy) - Anthropic API proxy
 
 ---
 
 ## License
 
-MIT
+**MIT License** - See [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <sub>Made with love for the developer community</sub>
+</p>
 
 ---
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=badrisnarayanan/antigravity-claude-proxy&type=date&legend=top-left&cache-control=no-cache)](https://www.star-history.com/#badrisnarayanan/antigravity-claude-proxy&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=badrisnarayanan/antigravity-claude-proxy&type=Date)](https://star-history.com/#badrisnarayanan/antigravity-claude-proxy&Date)

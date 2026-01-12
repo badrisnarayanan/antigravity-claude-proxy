@@ -9,6 +9,9 @@ import { logger } from './utils/logger.js';
 import path from 'path';
 import os from 'os';
 
+// Detect if running inside Electron
+const isElectron = !!process.versions.electron;
+
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
@@ -34,9 +37,53 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-app.listen(PORT, () => {
-    // Clear console for a clean start
-    console.clear();
+// Store server instance for graceful shutdown
+let server = null;
+
+/**
+ * Graceful shutdown handler
+ * Closes the HTTP server and allows pending connections to finish
+ */
+function gracefulShutdown(signal) {
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+
+    if (server) {
+        server.close(() => {
+            logger.success('Server closed successfully');
+            process.exit(0);
+        });
+
+        // Force exit after 5 seconds if connections don't close
+        setTimeout(() => {
+            logger.warn('Forcing shutdown after timeout');
+            process.exit(1);
+        }, 5000);
+    } else {
+        process.exit(0);
+    }
+}
+
+// Register shutdown handlers (works in both CLI and Electron modes)
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+server = app.listen(PORT, () => {
+    // Clear console for a clean start (only in CLI mode, not in Electron)
+    if (!isElectron) {
+        console.clear();
+    }
+
+    // In Electron mode, show a simple startup message instead of the full ASCII banner
+    if (isElectron) {
+        logger.success(`Antigravity Claude Proxy server started on port ${PORT}`);
+        if (isDebug) {
+            logger.debug('Debug mode enabled');
+        }
+        if (isFallbackEnabled) {
+            logger.info('Model fallback mode enabled');
+        }
+        return;
+    }
 
     const border = '║';
     // align for 2-space indent (60 chars), align4 for 4-space indent (58 chars)
@@ -105,3 +152,6 @@ ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${bo
         logger.warn('Running in DEBUG mode - verbose logs enabled');
     }
 });
+
+// Export server instance for Electron or external control
+export { server };

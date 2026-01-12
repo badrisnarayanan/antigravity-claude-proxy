@@ -1,8 +1,8 @@
 {
   "name": "antigravity-claude-proxy",
-  "version": "1.2.6",
+  "version": "2.0.2",
   "description": "Proxy server to use Antigravity's Claude models with Claude Code CLI",
-  "main": "src/index.js",
+  "main": "main.js",
   "type": "module",
   "bin": {
     "antigravity-claude-proxy": "bin/cli.js"
@@ -17,6 +17,9 @@
     "watch:css": "tailwindcss -i ./public/css/src/input.css -o ./public/css/style.css --watch",
     "prepare": "npm run build:css",
     "start": "node src/index.js",
+    "app": "electron .",
+    "app:debug": "electron . --debug",
+    "postinstall": "npx @electron/rebuild || true",
     "dev": "node --watch src/index.js",
     "dev:full": "concurrently \"npm run watch:css\" \"npm run dev\"",
     "accounts": "node src/cli/accounts.js",
@@ -34,7 +37,67 @@
     "test:crossmodel": "node tests/test-cross-model-thinking.cjs",
     "test:oauth": "node tests/test-oauth-no-browser.cjs",
     "test:emptyretry": "node tests/test-empty-response-retry.cjs",
-    "test:sanitizer": "node tests/test-schema-sanitizer.cjs"
+    "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.antigravity.claude-proxy",
+    "productName": "Antigravity Claude Proxy",
+    "icon": "assets/icon.ico",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "src/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "assets/icon.ico",
+      "assets/icon.png"
+    ],
+    "portable": {
+      "artifactName": "${productName} ${version}.${ext}"
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
   },
   "keywords": [
     "claude",
@@ -63,11 +126,17 @@
     "express": "^4.18.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.2",
     "@tailwindcss/forms": "^0.5.7",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "daisyui": "^4.12.14",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.4.0",
+    "electron-rebuild": "^3.2.9",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.4.32",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.0"
   }
 }

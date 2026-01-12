@@ -4,19 +4,24 @@ node_modules/
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
 log.txt
+npm-debug.log*
 
 # IDE
 .vscode/
 .idea/
 .history/
+*.swp
+*.swo
 
 # Local config (may contain tokens)
 .claude/
 .deepvcode/
+config.json
 
 # Runtime data
 data/
@@ -29,7 +34,10 @@ tests/utils/*.jpeg
 # Environment
 .env
 .env.local
+.env.*.local
 
 # Build output
 dist/
 build/
+nul
+*.tgz

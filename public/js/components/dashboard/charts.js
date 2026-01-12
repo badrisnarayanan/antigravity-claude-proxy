@@ -149,15 +149,12 @@ window.DashboardCharts.updateCharts = function (component) {
 
   // Safety checks
   if (!canvas) {
-    console.debug("quotaChart canvas not found");
     return;
   }
   if (typeof Chart === "undefined") {
-    console.warn("Chart.js not loaded");
     return;
   }
   if (!isCanvasReady(canvas)) {
-    console.debug("quotaChart canvas not ready, skipping update");
     return;
   }
 
@@ -289,22 +286,18 @@ window.DashboardCharts.updateCharts = function (component) {
 window.DashboardCharts.updateTrendChart = function (component) {
   // Prevent concurrent updates (fixes race condition on rapid toggling)
   if (_trendChartUpdateLock) {
-    console.log("[updateTrendChart] Update already in progress, skipping");
     return;
   }
   _trendChartUpdateLock = true;
 
-  console.log("[updateTrendChart] Starting update...");
-
   // Safely destroy existing chart instance FIRST
   if (component.charts.usageTrend) {
-    console.log("[updateTrendChart] Destroying existing chart");
     try {
       // Stop all animations before destroying to prevent null context errors
       component.charts.usageTrend.stop();
       component.charts.usageTrend.destroy();
     } catch (e) {
-      console.error("[updateTrendChart] Failed to destroy chart:", e);
+      // Chart destruction failed, continue anyway
     }
     component.charts.usageTrend = null;
   }
@@ -312,29 +305,12 @@ window.DashboardCharts.updateTrendChart = function (component) {
   const canvas = document.getElementById("usageTrendChart");
 
   // Safety checks
-  if (!canvas) {
-    console.error("[updateTrendChart] Canvas not found in DOM!");
+  if (!canvas || typeof Chart === "undefined") {
+    _trendChartUpdateLock = false;
     return;
   }
-  if (typeof Chart === "undefined") {
-    console.error("[updateTrendChart] Chart.js not loaded");
-    return;
-  }
-
-  console.log("[updateTrendChart] Canvas element:", {
-    exists: !!canvas,
-    isConnected: canvas.isConnected,
-    width: canvas.offsetWidth,
-    height: canvas.offsetHeight,
-    parentElement: canvas.parentElement?.tagName,
-  });
 
   if (!isCanvasReady(canvas)) {
-    console.error("[updateTrendChart] Canvas not ready!", {
-      isConnected: canvas.isConnected,
-      width: canvas.offsetWidth,
-      height: canvas.offsetHeight,
-    });
     _trendChartUpdateLock = false;
     return;
   }
@@ -346,17 +322,12 @@ window.DashboardCharts.updateTrendChart = function (component) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   } catch (e) {
-    console.warn("[updateTrendChart] Failed to clear canvas:", e);
+    // Canvas clear failed, continue anyway
   }
-
-  console.log(
-    "[updateTrendChart] Canvas is ready, proceeding with chart creation"
-  );
 
   // Use filtered history data based on time range
   const history = window.DashboardFilters.getFilteredHistoryData(component);
   if (!history || Object.keys(history).length === 0) {
-    console.warn("No history data available for trend chart (after filtering)");
     component.hasFilteredTrendData = false;
     _trendChartUpdateLock = false;
     return;
