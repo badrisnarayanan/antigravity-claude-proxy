@@ -277,6 +277,7 @@ export function mountWebUI(app, dirname, accountManager) {
         defaultCooldownMs,
         maxWaitBeforeErrorMs,
         geminiHeaderMode,
+        maxContextTokens,
       } = req.body;
 
       // Only allow updating specific fields (security)
@@ -328,6 +329,13 @@ export function mountWebUI(app, dirname, accountManager) {
         ["cli", "antigravity"].includes(geminiHeaderMode)
       ) {
         updates.geminiHeaderMode = geminiHeaderMode;
+      }
+      if (
+        typeof maxContextTokens === "number" &&
+        maxContextTokens >= 0 &&
+        maxContextTokens <= 10000000
+      ) {
+        updates.maxContextTokens = maxContextTokens;
       }
 
       if (Object.keys(updates).length === 0) {

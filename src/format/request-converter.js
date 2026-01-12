@@ -122,8 +122,9 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
   // --- Context Truncation Logic ---
   // Check if context limit is enabled (config takes precedence, then constant default)
+  // Use nullish coalescing (??) because 0 is a valid value (unlimited)
   const maxContextTokens =
-    config.maxContextTokens || DEFAULT_MAX_CONTEXT_TOKENS;
+    config.maxContextTokens ?? DEFAULT_MAX_CONTEXT_TOKENS;
 
   if (maxContextTokens > 0) {
     let currentTokens = 0;

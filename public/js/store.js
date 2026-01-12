@@ -273,6 +273,8 @@ document.addEventListener("alpine:init", () => {
         maxWaitThreshold: "Max Wait Threshold (Sticky)",
         maxWaitDesc:
           "Maximum time to wait for a sticky account to reset before switching.",
+        maxContextTokens: "Max Context Tokens",
+        maxContextTokensDesc: "Limit context size to save costs (0 = unlimited).",
         saveConfigServer: "Save Configuration",
         serverRestartAlert:
           "Changes saved to {path}. Restart server to apply some settings.",
@@ -542,6 +544,8 @@ document.addEventListener("alpine:init", () => {
         defaultCooldown: "默认冷却时间",
         maxWaitThreshold: "最大等待阈值 (粘性会话)",
         maxWaitDesc: "粘性账号在失败或切换前等待重置的最长时间。",
+        maxContextTokens: "最大上下文 Token",
+        maxContextTokensDesc: "限制上下文大小以节省成本 (0 = 无限制)。",
         saveConfigServer: "保存配置",
         serverRestartAlert: "配置已保存至 {path}。部分更改可能需要重启服务器。",
         changePassword: "修改 WebUI 密码",

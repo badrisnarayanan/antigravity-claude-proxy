@@ -67,7 +67,11 @@ window.AppConstants.VALIDATION = {
 
     // Max wait threshold (1 - 30 minutes)
     MAX_WAIT_MIN: 60000,
-    MAX_WAIT_MAX: 1800000
+    MAX_WAIT_MAX: 1800000,
+
+    // Max Context Tokens range (0 - 10M)
+    MAX_CONTEXT_TOKENS_MIN: 0,
+    MAX_CONTEXT_TOKENS_MAX: 10000000
 };
 
 /**

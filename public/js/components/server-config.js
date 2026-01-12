@@ -301,6 +301,23 @@ window.Components.serverConfig = () => ({
     );
   },
 
+  toggleMaxContextTokens(value) {
+    const { MAX_CONTEXT_TOKENS_MIN, MAX_CONTEXT_TOKENS_MAX } =
+      window.AppConstants.VALIDATION;
+    this.saveConfigField(
+      "maxContextTokens",
+      value,
+      "Max Context Tokens",
+      (v) =>
+        window.Validators.validateRange(
+          v,
+          MAX_CONTEXT_TOKENS_MIN,
+          MAX_CONTEXT_TOKENS_MAX,
+          "Max Context Tokens"
+        )
+    );
+  },
+
   async setGeminiHeaderMode(mode) {
     const store = Alpine.store("global");
     const previousValue = this.serverConfig.geminiHeaderMode;

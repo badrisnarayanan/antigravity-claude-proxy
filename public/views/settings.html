@@ -957,6 +957,30 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('maxContextTokens')">Max Context Tokens</span>
+                                    <span class="label-text-alt font-mono text-neon-purple text-xs font-semibold"
+                                        x-text="(serverConfig.maxContextTokens || 60000).toLocaleString()"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="0" max="200000" step="1000"
+                                        class="custom-range custom-range-purple flex-1"
+                                        :value="serverConfig.maxContextTokens || 60000"
+                                        :style="`background-size: ${(serverConfig.maxContextTokens || 60000) / 2000}% 100%`"
+                                        @input="toggleMaxContextTokens($event.target.value)"
+                                        aria-label="Max context tokens slider">
+                                    <input type="number" min="0" max="10000000" step="1000"
+                                        class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.maxContextTokens || 60000"
+                                        @change="toggleMaxContextTokens($event.target.value)"
+                                        aria-label="Max context tokens value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('maxContextTokensDesc')">Limit context size to save costs (0 = unlimited).</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
                                         x-text="$store.global.t('defaultCooldown')">Default Cooldown</span>
                                     <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
                                         x-text="Math.round((serverConfig.defaultCooldownMs || 60000) / 1000) + 's'"></span>
