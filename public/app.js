@@ -50,6 +50,10 @@ document.addEventListener('alpine:init', () => {
 
     // Main App Controller
     Alpine.data('app', () => ({
+        // Electron state
+        isElectron: false,
+        isMaximized: false,
+
         get connectionStatus() {
             return Alpine.store('data')?.connectionStatus || 'connecting';
         },
@@ -75,6 +79,36 @@ document.addEventListener('alpine:init', () => {
 
             // Initial Fetch
             Alpine.store('data').fetchData();
+        },
+
+        // Initialize Electron-specific features
+        initElectron() {
+            if (window.electronAPI?.isElectron) {
+                this.isElectron = true;
+
+                // Get initial maximize state
+                window.electronAPI.isMaximized().then(maximized => {
+                    this.isMaximized = maximized;
+                });
+
+                // Listen for maximize state changes
+                window.electronAPI.onMaximizeChange((maximized) => {
+                    this.isMaximized = maximized;
+                });
+            }
+        },
+
+        // Window control methods
+        minimizeWindow() {
+            if (window.electronAPI) window.electronAPI.minimize();
+        },
+
+        maximizeWindow() {
+            if (window.electronAPI) window.electronAPI.maximize();
+        },
+
+        closeWindow() {
+            if (window.electronAPI) window.electronAPI.close();
         },
 
         refreshTimer: null,

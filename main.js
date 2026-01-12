@@ -7,7 +7,7 @@
  *   npm run app:debug   # Start with DevTools open
  */
 
-import { app as electronApp, BrowserWindow, Menu } from 'electron';
+import { app as electronApp, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DEFAULT_PORT } from './src/constants.js';
@@ -29,6 +29,7 @@ let mainWindow = null;
 function createWindow() {
     // Create window icon from SVG (Electron supports SVG natively on some platforms)
     const iconPath = path.join(__dirname, 'public', 'favicon.svg');
+    const preloadPath = path.join(__dirname, 'src', 'electron', 'preload.js');
 
     mainWindow = new BrowserWindow({
         width: 1200,
@@ -38,12 +39,17 @@ function createWindow() {
         title: 'Antigravity Claude Proxy',
         icon: iconPath,
         autoHideMenuBar: true,
+        // Frameless window for custom titlebar
+        frame: false,
+        // Transparent background for rounded corners
+        transparent: true,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            preload: preloadPath,
         },
         // Modern window appearance
-        backgroundColor: '#1d232a', // Match DaisyUI dark theme background
+        backgroundColor: '#00000000', // Transparent for rounded corners
         show: false, // Don't show until ready
     });
 
@@ -76,7 +82,39 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+    // Notify renderer when maximize state changes
+    mainWindow.on('maximize', () => {
+        mainWindow.webContents.send('window-maximize-change', true);
+    });
+
+    mainWindow.on('unmaximize', () => {
+        mainWindow.webContents.send('window-maximize-change', false);
+    });
 }
+
+// IPC handlers for window controls
+ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    }
+});
+
+ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close();
+});
+
+ipcMain.handle('window-is-maximized', () => {
+    return mainWindow ? mainWindow.isMaximized() : false;
+});
 
 // Electron app lifecycle
 electronApp.whenReady().then(createWindow);

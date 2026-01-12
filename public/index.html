@@ -17,8 +17,8 @@
 </head>
 
 <body
-    class="bg-space-950 text-gray-300 font-sans antialiased min-h-screen overflow-hidden selection:bg-neon-purple selection:text-white"
-    x-cloak x-data="app" x-init="console.log('App initialized')">
+    class="bg-space-950 text-gray-300 font-sans antialiased min-h-screen overflow-hidden selection:bg-neon-purple selection:text-white app-window"
+    x-cloak x-data="app" x-init="console.log('App initialized'); initElectron()">
 
     <!-- Toast Notification -->
     <div class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
@@ -60,10 +60,55 @@
         </template>
     </div>
 
-    <!-- Navbar -->
+    <!-- Custom Titlebar (Electron) -->
+    <div id="titlebar" class="titlebar" x-show="isElectron" x-cloak>
+        <!-- Drag region with logo and title -->
+        <div class="titlebar-drag">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-7 h-7 rounded bg-gradient-to-br from-neon-purple to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-[0_0_12px_rgba(168,85,247,0.4)]">
+                    AG</div>
+                <div class="flex flex-col leading-tight">
+                    <span class="text-xs font-bold tracking-wide text-white">ANTIGRAVITY</span>
+                    <span class="text-[9px] text-gray-500 font-mono tracking-wider">CLAUDE PROXY</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window Controls -->
+        <div class="titlebar-controls">
+            <button class="titlebar-btn titlebar-btn-minimize" @click="minimizeWindow" title="Minimize">
+                <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor">
+                    <rect width="10" height="1"/>
+                </svg>
+            </button>
+            <button class="titlebar-btn titlebar-btn-maximize" @click="maximizeWindow" :title="isMaximized ? 'Restore' : 'Maximize'">
+                <template x-if="!isMaximized">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+                        <rect x="0.5" y="0.5" width="9" height="9"/>
+                    </svg>
+                </template>
+                <template x-if="isMaximized">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+                        <rect x="2.5" y="0.5" width="7" height="7"/>
+                        <path d="M0.5 2.5V9.5H7.5"/>
+                    </svg>
+                </template>
+            </button>
+            <button class="titlebar-btn titlebar-btn-close" @click="closeWindow" title="Close">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+                    <path d="M1 1L9 9M9 1L1 9"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navbar (shown in Electron titlebar or standalone for browser) -->
     <div
-        class="h-14 border-b border-space-border flex items-center px-6 justify-between bg-space-900/50 backdrop-blur-md z-50">
-        <div class="flex items-center gap-3">
+        class="h-12 border-b border-space-border flex items-center px-6 justify-between bg-space-900/80 backdrop-blur-md z-40"
+        :class="{ 'mt-0': !isElectron }">
+        <!-- Logo (only show in browser, hidden in Electron since it's in titlebar) -->
+        <div class="flex items-center gap-3" x-show="!isElectron">
             <div
                 class="w-8 h-8 rounded bg-gradient-to-br from-neon-purple to-blue-600 flex items-center justify-center text-white font-bold shadow-[0_0_15px_rgba(168,85,247,0.4)]">
                 AG</div>
@@ -74,6 +119,8 @@
                     x-text="$store.global.t('systemDesc')">CLAUDE PROXY SYSTEM</span>
             </div>
         </div>
+        <!-- Spacer when in Electron -->
+        <div x-show="isElectron"></div>
 
         <div class="flex items-center gap-4">
             <!-- Connection Pill -->
@@ -103,7 +150,7 @@
     </div>
 
     <!-- Layout -->
-    <div class="flex h-[calc(100vh-56px)]">
+    <div class="flex" :class="isElectron ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-48px)]'">
 
         <!-- Sidebar -->
         <div class="w-64 bg-space-900 border-r border-space-border flex flex-col pt-6 pb-4">

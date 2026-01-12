@@ -489,3 +489,83 @@
 .skeleton-table-row {
   @apply skeleton h-12 w-full mb-2;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Electron Custom Titlebar & Rounded Window                                   */
+/* -------------------------------------------------------------------------- */
+
+/* App window container with rounded corners (Electron only) */
+.app-window {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+/* Custom Titlebar */
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background: linear-gradient(180deg, #0f0f11 0%, #09090b 100%);
+  border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+  padding-left: 12px;
+  user-select: none;
+  position: relative;
+  z-index: 9999;
+}
+
+/* Drag region - allows window dragging */
+.titlebar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: drag;
+  app-region: drag;
+  padding-right: 8px;
+}
+
+/* Window control buttons container */
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Individual control button */
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.titlebar-btn:hover {
+  color: #fff;
+}
+
+.titlebar-btn-minimize:hover,
+.titlebar-btn-maximize:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-btn-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
+.titlebar-btn:focus {
+  outline: none;
+}
+
+.titlebar-btn svg {
+  flex-shrink: 0;
+}
