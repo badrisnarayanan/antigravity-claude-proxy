@@ -337,6 +337,9 @@ The proxy includes a built-in, modern web interface for real-time monitoring and
 - **Visual Model Quota**: Track per-model usage and next reset times with color-coded progress indicators.
 - **Account Management**: Add/remove Google accounts via OAuth, view subscription tiers (Free/Pro/Ultra) and quota status at a glance.
 - **Claude CLI Configuration**: Edit your `~/.claude/settings.json` directly from the browser.
+- **Persistent History**: Tracks request volume by model family for 30 days, persisting across server restarts.
+- **Time Range Filtering**: Analyze usage trends over 1H, 6H, 24H, 7D, or All Time periods.
+- **Smart Analysis**: Auto-select top 5 most used models or toggle between Family/Model views.
 - **Live Logs**: Stream server logs with level-based filtering and search.
 - **Advanced Tuning**: Configure retries, timeouts, and debug mode on the fly.
 - **Bilingual Interface**: Full support for English and Chinese (switch via Settings).

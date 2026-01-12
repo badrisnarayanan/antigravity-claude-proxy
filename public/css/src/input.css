@@ -366,6 +366,25 @@
 /* Refactored UI Components (Phase 1.2)                                       */
 /* -------------------------------------------------------------------------- */
 
+/* Phase 1.2 additions ... */
+
+/* Filter Controls */
+.filter-control {
+    @apply flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 
+           text-[10px] lg:text-xs font-mono font-medium text-gray-400 
+           bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent 
+           rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 
+           transition-all duration-200 whitespace-nowrap w-full sm:w-auto;
+}
+
+.filter-control:hover {
+    @apply border-neon-cyan/50 lg:border-neon-cyan/30 lg:shadow-lg lg:shadow-neon-cyan/10;
+}
+
+.filter-control-item {
+    @apply block w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors;
+}
+
 /* Action Buttons */
 .btn-action-ghost {
   @apply btn btn-xs btn-ghost text-gray-400 hover:text-white transition-colors;
@@ -488,4 +507,13 @@
 
 .skeleton-table-row {
   @apply skeleton h-12 w-full mb-2;
+}
+
+/* Desktop Sidebar Collapsed State */
+@media (min-width: 1024px) {
+  body .sidebar-collapsed {
+    width: 0;
+    padding: 0;
+    border: none;
+  }
 }

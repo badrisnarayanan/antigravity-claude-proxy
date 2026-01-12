@@ -2,18 +2,20 @@
     <!-- Compact Header -->
     <div class="flex items-center justify-between gap-4 mb-6">
         <!-- Title with inline subtitle -->
-        <div class="flex items-baseline gap-3">
+        <div class="flex flex-wrap items-center gap-4">
             <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('dashboard')">
                 Dashboard
             </h1>
-            <span class="text-[10px] font-mono text-gray-600 uppercase tracking-[0.15em]"
-                  x-text="$store.global.t('systemDesc')">
-                CLAUDE PROXY SYSTEM
-            </span>
+            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
+                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
+                      x-text="$store.global.t('systemDesc')">
+                    CLAUDE PROXY SYSTEM
+                </span>
+            </div>
         </div>
 
         <!-- Compact Status Indicator -->
-        <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-space-900/60 border border-space-border/40">
+        <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-space-900/60 border border-space-border/40 whitespace-nowrap flex-shrink-0">
             <div class="relative flex items-center justify-center">
                 <span class="absolute w-1.5 h-1.5 bg-neon-green rounded-full animate-ping opacity-75"></span>
                 <span class="relative w-1.5 h-1.5 bg-neon-green rounded-full"></span>
@@ -29,11 +31,12 @@
     <!-- Skeleton Loading (仅在首次加载时显示) -->
     <div x-show="$store.data.initialLoad" class="space-y-6">
         <!-- Skeleton Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div class="skeleton-stat-card"></div>
             <div class="skeleton-stat-card"></div>
             <div class="skeleton-stat-card"></div>
             <div class="skeleton-stat-card"></div>
+            <div class="skeleton-stat-card col-span-2 sm:col-span-1"></div>
         </div>
 
         <!-- Skeleton Charts -->
@@ -46,31 +49,33 @@
     <!-- Actual Content (首次加载完成后显示) -->
     <div x-show="!$store.data.initialLoad" class="space-y-6">
         <!-- Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 lg:gap-3">
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-6 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewAllAccounts')">
-            <!-- Icon 移到右上角，缩小并变灰 -->
+            <!-- Icon -->
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-cyan-400/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z">
                     </path>
                 </svg>
             </div>
-            <!-- 数字放大为主角 -->
-            <div class="stat-value text-white font-mono text-4xl font-bold mb-1" x-text="stats.total"></div>
-            <div class="stat-title text-gray-500 font-mono text-xs uppercase tracking-wider truncate"
+            <!-- Value -->
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.total"></div>
+            <!-- Title -->
+            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('totalAccounts')"></div>
+            <!-- Desc -->
             <div class="stat-desc text-cyan-400/60 text-[10px] truncate flex items-center gap-1">
-                <span x-text="$store.global.t('linkedAccounts')"></span>
-                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span x-text="$store.global.t('linkedAccounts')" class="truncate"></span>
+                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
-            <!-- Subscription Tier Distribution -->
-            <div class="flex items-center gap-2 mt-2 text-[10px] font-mono" x-show="stats.subscription">
+            <!-- Tiers -->
+            <div class="flex items-center gap-1 mt-2 text-[10px] font-mono flex-wrap" x-show="stats.subscription">
                 <template x-if="stats.subscription?.ultra > 0">
                     <span class="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
                         <span x-text="stats.subscription.ultra"></span> Ultra
@@ -90,42 +95,63 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-6 hover:border-green-500/30 hover:bg-green-500/5 transition-all duration-300 group relative cursor-pointer"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-green-500/30 hover:bg-green-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'models'"
             :title="$store.global.t('clickToViewModels')">
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-green-400/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-4xl font-bold mb-1" x-text="stats.active"></div>
-            <div class="stat-title text-gray-500 font-mono text-xs uppercase tracking-wider truncate"
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.active"></div>
+            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('active')"></div>
             <div class="stat-desc text-green-400/60 text-[10px] truncate flex items-center gap-1">
-                <span x-text="$store.global.t('operational')"></span>
-                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span x-text="$store.global.t('operational')" class="truncate"></span>
+                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-6 hover:border-red-500/30 hover:bg-red-500/5 transition-all duration-300 group relative cursor-pointer"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-red-500/30 hover:bg-red-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewLimitedAccounts')">
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-red-500/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-4xl font-bold mb-1" x-text="stats.limited"></div>
-            <div class="stat-title text-gray-500 font-mono text-xs uppercase tracking-wider truncate"
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.limited"></div>
+            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('rateLimited')"></div>
             <div class="stat-desc text-red-500/60 text-[10px] truncate flex items-center gap-1">
-                <span x-text="$store.global.t('cooldown')"></span>
-                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span x-text="$store.global.t('cooldown')" class="truncate"></span>
+                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+        </div>
+
+        <div
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            @click="$store.global.activeTab = 'models'"
+            :title="$store.global.t('clickToViewModels')">
+            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-orange-500/70 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.modelUsage ? stats.modelUsage.limited : 0"></div>
+            <div class="stat-title text-gray-500 font-mono text-[10px] lg:text-xs uppercase tracking-wider truncate"
+                x-text="$store.global.t('quotasDepletedTitle')"></div>
+            <div class="stat-desc text-orange-500/60 text-[10px] truncate flex items-center gap-1">
+                <span x-text="$store.global.t('outOfTracked', {total: stats.modelUsage ? stats.modelUsage.total : 0})" class="truncate"></span>
+                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
@@ -133,9 +159,9 @@
 
         <!-- Global Quota Chart -->
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-6 col-span-1 lg:col-start-4 lg:row-start-1 h-full flex items-center justify-between gap-3 overflow-hidden relative group hover:border-space-border/60 transition-colors">
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 xl:p-4 h-full flex flex-row sm:flex-col items-center justify-between gap-2 overflow-hidden relative group hover:border-space-border/60 transition-colors col-span-2 sm:col-span-1 min-w-0">
             <!-- Chart Container -->
-            <div class="h-14 w-14 lg:h-16 lg:w-16 relative flex-shrink-0">
+            <div class="h-14 w-14 xl:h-16 xl:w-16 relative flex-shrink-0 self-center">
                 <canvas id="quotaChart"></canvas>
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div class="text-[10px] font-bold text-white font-mono" x-text="stats.overallHealth + '%'">%</div>
@@ -143,32 +169,34 @@
             </div>
 
             <!-- Legend / Info -->
-            <div class="flex flex-col justify-center gap-2 flex-grow min-w-0">
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] text-gray-500 uppercase tracking-wider font-mono truncate"
+            <div class="flex flex-col justify-center gap-1 flex-grow min-w-0 w-full sm:text-center">
+                <div class="flex items-center justify-between sm:justify-center h-full">
+                    <span class="text-[10px] text-gray-500 uppercase font-mono leading-tight whitespace-normal sm:px-1"
                         x-text="$store.global.t('globalQuota')">Global Quota</span>
                 </div>
 
                 <!-- Custom Legend -->
-                <div class="space-y-1">
-                    <div class="flex items-center justify-between text-[10px] text-gray-400 cursor-pointer hover:text-neon-purple transition-colors group/legend"
+                <div class="space-y-0.5 sm:flex sm:flex-col sm:items-center w-full">
+                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-[10px] text-gray-400 cursor-pointer hover:text-neon-purple transition-colors group/legend w-full sm:w-auto"
                         @click="$store.global.activeTab = 'models'; $nextTick(() => { $store.data.filters.family = 'claude'; $store.data.computeQuotaRows(); })"
                         :title="$store.global.t('clickToFilterClaude')">
-                        <div class="flex items-center gap-1.5 truncate">
+                        <div class="flex items-center gap-1.5">
                             <div class="w-1.5 h-1.5 rounded-full bg-neon-purple flex-shrink-0"></div>
                             <span class="truncate" x-text="$store.global.t('familyClaude')">Claude</span>
-                            <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <!-- Hidden arrow on desktop/stacked view to save space -->
+                            <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity flex-shrink-0 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between text-[10px] text-gray-400 cursor-pointer hover:text-neon-green transition-colors group/legend"
+                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-[10px] text-gray-400 cursor-pointer hover:text-neon-green transition-colors group/legend w-full sm:w-auto"
                         @click="$store.global.activeTab = 'models'; $nextTick(() => { $store.data.filters.family = 'gemini'; $store.data.computeQuotaRows(); })"
                         :title="$store.global.t('clickToFilterGemini')">
-                        <div class="flex items-center gap-1.5 truncate">
+                        <div class="flex items-center gap-1.5">
                             <div class="w-1.5 h-1.5 rounded-full bg-neon-green flex-shrink-0"></div>
                             <span class="truncate" x-text="$store.global.t('familyGemini')">Gemini</span>
-                            <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <!-- Hidden arrow on desktop/stacked view to save space -->
+                            <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity flex-shrink-0 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </div>
@@ -177,11 +205,10 @@
             </div>
         </div>
     </div>
-
     <!-- Usage Trend Chart -->
     <div class="view-card">
         <!-- Header with Stats and Filter -->
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
             <div class="flex flex-wrap items-center gap-5">
                 <div class="flex items-center gap-2.5">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -210,12 +237,12 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-start sm:justify-end flex-wrap lg:flex-nowrap lg:gap-4 lg:bg-space-900/40 lg:p-1.5 lg:rounded-lg lg:border lg:border-space-border/30 lg:whitespace-nowrap lg:flex-shrink-0">
                 <!-- Time Range Dropdown -->
-                <div class="relative">
+                <div class="relative flex-1 sm:flex-none">
                     <button @click="showTimeRangeDropdown = !showTimeRangeDropdown; showDisplayModeDropdown = false; showModelFilter = false"
-                        class="flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono text-gray-400 bg-space-800 border border-space-border/50 rounded hover:border-neon-cyan/50 transition-colors whitespace-nowrap">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="filter-control">
+                        <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -230,31 +257,31 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-75"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-1 w-36 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 overflow-hidden py-1"
+                        class="absolute right-0 mt-1 w-36 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 py-1"
                         style="display: none;">
-                        <button @click="setTimeRange('1h')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setTimeRange('1h')" class="filter-control-item"
                             :class="timeRange === '1h' ? 'text-neon-cyan' : 'text-gray-400'"
                             x-text="$store.global.t('last1Hour')"></button>
-                        <button @click="setTimeRange('6h')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setTimeRange('6h')" class="filter-control-item"
                             :class="timeRange === '6h' ? 'text-neon-cyan' : 'text-gray-400'"
                             x-text="$store.global.t('last6Hours')"></button>
-                        <button @click="setTimeRange('24h')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setTimeRange('24h')" class="filter-control-item"
                             :class="timeRange === '24h' ? 'text-neon-cyan' : 'text-gray-400'"
                             x-text="$store.global.t('last24Hours')"></button>
-                        <button @click="setTimeRange('7d')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setTimeRange('7d')" class="filter-control-item"
                             :class="timeRange === '7d' ? 'text-neon-cyan' : 'text-gray-400'"
                             x-text="$store.global.t('last7Days')"></button>
-                        <button @click="setTimeRange('all')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setTimeRange('all')" class="filter-control-item"
                             :class="timeRange === 'all' ? 'text-neon-cyan' : 'text-gray-400'"
                             x-text="$store.global.t('allTime')"></button>
                     </div>
                 </div>
 
                 <!-- Display Mode Dropdown -->
-                <div class="relative">
+                <div class="relative flex-1 sm:flex-none">
                     <button @click="showDisplayModeDropdown = !showDisplayModeDropdown; showTimeRangeDropdown = false; showModelFilter = false"
-                        class="flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono text-gray-400 bg-space-800 border border-space-border/50 rounded hover:border-neon-purple/50 transition-colors whitespace-nowrap">
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-xs font-mono font-medium text-gray-400 bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 hover:border-neon-purple/50 lg:hover:border-neon-purple/30 lg:hover:shadow-lg lg:hover:shadow-neon-purple/10 transition-all duration-200 whitespace-nowrap w-full sm:w-auto">
+                        <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
@@ -269,22 +296,22 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-75"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-1 w-32 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 overflow-hidden py-1"
+                        class="absolute right-0 mt-1 w-32 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 py-1"
                         style="display: none;">
-                        <button @click="setDisplayMode('family')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setDisplayMode('family')" class="filter-control-item"
                             :class="displayMode === 'family' ? 'text-neon-purple' : 'text-gray-400'"
                             x-text="$store.global.t('family')"></button>
-                        <button @click="setDisplayMode('model')" class="w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors"
+                        <button @click="setDisplayMode('model')" class="filter-control-item"
                             :class="displayMode === 'model' ? 'text-neon-purple' : 'text-gray-400'"
                             x-text="$store.global.t('model')"></button>
                     </div>
                 </div>
 
                 <!-- Filter Dropdown -->
-                <div class="relative">
+                <div class="relative flex-1 sm:flex-none min-w-[120px]">
                     <button @click="showModelFilter = !showModelFilter; showTimeRangeDropdown = false; showDisplayModeDropdown = false"
-                        class="flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono text-gray-400 bg-space-800 border border-space-border/50 rounded hover:border-neon-purple/50 transition-colors whitespace-nowrap">
-                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-xs font-mono font-medium text-gray-400 bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 hover:border-neon-purple/50 lg:hover:border-neon-purple/30 lg:hover:shadow-lg lg:hover:shadow-neon-purple/10 transition-all duration-200 whitespace-nowrap w-full sm:w-auto">
+                        <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>

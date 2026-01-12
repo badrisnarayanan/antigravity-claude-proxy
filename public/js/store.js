@@ -5,6 +5,33 @@
 
 document.addEventListener('alpine:init', () => {
     Alpine.store('global', {
+        init() {
+            // Hash-based routing
+            const validTabs = ['dashboard', 'models', 'accounts', 'logs', 'settings'];
+            const getHash = () => window.location.hash.substring(1);
+
+            // 1. Initial load from hash
+            const initialHash = getHash();
+            if (validTabs.includes(initialHash)) {
+                this.activeTab = initialHash;
+            }
+
+            // 2. Sync State -> URL
+            Alpine.effect(() => {
+                if (validTabs.includes(this.activeTab) && getHash() !== this.activeTab) {
+                    window.location.hash = this.activeTab;
+                }
+            });
+
+            // 3. Sync URL -> State (Back/Forward buttons)
+            window.addEventListener('hashchange', () => {
+                const hash = getHash();
+                if (validTabs.includes(hash) && this.activeTab !== hash) {
+                    this.activeTab = hash;
+                }
+            });
+        },
+
         // App State
         version: '1.0.0',
         activeTab: 'dashboard',
@@ -26,6 +53,9 @@ document.addEventListener('alpine:init', () => {
                 active: "ACTIVE",
                 operational: "Operational",
                 rateLimited: "RATE LIMITED",
+                quotasDepleted: "{count}/{total} Quotas Depleted",
+                quotasDepletedTitle: "QUOTAS DEPLETED",
+                outOfTracked: "Out of {total} Tracked",
                 cooldown: "Cooldown",
                 searchPlaceholder: "Search models...",
                 allAccounts: "All Accounts",
@@ -280,6 +310,9 @@ document.addEventListener('alpine:init', () => {
                 active: "活跃状态",
                 operational: "运行中",
                 rateLimited: "受限状态",
+                quotasDepleted: "{count}/{total} 配额耗尽",
+                quotasDepletedTitle: "配额耗尽数",
+                outOfTracked: "共追踪 {total} 个",
                 cooldown: "冷却中",
                 searchPlaceholder: "搜索模型...",
                 allAccounts: "所有账号",

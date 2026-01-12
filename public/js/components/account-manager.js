@@ -182,30 +182,56 @@ window.Components.accountManager = () => ({
      */
     getMainModelQuota(account) {
         const limits = account.limits || {};
-        const modelIds = Object.keys(limits);
+        
+        const getQuotaVal = (id) => {
+             const l = limits[id];
+             if (!l) return -1;
+             if (l.remainingFraction !== null) return l.remainingFraction;
+             if (l.resetTime) return 0; // Rate limited
+             return -1; // Unknown
+        };
 
-        if (modelIds.length === 0) {
-            return { percent: null, model: '-' };
-        }
+        const validIds = Object.keys(limits).filter(id => getQuotaVal(id) >= 0);
+        
+        if (validIds.length === 0) return { percent: null, model: '-' };
 
-        // Priority: opus > sonnet > flash > others
-        const priorityModels = [
-            modelIds.find(m => m.toLowerCase().includes('opus')),
-            modelIds.find(m => m.toLowerCase().includes('sonnet')),
-            modelIds.find(m => m.toLowerCase().includes('flash')),
-            modelIds[0] // Fallback to first model
+        const DEAD_THRESHOLD = 0.01;
+        
+        const MODEL_TIERS = [
+            { pattern: /\bopus\b/, aliveScore: 100, deadScore: 60 },
+            { pattern: /\bsonnet\b/, aliveScore: 90, deadScore: 55 },
+            // Gemini 3 Pro / Ultra
+            { pattern: /\bgemini-3\b/, extraCheck: (l) => /\bpro\b/.test(l) || /\bultra\b/.test(l), aliveScore: 80, deadScore: 50 },
+            { pattern: /\bpro\b/, aliveScore: 75, deadScore: 45 },
+            // Mid/Low Tier
+            { pattern: /\bhaiku\b/, aliveScore: 30, deadScore: 15 },
+            { pattern: /\bflash\b/, aliveScore: 20, deadScore: 10 }
         ];
 
-        const selectedModel = priorityModels.find(m => m) || modelIds[0];
-        const quota = limits[selectedModel];
+        const getPriority = (id) => {
+            const lower = id.toLowerCase();
+            const val = getQuotaVal(id);
+            const isAlive = val > DEAD_THRESHOLD;
+            
+            for (const tier of MODEL_TIERS) {
+                if (tier.pattern.test(lower)) {
+                    if (tier.extraCheck && !tier.extraCheck(lower)) continue;
+                    return isAlive ? tier.aliveScore : tier.deadScore;
+                }
+            }
+            
+            return isAlive ? 5 : 0;
+        };
 
-        if (!quota || quota.remainingFraction === null) {
-            return { percent: null, model: selectedModel };
-        }
+        // Sort by priority desc
+        validIds.sort((a, b) => getPriority(b) - getPriority(a));
 
+        const bestModel = validIds[0];
+        const val = getQuotaVal(bestModel);
+        
         return {
-            percent: Math.round(quota.remainingFraction * 100),
-            model: selectedModel
+            percent: Math.round(val * 100),
+            model: bestModel
         };
     }
 });

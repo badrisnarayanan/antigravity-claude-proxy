@@ -115,6 +115,9 @@ src/
 ├── webui/                      # Web Management Interface
 │   └── index.js                # Express router
 │
+├── modules/                    # Feature modules
+│   └── usage-stats.js          # Request tracking and history persistence
+│
 ├── cli/                        # CLI tools
 │   └── accounts.js             # Account management
 │
@@ -149,6 +152,8 @@ public/
 ├── js/
 │   ├── app-init.js             # Alpine.js initialization & Main Controller
 │   ├── utils.js                # Shared utilities (window.utils)
+│   ├── config/                 # Application configuration
+│   │   └── constants.js        # Centralized UI constants and limits
 │   ├── store.js                # Global store registration
 │   ├── data-store.js           # Data store (accounts, models, quotas)
 │   ├── settings-store.js       # Settings store
@@ -197,6 +202,7 @@ public/
 - **src/format/**: Format conversion between Anthropic and Google Generative AI formats
 - **src/config.js**: Dynamic configuration and environment variable parsing
 - **src/constants.js**: Static configuration values (API endpoints, model mappings)
+- **src/modules/usage-stats.js**: Tracks request volume by model/family, persists 30-day history to JSON, and auto-prunes old data.
 - **src/fallback-config.js**: Model fallback mappings (`getFallbackModel()`, `hasFallback()`)
 - **src/modules/usage-stats.js**: Tracking and persistence of usage statistics
 
@@ -210,6 +216,7 @@ public/
 
 **Account Data Model:**
 Each account object in `accounts.json` contains:
+
 - **Basic Info**: `email`, `source` (oauth/manual/database), `enabled`, `lastUsed`
 - **Credentials**: `refreshToken` (OAuth) or `apiKey` (manual)
 - **Subscription**: `{ tier, projectId, detectedAt }` - automatically detected via `loadCodeAssist` API
@@ -304,6 +311,7 @@ Each account object in `accounts.json` contains:
 - When Claude Code strips `thoughtSignature`, the proxy tries to restore from cache, then falls back to `skip_thought_signature_validator`
 
 **Error Handling:**
+
 - **Classes**: Custom errors in `src/errors.js` (`RateLimitError`, `AuthError`, `ApiError`)
 - **Middleware**: Centralized handler in `src/middleware/error-handler.js`
   - Parses upstream errors into user-friendly messages
@@ -320,6 +328,7 @@ Each account object in `accounts.json` contains:
 - `native-module-helper.js`: Auto-rebuild for native modules
 
 **Data Persistence:**
+
 - Subscription and quota data are automatically fetched when `/account-limits` is called
 - Updated data is saved to `accounts.json` asynchronously (non-blocking)
 - On server restart, accounts load with last known subscription/quota state
@@ -343,6 +352,7 @@ Each account object in `accounts.json` contains:
 - `/api/claude/config` - Claude CLI settings
 - `/api/models/config` - Model visibility and aliasing
 - `/api/logs/stream` - SSE endpoint for real-time logs
+- `/api/stats/history` - Retrieve 30-day request history (sorted chronologically)
 - `/api/auth/url` - Generate Google OAuth URL
 - `/api/auth/status/:state` - Poll OAuth flow status
 - `/account-limits` - Fetch account quotas and subscription data
@@ -354,16 +364,19 @@ Each account object in `accounts.json` contains:
 ### CSS Build System
 
 **Workflow:**
+
 1. Edit styles in `public/css/src/input.css` (Tailwind source with `@apply` directives)
 2. Run `npm run build:css` to compile (or `npm run watch:css` for auto-rebuild)
 3. Compiled CSS output: `public/css/style.css` (minified, committed to git)
 
 **Component Styles:**
+
 - Use `@apply` to abstract common Tailwind patterns into reusable classes
 - Example: `.btn-action-ghost`, `.status-pill-success`, `.input-search`
 - Skeleton loading: `.skeleton`, `.skeleton-stat-card`, `.skeleton-chart`
 
 **When to rebuild:**
+
 - After modifying `public/css/src/input.css`
 - After pulling changes that updated CSS source
 - Automatically on `npm install` (via `prepare` hook)
@@ -389,6 +402,15 @@ async myOperation() {
 - Shows error toast on failure
 - Always resets loading state in `finally` block
 
+### Frontend Configuration
+
+**Constants**:
+All frontend magic numbers and configuration values are centralized in `public/js/config/constants.js`. Use `window.AppConstants` to access:
+
+- `INTERVALS`: Refresh rates and timeouts
+- `LIMITS`: Data quotas and display limits
+- `UI`: Animation durations and delay settings
+
 ### Account Operations Service Layer
 
 Use `window.AccountActions` for account operations instead of direct API calls:
@@ -397,9 +419,9 @@ Use `window.AccountActions` for account operations instead of direct API calls:
 // ✅ Good: Use service layer
 const result = await window.AccountActions.refreshAccount(email);
 if (result.success) {
-  this.$store.global.showToast('Account refreshed', 'success');
+  this.$store.global.showToast("Account refreshed", "success");
 } else {
-  this.$store.global.showToast(result.error, 'error');
+  this.$store.global.showToast(result.error, "error");
 }
 
 // ❌ Bad: Direct API call in component
@@ -407,6 +429,7 @@ const response = await fetch(`/api/accounts/${email}/refresh`);
 ```
 
 **Available methods:**
+
 - `refreshAccount(email)` - Refresh token and quota
 - `toggleAccount(email, enabled)` - Enable/disable account (with optimistic update)
 - `deleteAccount(email)` - Delete account
@@ -421,10 +444,12 @@ All methods return `{success: boolean, data?: object, error?: string}`
 Dashboard is split into three modules for maintainability:
 
 1. **stats.js** - Account statistics calculation
+
    - `updateStats(component)` - Computes active/limited/total counts
    - Updates subscription tier distribution
 
 2. **charts.js** - Chart.js visualizations
+
    - `initQuotaChart(component)` - Initialize quota distribution pie chart
    - `initTrendChart(component)` - Initialize usage trend line chart
    - `updateQuotaChart(component)` - Update quota chart data
@@ -434,7 +459,8 @@ Dashboard is split into three modules for maintainability:
    - `getInitialState()` - Default filter values
    - `loadPreferences(component)` - Load from localStorage
    - `savePreferences(component)` - Save to localStorage
-   - Filter types: time range, display mode, family/model selection
+   - `autoSelectTopN(component)` - Smart select top 5 active models
+   - Filter types: time range (1h/6h/24h/7d/all), display mode, family/model selection
 
 Each module is well-documented with JSDoc comments.
 

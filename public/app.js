@@ -57,8 +57,38 @@ document.addEventListener('alpine:init', () => {
             return Alpine.store('data')?.loading || false;
         },
 
+        sidebarOpen: window.innerWidth >= 1024,
+        toggleSidebar() {
+            this.sidebarOpen = !this.sidebarOpen;
+        },
+
         init() {
             console.log('App controller initialized');
+
+            // Handle responsive sidebar transitions
+            let lastWidth = window.innerWidth;
+            let resizeTimeout = null;
+            
+            window.addEventListener('resize', () => {
+                if (resizeTimeout) clearTimeout(resizeTimeout);
+                
+                resizeTimeout = setTimeout(() => {
+                    const currentWidth = window.innerWidth;
+                    const lgBreakpoint = 1024;
+                    
+                    // Desktop -> Mobile: Auto-close sidebar to prevent overlay blocking screen
+                    if (lastWidth >= lgBreakpoint && currentWidth < lgBreakpoint) {
+                        this.sidebarOpen = false;
+                    }
+                    
+                    // Mobile -> Desktop: Auto-open sidebar (restore standard desktop layout)
+                    if (lastWidth < lgBreakpoint && currentWidth >= lgBreakpoint) {
+                        this.sidebarOpen = true;
+                    }
+                    
+                    lastWidth = currentWidth;
+                }, 150);
+            });
 
             // Theme setup
             document.documentElement.setAttribute('data-theme', 'black');

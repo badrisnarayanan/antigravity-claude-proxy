@@ -2,14 +2,16 @@
     <!-- Compact Header -->
     <div class="flex items-center justify-between gap-4 mb-6">
         <!-- Title with inline subtitle -->
-        <div class="flex items-baseline gap-3">
+        <div class="flex flex-wrap items-center gap-4">
             <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('accountManagement')">
                 Account Management
             </h1>
-            <span class="text-[10px] font-mono text-gray-600 uppercase tracking-[0.15em]"
-                  x-text="$store.global.t('manageTokens')">
-                Manage Google Account tokens and authorization states
-            </span>
+            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
+                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
+                      x-text="$store.global.t('manageTokens')">
+                    Manage Google Account tokens and authorization states
+                </span>
+            </div>
         </div>
 
         <!-- Action Buttons -->

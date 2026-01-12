@@ -2,14 +2,16 @@
     <!-- Compact Header -->
     <div class="flex items-center justify-between gap-4 mb-6">
         <!-- Title with inline subtitle -->
-        <div class="flex items-baseline gap-3">
+        <div class="flex flex-wrap items-center gap-4">
             <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('models')">
                 Models
             </h1>
-            <span class="text-[10px] font-mono text-gray-600 uppercase tracking-[0.15em]"
-                  x-text="$store.global.t('modelsPageDesc')">
-                Real-time quota and status for all available models.
-            </span>
+            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
+                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
+                      x-text="$store.global.t('modelsPageDesc')">
+                    Real-time quota and status for all available models.
+                </span>
+            </div>
         </div>
 
         <!-- Search Bar -->
@@ -94,14 +96,60 @@
                 :class="{'table-xs': $store.settings.compact, 'table-sm': !$store.settings.compact}">
             <thead>
                 <tr>
-                    <th class="w-14 py-3 pl-4 whitespace-nowrap" x-text="$store.global.t('stat')">Stat</th>
-                    <th class="py-3 whitespace-nowrap" x-text="$store.global.t('modelIdentity')">Model Identity</th>
-                    <th class="min-w-[12rem] py-3 whitespace-nowrap" x-text="$store.global.t('globalQuota')">Global
-                        Quota</th>
-                    <th class="min-w-[8rem] py-3 whitespace-nowrap" x-text="$store.global.t('nextReset')">Next Reset
+                    <th class="w-14 py-3 pl-4 whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none group"
+                        @click="$store.data.setSort('avgQuota')">
+                        <div class="flex items-center justify-center">
+                            <span x-text="$store.global.t('stat')">Stat</span>
+                        </div>
                     </th>
-                    <th class="py-3 whitespace-nowrap" x-text="$store.global.t('distribution')">Account
-                        Distribution</th>
+                    <th class="py-3 whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none group"
+                        @click="$store.data.setSort('modelId')">
+                        <div class="flex items-center gap-1">
+                            <span x-text="$store.global.t('modelIdentity')">Model Identity</span>
+                            <svg class="w-3 h-3 transition-colors"
+                                :class="$store.data.filters.sortCol === 'modelId' ? 'text-neon-purple' : 'text-gray-700 opacity-0 group-hover:opacity-100'"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    :d="$store.data.filters.sortCol === 'modelId' ? ($store.data.filters.sortAsc ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7') : 'M8 9l4-4 4 4m0 6l-4 4-4-4'" />
+                            </svg>
+                        </div>
+                    </th>
+                    <th class="min-w-[12rem] py-3 whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none group"
+                        @click="$store.data.setSort('avgQuota')">
+                        <div class="flex items-center gap-1">
+                            <span x-text="$store.global.t('globalQuota')">Global Quota</span>
+                            <svg class="w-3 h-3 transition-colors"
+                                :class="$store.data.filters.sortCol === 'avgQuota' ? 'text-neon-purple' : 'text-gray-700 opacity-0 group-hover:opacity-100'"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    :d="$store.data.filters.sortCol === 'avgQuota' ? ($store.data.filters.sortAsc ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7') : 'M8 9l4-4 4 4m0 6l-4 4-4-4'" />
+                            </svg>
+                        </div>
+                    </th>
+                    <th class="min-w-[8rem] py-3 whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none group"
+                        @click="$store.data.setSort('minResetTime')">
+                        <div class="flex items-center gap-1">
+                            <span x-text="$store.global.t('nextReset')">Next Reset</span>
+                            <svg class="w-3 h-3 transition-colors"
+                                :class="$store.data.filters.sortCol === 'minResetTime' ? 'text-neon-purple' : 'text-gray-700 opacity-0 group-hover:opacity-100'"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    :d="$store.data.filters.sortCol === 'minResetTime' ? ($store.data.filters.sortAsc ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7') : 'M8 9l4-4 4 4m0 6l-4 4-4-4'" />
+                            </svg>
+                        </div>
+                    </th>
+                    <th class="py-3 whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none group"
+                        @click="$store.data.setSort('activeCount')">
+                        <div class="flex items-center gap-1 justify-start">
+                            <span x-text="$store.global.t('distribution')">Account Distribution</span>
+                            <svg class="w-3 h-3 transition-colors"
+                                :class="$store.data.filters.sortCol === 'activeCount' ? 'text-neon-purple' : 'text-gray-700 opacity-0 group-hover:opacity-100'"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    :d="$store.data.filters.sortCol === 'activeCount' ? ($store.data.filters.sortAsc ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7') : 'M8 9l4-4 4 4m0 6l-4 4-4-4'" />
+                            </svg>
+                        </div>
+                    </th>
                     <th class="w-20 py-3 pr-4 text-right whitespace-nowrap" x-text="$store.global.t('actions')">Actions
                     </th>
                 </tr>
@@ -143,20 +191,20 @@
                             </div>
                         </td>
                         <td>
-                            <div class="flex items-center justify-end gap-3">
+                            <div class="flex items-center justify-start gap-3">
                                 <div
-                                    class="text-[10px] font-mono text-gray-500 hidden xl:block text-right leading-tight opacity-70">
+                                    class="text-[10px] font-mono text-gray-500 hidden xl:block text-left leading-tight opacity-70">
                                     <div
                                         x-text="$store.global.t('activeCount', {count: row.quotaInfo?.filter(q => q.pct > 0).length || 0})">
                                     </div>
                                 </div>
                                 <!-- Account Status Indicators -->
-                                <div class="flex flex-wrap gap-1 justify-end max-w-[200px]" x-data="{ maxVisible: 12 }">
+                                <div class="flex flex-wrap gap-1 justify-start max-w-[200px]" x-data="{ maxVisible: 12 }">
                                     <template x-if="!row.quotaInfo || row.quotaInfo.length === 0">
                                         <div class="text-[10px] text-gray-600 italic">No data</div>
                                     </template>
                                     <template x-if="row.quotaInfo && row.quotaInfo.length > 0">
-                                        <div class="flex flex-wrap gap-1 justify-end">
+                                        <div class="flex flex-wrap gap-1 justify-start">
                                             <!-- Visible accounts (limited to maxVisible) -->
                                             <template x-for="(q, idx) in row.quotaInfo.slice(0, maxVisible)" :key="q.fullEmail">
                                                 <div class="tooltip tooltip-left" :data-tip="`${q.fullEmail} (${q.pct}%)`">

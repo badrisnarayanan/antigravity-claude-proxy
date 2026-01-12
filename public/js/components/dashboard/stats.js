@@ -21,9 +21,10 @@ window.DashboardStats = window.DashboardStats || {};
  *
  * 统计逻辑：
  *   1. 仅统计启用的账号（enabled !== false）
- *   2. 优先统计核心模型（Sonnet/Opus/Pro/Flash）的配额
- *   3. 配额 > 5% 视为 active，否则为 limited
- *   4. 状态非 'ok' 的账号归为 limited
+ *   2. 检查账号下所有追踪模型的配额
+ *   3. 如果任一追踪模型配额 <= 5%，则标记为 limited (Rate Limited Cooldown)
+ *   4. 如果所有追踪模型配额 > 5%，则标记为 active
+ *   5. 状态非 'ok' 的账号归为 limited
  *
  * @param {object} component - Dashboard 组件实例（Alpine.js 上下文）
  * @param {object} component.stats - 统计数据对象（会被修改）
@@ -37,24 +38,32 @@ window.DashboardStats.updateStats = function(component) {
     const accounts = Alpine.store('data').accounts;
     let active = 0, limited = 0;
 
-    const isCore = (id) => /sonnet|opus|pro|flash/i.test(id);
-
     // Only count enabled accounts in statistics
     const enabledAccounts = accounts.filter(acc => acc.enabled !== false);
 
     enabledAccounts.forEach(acc => {
         if (acc.status === 'ok') {
             const limits = Object.entries(acc.limits || {});
-            let hasActiveCore = limits.some(([id, l]) => l && l.remainingFraction > 0.05 && isCore(id));
 
-            if (!hasActiveCore) {
-                const hasAnyCore = limits.some(([id]) => isCore(id));
-                if (!hasAnyCore) {
-                    hasActiveCore = limits.some(([_, l]) => l && l.remainingFraction > 0.05);
-                }
+            if (limits.length === 0) {
+                // No limit data available, consider limited to be safe
+                limited++;
+                return;
             }
 
-            if (hasActiveCore) active++; else limited++;
+            // Check if ANY tracked model is rate limited (<= 5%)
+            // We consider all models in the limits object as "tracked"
+            const hasRateLimitedModel = limits.some(([_, l]) => {
+                // Treat null/undefined fraction as 0 (limited)
+                if (!l || l.remainingFraction === null || l.remainingFraction === undefined) return true;
+                return l.remainingFraction <= 0.05;
+            });
+
+            if (hasRateLimitedModel) {
+                limited++;
+            } else {
+                active++;
+            }
         } else {
             limited++;
         }
@@ -65,6 +74,25 @@ window.DashboardStats.updateStats = function(component) {
     component.stats.total = enabledAccounts.length;
     component.stats.active = active;
     component.stats.limited = limited;
+
+    // Calculate model usage for rate limit details
+    let totalLimitedModels = 0;
+    let totalTrackedModels = 0;
+
+    enabledAccounts.forEach(acc => {
+         const limits = Object.entries(acc.limits || {});
+         limits.forEach(([id, l]) => {
+             totalTrackedModels++;
+             if (!l || l.remainingFraction == null || l.remainingFraction <= 0.05) {
+                 totalLimitedModels++;
+             }
+         });
+    });
+    
+    component.stats.modelUsage = {
+        limited: totalLimitedModels,
+        total: totalTrackedModels
+    };
 
     // Calculate subscription tier distribution
     const subscription = { ultra: 0, pro: 0, free: 0 };

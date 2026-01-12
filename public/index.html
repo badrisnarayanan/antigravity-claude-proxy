@@ -62,8 +62,15 @@
 
     <!-- Navbar -->
     <div
-        class="h-14 border-b border-space-border flex items-center px-6 justify-between bg-space-900/50 backdrop-blur-md z-50">
+        class="h-14 border-b border-space-border flex items-center px-4 lg:px-6 justify-between bg-space-900/50 backdrop-blur-md z-50 relative">
         <div class="flex items-center gap-3">
+            <!-- Mobile Menu Button -->
+            <button @click="toggleSidebar()" class="text-gray-400 hover:text-white focus:outline-none p-1 transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+
             <div
                 class="w-8 h-8 rounded bg-gradient-to-br from-neon-purple to-blue-600 flex items-center justify-center text-white font-bold shadow-[0_0_15px_rgba(168,85,247,0.4)]">
                 AG</div>
@@ -82,10 +89,10 @@
                     ? 'bg-neon-green/10 border-neon-green/20 text-neon-green'
                     : (connectionStatus === 'connecting' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 'bg-red-500/10 border-red-500/20 text-red-500')">
                 <div class="w-1.5 h-1.5 rounded-full"
-                    :class="$store.data.connectionStatus === 'connected' ? 'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)]' : ($store.data.connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')">
+                    :class="connectionStatus === 'connected' ? 'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)]' : (connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')">
                 </div>
                 <span
-                    x-text="$store.data.connectionStatus === 'connected' ? $store.global.t('online') : ($store.data.connectionStatus === 'connecting' ? $store.global.t('connecting') : $store.global.t('offline'))"></span>
+                    x-text="connectionStatus === 'connected' ? $store.global.t('online') : (connectionStatus === 'disconnected' ? $store.global.t('offline') : $store.global.t('connecting'))"></span>
             </div>
 
             <div class="h-4 w-px bg-space-border"></div>
@@ -103,77 +110,113 @@
     </div>
 
     <!-- Layout -->
-    <div class="flex h-[calc(100vh-56px)]">
+    <div class="flex h-[calc(100vh-56px)] relative">
+
+        <!-- Mobile Sidebar Overlay -->
+        <div x-show="sidebarOpen" 
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="sidebarOpen = false"
+             class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+             style="display: none;"></div>
 
         <!-- Sidebar -->
-        <div class="w-64 bg-space-900 border-r border-space-border flex flex-col pt-6 pb-4">
-            <div class="px-4 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest"
-                x-text="$store.global.t('main')">Main</div>
-            <nav class="flex flex-col gap-1">
-                <button
-                    class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                    :class="{'active': $store.global.activeTab === 'dashboard'}"
-                    @click="$store.global.activeTab = 'dashboard'">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    <span x-text="$store.global.t('dashboard')">Dashboard</span>
-                </button>
-                <button
-                    class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                    :class="{'active': $store.global.activeTab === 'models'}"
-                    @click="$store.global.activeTab = 'models'">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <span x-text="$store.global.t('models')">Models</span>
-                </button>
-                <button
-                    class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                    :class="{'active': $store.global.activeTab === 'accounts'}"
-                    @click="$store.global.activeTab = 'accounts'">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    <span x-text="$store.global.t('accounts')">Accounts</span>
-                </button>
-            </nav>
+        <div class="fixed top-14 bottom-0 left-0 z-40 bg-space-900 border-r border-space-border transition-all duration-300 shadow-2xl overflow-hidden lg:static lg:h-auto lg:shadow-none lg:flex-shrink-0"
+             :class="{
+                 'translate-x-0': sidebarOpen,
+                 '-translate-x-full': !sidebarOpen,
+                 'w-64': sidebarOpen,
+                 'lg:translate-x-0': sidebarOpen,
+                 'lg:w-64': sidebarOpen,
+                 'sidebar-collapsed': !sidebarOpen
+             }">
+             
+            <!-- Inner Sidebar Content (Fixed Width to prevent squashing) -->
+            <div class="w-64 flex flex-col h-full pt-6 pb-4 flex-shrink-0">
+                <!-- Mobile Menu Header -->
+                <div class="flex items-center justify-between px-4 mb-6 lg:hidden">
+                    <span class="text-sm font-bold text-white">Menu</span>
+                    <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-            <div class="px-4 mt-8 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest"
-                x-text="$store.global.t('system')">System</div>
-            <nav class="flex flex-col gap-1">
-                <button
-                    class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                    :class="{'active': $store.global.activeTab === 'logs'}" @click="$store.global.activeTab = 'logs'">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span x-text="$store.global.t('logs')">Logs</span>
-                </button>
-                <button
-                    class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                    :class="{'active': $store.global.activeTab === 'settings'}"
-                    @click="$store.global.activeTab = 'settings'">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span x-text="$store.global.t('settings')">Settings</span>
-                </button>
-            </nav>
+                <!-- Desktop Header (Main) -->
+                <div class="px-4 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest hidden lg:block"
+                    x-text="$store.global.t('main')">Main</div>
+                
+                <nav class="flex flex-col gap-1">
+                    <button
+                        class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
+                        :class="{'active': $store.global.activeTab === 'dashboard'}"
+                        @click="$store.global.activeTab = 'dashboard'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <span x-text="$store.global.t('dashboard')">Dashboard</span>
+                    </button>
+                    <button
+                        class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
+                        :class="{'active': $store.global.activeTab === 'models'}"
+                        @click="$store.global.activeTab = 'models'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <span x-text="$store.global.t('models')">Models</span>
+                    </button>
+                    <button
+                        class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
+                        :class="{'active': $store.global.activeTab === 'accounts'}"
+                        @click="$store.global.activeTab = 'accounts'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span x-text="$store.global.t('accounts')">Accounts</span>
+                    </button>
+                </nav>
 
-            <!-- Footer Info -->
-            <div class="mt-auto px-6 text-[10px] text-gray-700 font-mono">
-                <div class="flex justify-between">
-                    <span x-text="'V ' + $store.global.version">V 1.0.0</span>
-                    <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank" rel="noopener noreferrer"
-                        class="hover:text-neon-purple transition-colors">GitHub</a>
+                <div class="px-4 mt-8 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest"
+                    x-text="$store.global.t('system')">System</div>
+                <nav class="flex flex-col gap-1">
+                    <button
+                        class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
+                        :class="{'active': $store.global.activeTab === 'logs'}" @click="$store.global.activeTab = 'logs'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span x-text="$store.global.t('logs')">Logs</span>
+                    </button>
+                    <button
+                        class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
+                        :class="{'active': $store.global.activeTab === 'settings'}"
+                        @click="$store.global.activeTab = 'settings'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span x-text="$store.global.t('settings')">Settings</span>
+                    </button>
+                </nav>
+
+                <!-- Footer Info -->
+                <div class="mt-auto px-6 text-[10px] text-gray-700 font-mono">
+                    <div class="flex justify-between">
+                        <span x-text="'V ' + $store.global.version">V 1.0.0</span>
+                        <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank" rel="noopener noreferrer"
+                            class="hover:text-neon-purple transition-colors">GitHub</a>
+                    </div>
                 </div>
             </div>
         </div>
