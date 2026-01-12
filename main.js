@@ -1,142 +1,163 @@
 /**
  * Electron Main Process
- * Boots the Express backend and displays the Web UI in an Electron window.
  *
- * Usage:
- *   npm run app         # Start Electron app
- *   npm run app:debug   # Start with DevTools open
+ * Creates a frameless window with custom titlebar and rounded corners.
+ * Boots the Express backend and displays the Web UI.
+ *
+ * @module main
  */
 
-import { app as electronApp, BrowserWindow, Menu, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, screen } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DEFAULT_PORT } from './src/constants.js';
 import { initTray, setupCloseToTray, setQuitting, destroyTray } from './src/electron/tray.js';
 
-// Start backend server in the same process
-// This imports index.js which calls app.listen()
+// Start backend server
 import './src/index.js';
 
+// ESM compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+const WINDOW_CONFIG = {
+    ASPECT_RATIO: 16 / 9,
+    SCREEN_SCALE: 0.75, // 75% of screen width
+    MIN_WIDTH: 900,
+    MIN_HEIGHT: 506,    // Maintains 16:9 at min width
+};
+
+// -----------------------------------------------------------------------------
+// Window Management
+// -----------------------------------------------------------------------------
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
 
 /**
+ * Calculate centered window bounds with 16:9 aspect ratio.
+ * @returns {{ width: number, height: number, x: number, y: number }}
+ */
+function calculateWindowBounds() {
+    const { workAreaSize } = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = workAreaSize;
+
+    // Calculate dimensions maintaining 16:9 aspect ratio
+    let width = Math.round(screenWidth * WINDOW_CONFIG.SCREEN_SCALE);
+    let height = Math.round(width / WINDOW_CONFIG.ASPECT_RATIO);
+
+    // Ensure window fits on screen with some padding
+    if (height > screenHeight * 0.9) {
+        height = Math.round(screenHeight * 0.9);
+        width = Math.round(height * WINDOW_CONFIG.ASPECT_RATIO);
+    }
+
+    // Center on screen
+    const x = Math.round((screenWidth - width) / 2);
+    const y = Math.round((screenHeight - height) / 2);
+
+    return { width, height, x, y };
+}
+
+/**
  * Create the main application window.
  */
-function createWindow() {
-    // Create window icon from SVG (Electron supports SVG natively on some platforms)
-    const iconPath = path.join(__dirname, 'public', 'favicon.svg');
-    const preloadPath = path.join(__dirname, 'src', 'electron', 'preload.js');
+function createMainWindow() {
+    const bounds = calculateWindowBounds();
 
     mainWindow = new BrowserWindow({
-        width: 1200,
-        height: 900,
-        minWidth: 800,
-        minHeight: 600,
+        ...bounds,
+        minWidth: WINDOW_CONFIG.MIN_WIDTH,
+        minHeight: WINDOW_CONFIG.MIN_HEIGHT,
         title: 'Antigravity Claude Proxy',
-        icon: iconPath,
-        autoHideMenuBar: true,
-        // Frameless window for custom titlebar
+        icon: path.join(__dirname, 'assets', 'icon.png'),
+
+        // Frameless window for custom chrome
         frame: false,
-        // Transparent background for rounded corners
         transparent: true,
+        backgroundColor: '#00000000',
+
+        // Performance
+        show: false,
+        autoHideMenuBar: true,
+
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            preload: preloadPath,
+            preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
         },
-        // Modern window appearance
-        backgroundColor: '#00000000', // Transparent for rounded corners
-        show: false, // Don't show until ready
     });
 
-    // Remove the menu bar completely
     Menu.setApplicationMenu(null);
 
-    const PORT = process.env.PORT || DEFAULT_PORT;
+    // Load UI after server starts
+    const port = process.env.PORT || DEFAULT_PORT;
+    setTimeout(() => mainWindow.loadURL(`http://localhost:${port}`), 500);
 
-    // Allow server time to boot before loading UI
-    // The server is started via import './src/index.js' above
-    setTimeout(() => {
-        mainWindow.loadURL(`http://localhost:${PORT}`);
-    }, 500);
-
-    // Show window when content is ready (prevents white flash)
+    // Show window when ready (prevents flash)
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
-
-        // Initialize system tray after window is ready
         initTray(mainWindow);
         setupCloseToTray(mainWindow);
     });
 
-    // Open DevTools if --debug flag is passed
+    // Debug mode
     if (process.argv.includes('--debug')) {
         mainWindow.webContents.openDevTools();
     }
 
-    // Handle window closed
-    mainWindow.on('closed', () => {
-        mainWindow = null;
-    });
-
-    // Notify renderer when maximize state changes
-    mainWindow.on('maximize', () => {
-        mainWindow.webContents.send('window-maximize-change', true);
-    });
-
-    mainWindow.on('unmaximize', () => {
-        mainWindow.webContents.send('window-maximize-change', false);
-    });
+    // Window state events
+    mainWindow.on('closed', () => { mainWindow = null; });
+    mainWindow.on('maximize', () => notifyMaximizeState(true));
+    mainWindow.on('unmaximize', () => notifyMaximizeState(false));
 }
 
-// IPC handlers for window controls
-ipcMain.on('window-minimize', () => {
-    if (mainWindow) mainWindow.minimize();
-});
+/**
+ * Notify renderer of maximize state change.
+ * @param {boolean} isMaximized
+ */
+function notifyMaximizeState(isMaximized) {
+    if (mainWindow?.webContents) {
+        mainWindow.webContents.send('window-maximize-change', isMaximized);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// IPC Handlers - Window Controls
+// -----------------------------------------------------------------------------
+
+ipcMain.on('window-minimize', () => mainWindow?.minimize());
 
 ipcMain.on('window-maximize', () => {
-    if (mainWindow) {
-        if (mainWindow.isMaximized()) {
-            mainWindow.unmaximize();
-        } else {
-            mainWindow.maximize();
-        }
-    }
+    if (!mainWindow) return;
+    mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
 });
 
-ipcMain.on('window-close', () => {
-    if (mainWindow) mainWindow.close();
+ipcMain.on('window-close', () => mainWindow?.close());
+
+ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false);
+
+// -----------------------------------------------------------------------------
+// App Lifecycle
+// -----------------------------------------------------------------------------
+
+app.whenReady().then(createMainWindow);
+
+app.on('window-all-closed', () => {
+    // Tray keeps app running; only quit when explicitly requested
 });
 
-ipcMain.handle('window-is-maximized', () => {
-    return mainWindow ? mainWindow.isMaximized() : false;
-});
-
-// Electron app lifecycle
-electronApp.whenReady().then(createWindow);
-
-// Quit when all windows are closed (only when explicitly quitting)
-electronApp.on('window-all-closed', () => {
-    // On macOS, apps typically stay active until Cmd+Q
-    // On other platforms, closing all windows means quit only if explicitly requested
-    // The tray keeps the app running otherwise
-});
-
-// macOS: Re-create window when dock icon is clicked
-electronApp.on('activate', () => {
+app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
+        createMainWindow();
     }
 });
 
-// Graceful shutdown handling
-electronApp.on('before-quit', () => {
-    // Mark as quitting so window close event allows exit
+app.on('before-quit', () => {
     setQuitting(true);
-    // Clean up tray icon
     destroyTray();
 });

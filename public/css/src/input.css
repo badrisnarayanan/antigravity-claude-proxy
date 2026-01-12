@@ -494,11 +494,47 @@
 /* Electron Custom Titlebar & Rounded Window                                   */
 /* -------------------------------------------------------------------------- */
 
-/* App window container with rounded corners (Electron only) */
-.app-window {
-  border-radius: 12px;
+/* HTML root - ensure full transparency */
+html.dark {
+  background: transparent !important;
+}
+
+/* Body styles for Electron - minimal padding for corners */
+.electron-body {
+  margin: 0;
+  padding: 2px; /* Minimal space for rounded corners */
+  background: transparent !important;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #d4d4d8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Window Chrome - the visual container with rounded corners */
+.window-chrome {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--color-space-950);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(80, 80, 85, 1);
+  box-sizing: border-box;
+}
+
+/* Remove rounded corners and padding when maximized */
+.window-chrome.window-maximized {
+  border-radius: 0;
+  border: none;
+}
+
+/* When maximized, body should have no padding */
+.electron-body:has(.window-maximized) {
+  padding: 0;
 }
 
 /* Custom Titlebar */
@@ -507,12 +543,13 @@
   align-items: center;
   justify-content: space-between;
   height: 32px;
-  background: linear-gradient(180deg, #0f0f11 0%, #09090b 100%);
-  border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+  background: linear-gradient(180deg, rgba(15, 15, 17, 0.98) 0%, rgba(9, 9, 11, 0.98) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   padding-left: 12px;
   user-select: none;
   position: relative;
   z-index: 9999;
+  flex-shrink: 0;
 }
 
 /* Drag region - allows window dragging */
@@ -522,7 +559,6 @@
   align-items: center;
   height: 100%;
   -webkit-app-region: drag;
-  app-region: drag;
   padding-right: 8px;
 }
 
@@ -531,7 +567,6 @@
   display: flex;
   height: 100%;
   -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 
 /* Individual control button */
@@ -543,29 +578,35 @@
   height: 100%;
   border: none;
   background: transparent;
-  color: #a1a1aa;
+  color: #71717a;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  -webkit-app-region: no-drag;
 }
 
 .titlebar-btn:hover {
-  color: #fff;
+  color: #fafafa;
 }
 
 .titlebar-btn-minimize:hover,
 .titlebar-btn-maximize:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .titlebar-btn-close:hover {
-  background: #e81123;
-  color: #fff;
+  background: #c42b1c;
+  color: #ffffff;
 }
 
 .titlebar-btn:focus {
   outline: none;
 }
 
+.titlebar-btn:active {
+  opacity: 0.8;
+}
+
 .titlebar-btn svg {
   flex-shrink: 0;
+  pointer-events: none;
 }
