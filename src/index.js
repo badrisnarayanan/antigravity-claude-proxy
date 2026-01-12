@@ -6,6 +6,7 @@
 import app from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
+import { startCacheCleanup, stopCacheCleanup } from './format/signature-cache.js';
 import path from 'path';
 import os from 'os';
 
@@ -34,7 +35,54 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-app.listen(PORT, () => {
+// Track server instance for graceful shutdown
+let server = null;
+let isShuttingDown = false;
+
+/**
+ * Graceful shutdown handler
+ */
+async function gracefulShutdown(signal) {
+    if (isShuttingDown) {
+        logger.warn(`[Shutdown] Already shutting down, ignoring ${signal}`);
+        return;
+    }
+    isShuttingDown = true;
+
+    logger.info(`[Shutdown] Received ${signal}, shutting down gracefully...`);
+
+    // Stop accepting new connections
+    if (server) {
+        server.close(() => {
+            logger.info('[Shutdown] HTTP server closed');
+        });
+    }
+
+    // Stop cache cleanup interval
+    stopCacheCleanup();
+
+    // Give pending requests time to complete (max 10 seconds)
+    const shutdownTimeout = setTimeout(() => {
+        logger.warn('[Shutdown] Timeout reached, forcing exit');
+        process.exit(1);
+    }, 10000);
+
+    // Wait a bit for any pending requests
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    clearTimeout(shutdownTimeout);
+    logger.info('[Shutdown] Clean shutdown complete');
+    process.exit(0);
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start signature cache cleanup
+startCacheCleanup();
+
+server = app.listen(PORT, () => {
     // Clear console for a clean start
     console.clear();
 

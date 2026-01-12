@@ -11,6 +11,7 @@ import {
   MAX_WAIT_BEFORE_ERROR_MS,
   isThinkingModel,
   getModelFamily,
+  ANTIGRAVITY_ENDPOINT_FALLBACKS,
 } from "../constants.js";
 import { config } from "../config.js";
 import { convertGoogleToAnthropic } from "../format/index.js";
@@ -21,6 +22,7 @@ import { parseResetTime } from "./rate-limit-parser.js";
 import { buildCloudCodeRequest, buildHeaders } from "./request-builder.js";
 import { parseThinkingSSEResponse } from "./sse-parser.js";
 import { getFallbackModel } from "../fallback-config.js";
+import { deriveSessionId } from "./session-manager.js";
 
 /**
  * Send a non-streaming request to Cloud Code with multi-account support
@@ -42,6 +44,7 @@ export async function sendMessage(
 ) {
   const model = anthropicRequest.model;
   const isThinking = isThinkingModel(model);
+  const sessionId = deriveSessionId(anthropicRequest);
 
   // Retry loop with account failover
   // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -53,8 +56,10 @@ export async function sendMessage(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Use sticky account selection for cache continuity
-    const { account: stickyAccount, waitMs } =
-      accountManager.pickStickyAccount(model);
+    const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount(
+      model,
+      sessionId
+    );
     let account = stickyAccount;
 
     // Handle waiting for sticky account
@@ -126,6 +131,18 @@ export async function sendMessage(
         throw new Error("No accounts available");
       }
     }
+
+    accountManager.incrementActiveRequests(account);
+
+    // Log which account is being used for this request
+    const requestId = anthropicRequest._requestId || "unknown";
+    const accountIndex = accountManager.getAccountIndex?.(account.email) ?? "?";
+    const accountCount = accountManager.getAccountCount();
+    logger.info(
+      `[${requestId}] Using account: ${account.email} (${
+        accountIndex + 1
+      }/${accountCount})`
+    );
 
     try {
       // Get token and project for this account
@@ -283,6 +300,8 @@ export async function sendMessage(
       }
 
       throw error;
+    } finally {
+      accountManager.decrementActiveRequests(account);
     }
   }
 

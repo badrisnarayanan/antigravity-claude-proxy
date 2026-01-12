@@ -23,9 +23,10 @@ export function convertRole(role) {
  * @param {string|Array} content - Anthropic message content
  * @param {boolean} isClaudeModel - Whether the model is a Claude model
  * @param {boolean} isGeminiModel - Whether the model is a Gemini model
+ * @param {boolean} isGptModel - Whether the model is a GPT model
  * @returns {Array} Google Generative AI parts array
  */
-export function convertContentToParts(content, isClaudeModel = false, isGeminiModel = false) {
+export function convertContentToParts(content, isClaudeModel = false, isGeminiModel = false, isGptModel = false) {
     if (typeof content === 'string') {
         return [{ text: content }];
     }
@@ -158,7 +159,7 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             // Handle thinking blocks with signature compatibility check
             if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
                 const signatureFamily = getCachedSignatureFamily(block.signature);
-                const targetFamily = isClaudeModel ? 'claude' : isGeminiModel ? 'gemini' : null;
+                const targetFamily = isClaudeModel ? 'claude' : isGeminiModel ? 'gemini' : isGptModel ? 'gpt' : null;
 
                 // Drop blocks with incompatible signatures for Gemini (cross-model switch)
                 if (isGeminiModel && signatureFamily && targetFamily && signatureFamily !== targetFamily) {

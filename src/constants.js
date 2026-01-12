@@ -123,12 +123,21 @@ export const MAX_ACCOUNTS = config?.maxAccounts || 10; // From config or 10
 
 // Rate limit wait thresholds
 export const MAX_WAIT_BEFORE_ERROR_MS = config?.maxWaitBeforeErrorMs || 120000; // From config or 2 minutes
+export const STICKY_COOLDOWN_THRESHOLD_MS = 15000; // 15 seconds - wait for sticky account if reset is within this time, even if others are available
+export const MAX_CONCURRENT_REQUESTS = 2; // Maximum concurrent requests per account
 
 // Thinking model constants
 export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature length
 
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
+
+// Default max tokens for requests if not specified
+export const DEFAULT_MAX_TOKENS = config?.defaultMaxTokens || 4096;
+
+// Default max context tokens (0 = unlimited/disabled)
+// Set to 30k as requested to balance context retention and cost savings
+export const DEFAULT_MAX_CONTEXT_TOKENS = config?.maxContextTokens || 60000;
 
 // Gemini signature handling
 // Sentinel value to skip thought signature validation when Claude Code strips the field
@@ -147,6 +156,7 @@ export function getModelFamily(modelName) {
   const lower = (modelName || "").toLowerCase();
   if (lower.includes("claude")) return "claude";
   if (lower.includes("gemini")) return "gemini";
+  if (lower.includes("gpt")) return "gpt";
   return "unknown";
 }
 
@@ -170,14 +180,17 @@ export function isThinkingModel(modelName) {
 }
 
 // Google OAuth configuration (from opencode-antigravity-auth)
+// Client ID and Secret can be overridden via environment variables
 export const OAUTH_CONFIG = {
   clientId:
+    process.env.OAUTH_CLIENT_ID ||
     "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
-  clientSecret: "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",
+  clientSecret:
+    process.env.OAUTH_CLIENT_SECRET || "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",
   authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
   tokenUrl: "https://oauth2.googleapis.com/token",
   userInfoUrl: "https://www.googleapis.com/oauth2/v1/userinfo",
-  callbackPort: 51121,
+  callbackPort: parseInt(process.env.OAUTH_CALLBACK_PORT) || 51121,
   scopes: [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -221,6 +234,7 @@ export default {
   MAX_WAIT_BEFORE_ERROR_MS,
   MIN_SIGNATURE_LENGTH,
   GEMINI_MAX_OUTPUT_TOKENS,
+  DEFAULT_MAX_TOKENS,
   GEMINI_SKIP_SIGNATURE,
   GEMINI_SIGNATURE_CACHE_TTL_MS,
   getModelFamily,

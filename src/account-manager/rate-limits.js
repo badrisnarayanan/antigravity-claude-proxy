@@ -5,7 +5,7 @@
  * All rate limits are model-specific and quota-type aware (CLI vs Antigravity).
  */
 
-import { DEFAULT_COOLDOWN_MS } from "../constants.js";
+import { DEFAULT_COOLDOWN_MS, MAX_CONCURRENT_REQUESTS } from "../constants.js";
 import { formatDuration } from "../utils/helpers.js";
 import { logger } from "../utils/logger.js";
 
@@ -26,24 +26,26 @@ function buildQuotaKey(modelId, quotaType = null) {
  * Check if all accounts are rate-limited for a specific model and quota type
  *
  * @param {Array} accounts - Array of account objects
- * @param {string} modelId - Model ID to check rate limits for
- * @param {string} [quotaType] - Quota type ('cli' or 'antigravity')
- * @returns {boolean} True if all accounts are rate-limited
+ * @param {string} modelId - Model ID to check rate limits
+ * @param {string} [quotaType] - Optional quota type to check (e.g., 'cli', 'antigravity')
+ * @returns {boolean} True if all enabled accounts are rate limited for the model
  */
-export function isAllRateLimited(accounts, modelId, quotaType = null) {
-  if (accounts.length === 0) return true;
-  if (!modelId) return false; // No model specified = not rate limited
-
-  const quotaKey = buildQuotaKey(modelId, quotaType);
+export function isAllRateLimited(modelId, quotaType = null) {
+  const accounts = this.activeAccounts;
+  if (!accounts || accounts.length === 0) return true;
 
   return accounts.every((acc) => {
-    if (acc.isInvalid) return true; // Invalid accounts count as unavailable
-    // WebUI: Skip disabled accounts
-    if (acc.enabled === false) return true;
+    if (!acc.enabled) return true;
 
-    const modelLimits = acc.modelRateLimits || {};
-    const limit = modelLimits[quotaKey];
-    return limit && limit.isRateLimited && limit.resetTime > Date.now();
+    // Check rate limits
+    const key = quotaType ? `${modelId}:${quotaType}` : modelId;
+    const isRateLimited = this.modelRateLimits.has(`${acc.email}:${key}`);
+
+    // Check concurrent requests limit
+    const activeReqs = this.activeRequests.get(acc.email) || 0;
+    const isConcurrencyLimited = activeReqs >= MAX_CONCURRENT_REQUESTS;
+
+    return isRateLimited || isConcurrencyLimited;
   });
 }
 
@@ -51,7 +53,7 @@ export function isAllRateLimited(accounts, modelId, quotaType = null) {
  * Get list of available (non-rate-limited, non-invalid) accounts for a model
  *
  * @param {Array} accounts - Array of account objects
- * @param {string} [modelId] - Model ID to filter by
+ * @param {string} modelId - Model ID to filter by
  * @param {string} [quotaType] - Quota type ('cli' or 'antigravity')
  * @returns {Array} Array of available account objects
  */
@@ -67,6 +69,9 @@ export function getAvailableAccounts(
 
     // WebUI: Skip disabled accounts
     if (acc.enabled === false) return false;
+
+    // Check concurrency limit
+    if ((acc.activeRequests || 0) >= MAX_CONCURRENT_REQUESTS) return false;
 
     if (quotaKey && acc.modelRateLimits && acc.modelRateLimits[quotaKey]) {
       const limit = acc.modelRateLimits[quotaKey];
@@ -211,39 +216,36 @@ export function markInvalid(accounts, email, reason = "Unknown error") {
  * Get the minimum wait time until any account becomes available for a model
  *
  * @param {Array} accounts - Array of account objects
- * @param {string} modelId - Model ID to check
- * @param {string} [quotaType] - Quota type ('cli' or 'antigravity')
- * @returns {number} Wait time in milliseconds
+ * @param {string} modelId - Model identifier
+ * @param {string} [quotaType] - Optional quota type
+ * @returns {number} Minimum wait time in ms
  */
-export function getMinWaitTimeMs(accounts, modelId, quotaType = null) {
-  if (!isAllRateLimited(accounts, modelId, quotaType)) return 0;
-
+export function getMinWaitTimeMs(modelId, quotaType = null) {
   const now = Date.now();
-  const quotaKey = buildQuotaKey(modelId, quotaType);
   let minWait = Infinity;
-  let soonestAccount = null;
+  let activeCount = 0;
 
-  for (const account of accounts) {
-    if (account.modelRateLimits && account.modelRateLimits[quotaKey]) {
-      const limit = account.modelRateLimits[quotaKey];
-      if (limit.isRateLimited && limit.resetTime) {
-        const wait = limit.resetTime - now;
-        if (wait > 0 && wait < minWait) {
-          minWait = wait;
-          soonestAccount = account;
-        }
+  const accounts = this.activeAccounts;
+  if (!accounts) return 0;
+
+  const key = quotaType ? `${modelId}:${quotaType}` : modelId;
+
+  for (const acc of accounts) {
+    if (!acc.enabled) continue;
+    activeCount++;
+
+    const expiry = this.modelRateLimits.get(`${acc.email}:${key}`);
+    if (expiry) {
+      const wait = expiry - now;
+      if (wait > 0 && wait < minWait) {
+        minWait = wait;
       }
+    } else {
+      // If any account is not rate limited, wait time is 0
+      return 0;
     }
   }
 
-  if (soonestAccount) {
-    const quotaLabel = quotaType ? ` [${quotaType}]` : "";
-    logger.info(
-      `[AccountManager] Shortest wait${quotaLabel}: ${formatDuration(
-        minWait
-      )} (account: ${soonestAccount.email})`
-    );
-  }
-
+  if (activeCount === 0) return 0;
   return minWait === Infinity ? DEFAULT_COOLDOWN_MS : minWait;
 }

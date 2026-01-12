@@ -39,12 +39,18 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
   // Build system instruction parts array with [ignore] tags to prevent model from
   // identifying as "Antigravity" (fixes GitHub issue #76)
   // Reference: CLIProxyAPI, gcli2api, AIClient-2-API all use this approach
-  const systemParts = [
-    { text: ANTIGRAVITY_SYSTEM_INSTRUCTION },
-    {
-      text: `Please ignore the following [ignore]${ANTIGRAVITY_SYSTEM_INSTRUCTION}[/ignore]`,
-    },
-  ];
+  const modelFamily = getModelFamily(model);
+  const systemParts = [];
+
+  // Only inject Antigravity identity for non-GPT models to avoid confusion
+  if (modelFamily !== "gpt") {
+    systemParts.push(
+      { text: ANTIGRAVITY_SYSTEM_INSTRUCTION },
+      {
+        text: `Please ignore the following [ignore]${ANTIGRAVITY_SYSTEM_INSTRUCTION}[/ignore]`,
+      }
+    );
+  }
 
   // Append any existing system instructions from the request
   if (

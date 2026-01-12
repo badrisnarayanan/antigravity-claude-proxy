@@ -26,7 +26,8 @@ async function extractChatParams() {
         const html = await response.text();
 
         // Find the base64-encoded chatParams in the HTML
-        const match = html.match(/window\.chatParams\s*=\s*'([^']+)'/);
+        // Handles both single and double quotes, and flexible spacing
+        const match = html.match(/window\.chatParams\s*=\s*['"]([^'"]+)['"]/);
         if (!match) {
             throw new Error('Could not find chatParams in Antigravity page');
         }

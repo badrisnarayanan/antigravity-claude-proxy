@@ -16,6 +16,9 @@ import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
 import { isNetworkError } from '../utils/helpers.js';
 
+// Map to track in-flight token refresh promises to prevent "thundering herd"
+const refreshPromises = new Map();
+
 /**
  * Get OAuth token for an account
  *
@@ -33,50 +36,64 @@ export async function getTokenForAccount(account, tokenCache, onInvalid, onSave)
         return cached.token;
     }
 
-    // Get fresh token based on source
-    let token;
-
-    if (account.source === 'oauth' && account.refreshToken) {
-        // OAuth account - use refresh token to get new access token
-        try {
-            const tokens = await refreshAccessToken(account.refreshToken);
-            token = tokens.accessToken;
-            // Clear invalid flag on success
-            if (account.isInvalid) {
-                account.isInvalid = false;
-                account.invalidReason = null;
-                if (onSave) await onSave();
-            }
-            logger.success(`[AccountManager] Refreshed OAuth token for: ${account.email}`);
-        } catch (error) {
-            // Check if it's a transient network error
-            if (isNetworkError(error)) {
-                logger.warn(`[AccountManager] Failed to refresh token for ${account.email} due to network error: ${error.message}`);
-                // Do NOT mark as invalid, just throw so caller knows it failed
-                throw new Error(`AUTH_NETWORK_ERROR: ${error.message}`);
-            }
-
-            logger.error(`[AccountManager] Failed to refresh token for ${account.email}:`, error.message);
-            // Mark account as invalid (credentials need re-auth)
-            if (onInvalid) onInvalid(account.email, error.message);
-            throw new Error(`AUTH_INVALID: ${account.email}: ${error.message}`);
-        }
-    } else if (account.source === 'manual' && account.apiKey) {
-        token = account.apiKey;
-    } else {
-        // Extract from database
-        const dbPath = account.dbPath || ANTIGRAVITY_DB_PATH;
-        const authData = getAuthStatus(dbPath);
-        token = authData.apiKey;
+    // Check if there is already an in-flight refresh for this account
+    if (refreshPromises.has(account.email)) {
+        return refreshPromises.get(account.email);
     }
 
-    // Cache the token
-    tokenCache.set(account.email, {
-        token,
-        extractedAt: Date.now()
-    });
+    const refreshPromise = (async () => {
+        try {
+            // Get fresh token based on source
+            let token;
 
-    return token;
+            if (account.source === 'oauth' && account.refreshToken) {
+                // OAuth account - use refresh token to get new access token
+                try {
+                    const tokens = await refreshAccessToken(account.refreshToken);
+                    token = tokens.accessToken;
+                    // Clear invalid flag on success
+                    if (account.isInvalid) {
+                        account.isInvalid = false;
+                        account.invalidReason = null;
+                        if (onSave) await onSave();
+                    }
+                    logger.success(`[AccountManager] Refreshed OAuth token for: ${account.email}`);
+                } catch (error) {
+                    // Check if it's a transient network error
+                    if (isNetworkError(error)) {
+                        logger.warn(`[AccountManager] Failed to refresh token for ${account.email} due to network error: ${error.message}`);
+                        // Do NOT mark as invalid, just throw so caller knows it failed
+                        throw new Error(`AUTH_NETWORK_ERROR: ${error.message}`);
+                    }
+
+                    logger.error(`[AccountManager] Failed to refresh token for ${account.email}:`, error.message);
+                    // Mark account as invalid (credentials need re-auth)
+                    if (onInvalid) onInvalid(account.email, error.message);
+                    throw new Error(`AUTH_INVALID: ${account.email}: ${error.message}`);
+                }
+            } else if (account.source === 'manual' && account.apiKey) {
+                token = account.apiKey;
+            } else {
+                // Extract from database
+                const dbPath = account.dbPath || ANTIGRAVITY_DB_PATH;
+                const authData = getAuthStatus(dbPath);
+                token = authData.apiKey;
+            }
+
+            // Cache the token
+            tokenCache.set(account.email, {
+                token,
+                extractedAt: Date.now()
+            });
+
+            return token;
+        } finally {
+            refreshPromises.delete(account.email);
+        }
+    })();
+
+    refreshPromises.set(account.email, refreshPromise);
+    return refreshPromise;
 }
 
 /**

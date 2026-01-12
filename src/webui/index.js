@@ -16,21 +16,22 @@ import path from "path";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import express from "express";
+import fs from "fs";
+import crypto from "crypto";
 import { getPublicConfig, saveConfig, config } from "../config.js";
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from "../constants.js";
+import { DEFAULT_PORT, ANTIGRAVITY_AUTH_PORT } from "../constants.js";
+import { logger } from "../utils/logger.js";
 import {
   readClaudeConfig,
   updateClaudeConfig,
   replaceClaudeConfig,
   getClaudeConfigPath,
 } from "../utils/claude-config.js";
-import { logger } from "../utils/logger.js";
 import {
   getAuthorizationUrl,
-  completeOAuthFlow,
   startCallbackServer,
+  completeOAuthFlow,
 } from "../auth/oauth.js";
-import { loadAccounts, saveAccounts } from "../account-manager/storage.js";
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -48,117 +49,70 @@ try {
 // Maps state ID to active OAuth flow data
 const pendingOAuthFlows = new Map();
 
-/**
- * WebUI Helper Functions - Direct account manipulation
- * These functions work around AccountManager's limited API by directly
- * manipulating the accounts.json config file (non-invasive approach for PR)
- */
+// Rate limiting for auth attempts (IP -> { count, lockedUntil })
+const authAttempts = new Map();
+const MAX_AUTH_ATTEMPTS = 5;
+const AUTH_LOCKOUT_MS = 15 * 60 * 1000; // 15 mins
 
 /**
- * Set account enabled/disabled state
+ * Authentication Middleware
+ * Protects routes with Basic Auth based on password in config
  */
-async function setAccountEnabled(email, enabled) {
-  const { accounts, settings, activeIndex } = await loadAccounts(
-    ACCOUNT_CONFIG_PATH
-  );
-  const account = accounts.find((a) => a.email === email);
-  if (!account) {
-    throw new Error(`Account ${email} not found`);
-  }
-  account.enabled = enabled;
-  await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex);
-  logger.info(`[WebUI] Account ${email} ${enabled ? "enabled" : "disabled"}`);
-}
-
-/**
- * Remove account from config
- */
-async function removeAccount(email) {
-  const { accounts, settings, activeIndex } = await loadAccounts(
-    ACCOUNT_CONFIG_PATH
-  );
-  const index = accounts.findIndex((a) => a.email === email);
-  if (index === -1) {
-    throw new Error(`Account ${email} not found`);
-  }
-  accounts.splice(index, 1);
-  // Adjust activeIndex if needed
-  const newActiveIndex =
-    activeIndex >= accounts.length
-      ? Math.max(0, accounts.length - 1)
-      : activeIndex;
-  await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, newActiveIndex);
-  logger.info(`[WebUI] Account ${email} removed`);
-}
-
-/**
- * Add new account to config
- */
-async function addAccount(accountData) {
-  const { accounts, settings, activeIndex } = await loadAccounts(
-    ACCOUNT_CONFIG_PATH
-  );
-
-  // Check if account already exists
-  const existingIndex = accounts.findIndex(
-    (a) => a.email === accountData.email
-  );
-  if (existingIndex !== -1) {
-    // Update existing account
-    accounts[existingIndex] = {
-      ...accounts[existingIndex],
-      ...accountData,
-      enabled: true,
-      isInvalid: false,
-      invalidReason: null,
-      addedAt: accounts[existingIndex].addedAt || new Date().toISOString(),
-    };
-    logger.info(`[WebUI] Account ${accountData.email} updated`);
-  } else {
-    // Add new account
-    accounts.push({
-      ...accountData,
-      enabled: true,
-      isInvalid: false,
-      invalidReason: null,
-      modelRateLimits: {},
-      lastUsed: null,
-      addedAt: new Date().toISOString(),
-    });
-    logger.info(`[WebUI] Account ${accountData.email} added`);
-  }
-
-  await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex);
-}
-
-/**
- * Auth Middleware - Optional password protection for WebUI
- * Password can be set via WEBUI_PASSWORD env var or config.json
- */
-function createAuthMiddleware() {
+export function createAuthMiddleware() {
   return (req, res, next) => {
-    const password = config.webuiPassword;
-    if (!password) return next();
-
-    // Determine if this path should be protected
-    const isApiRoute = req.path.startsWith("/api/");
-    const isException =
-      req.path === "/api/auth/url" || req.path === "/api/config";
-    const isProtected =
-      (isApiRoute && !isException) ||
-      req.path === "/account-limits" ||
-      req.path === "/health";
-
-    if (isProtected) {
-      const providedPassword =
-        req.headers["x-webui-password"] || req.query.password;
-      if (providedPassword !== password) {
-        return res
-          .status(401)
-          .json({ status: "error", error: "Unauthorized: Password required" });
-      }
+    // If no password set, everything is open
+    if (!config.webuiPassword) {
+      return next();
     }
-    next();
+
+    // Check rate limit
+    const ip = req.ip;
+    const now = Date.now();
+    const state = authAttempts.get(ip);
+
+    if (state && state.lockedUntil > now) {
+      const waitMinutes = Math.ceil((state.lockedUntil - now) / 60000);
+      return res.status(429).json({
+        error: {
+          type: "rate_limit_error",
+          message: `Too many failed attempts. Try again in ${waitMinutes} minutes.`,
+        },
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Antigravity WebUI"');
+      return res.sendStatus(401);
+    }
+
+    const auth = Buffer.from(authHeader.split(" ")[1], "base64")
+      .toString()
+      .split(":");
+    const pass = auth[1];
+
+    if (pass === config.webuiPassword) {
+      // Reset attempts on success
+      authAttempts.delete(ip);
+      next();
+    } else {
+      // Record failed attempt
+      const attempts = (state?.count || 0) + 1;
+      if (attempts >= MAX_AUTH_ATTEMPTS) {
+        authAttempts.set(ip, {
+          count: attempts,
+          lockedUntil: now + AUTH_LOCKOUT_MS,
+        });
+        logger.warn(
+          `[Auth] IP ${ip} locked out after ${attempts} failed attempts`
+        );
+      } else {
+        authAttempts.set(ip, { count: attempts, lockedUntil: 0 });
+      }
+      res.setHeader("WWW-Authenticate", 'Basic realm="Antigravity WebUI"');
+      return res.sendStatus(401);
+    }
   };
 }
 
@@ -174,6 +128,22 @@ export function mountWebUI(app, dirname, accountManager) {
 
   // Serve static files from public directory
   app.use(express.static(path.join(dirname, "../public")));
+
+  // Periodic cleanup of stale OAuth flows (every minute)
+  setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [key, val] of pendingOAuthFlows.entries()) {
+      if (now - val.timestamp > 10 * 60 * 1000) {
+        // 10 minutes
+        pendingOAuthFlows.delete(key);
+        cleaned++;
+      }
+    }
+    if (cleaned > 0) {
+      logger.debug(`[WebUI] Cleaned up ${cleaned} stale OAuth flows`);
+    }
+  }, 60000);
 
   // ==========================================
   // Account Management API
@@ -224,18 +194,7 @@ export function mountWebUI(app, dirname, accountManager) {
     try {
       const { email } = req.params;
       const { enabled } = req.body;
-
-      if (typeof enabled !== "boolean") {
-        return res
-          .status(400)
-          .json({ status: "error", error: "enabled must be a boolean" });
-      }
-
-      await setAccountEnabled(email, enabled);
-
-      // Reload AccountManager to pick up changes
-      await accountManager.reload();
-
+      await accountManager.toggleAccount(email, enabled);
       res.json({
         status: "ok",
         message: `Account ${email} ${enabled ? "enabled" : "disabled"}`,
@@ -251,10 +210,7 @@ export function mountWebUI(app, dirname, accountManager) {
   app.delete("/api/accounts/:email", async (req, res) => {
     try {
       const { email } = req.params;
-      await removeAccount(email);
-
-      // Reload AccountManager to pick up changes
-      await accountManager.reload();
+      await accountManager.removeAccount(email);
 
       res.json({
         status: "ok",
@@ -320,6 +276,7 @@ export function mountWebUI(app, dirname, accountManager) {
         persistTokenCache,
         defaultCooldownMs,
         maxWaitBeforeErrorMs,
+        geminiHeaderMode,
       } = req.body;
 
       // Only allow updating specific fields (security)
@@ -367,10 +324,10 @@ export function mountWebUI(app, dirname, accountManager) {
         updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
       }
       if (
-        req.body.geminiHeaderMode &&
-        ["cli", "antigravity"].includes(req.body.geminiHeaderMode)
+        geminiHeaderMode &&
+        ["cli", "antigravity"].includes(geminiHeaderMode)
       ) {
-        updates.geminiHeaderMode = req.body.geminiHeaderMode;
+        updates.geminiHeaderMode = geminiHeaderMode;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -385,14 +342,22 @@ export function mountWebUI(app, dirname, accountManager) {
       if (success) {
         res.json({
           status: "ok",
-          message: "Configuration saved. Restart server to apply some changes.",
-          updates: updates,
-          config: getPublicConfig(),
+          message: "Configuration updated",
+          config: {
+            webuiPassword: config.webuiPassword ? "******" : "",
+            debug: config.debug,
+            logLevel: config.logLevel,
+            maxRetries: config.maxRetries,
+            retryBaseMs: config.retryBaseMs,
+            retryMaxMs: config.retryMaxMs,
+            maxContextTokens: config.maxContextTokens,
+            geminiHeaderMode: config.geminiHeaderMode,
+          },
         });
       } else {
         res.status(500).json({
           status: "error",
-          error: "Failed to save configuration file",
+          error: "Failed to save configuration",
         });
       }
     } catch (error) {
@@ -567,13 +532,54 @@ export function mountWebUI(app, dirname, accountManager) {
           .json({ status: "error", error: "Invalid parameters" });
       }
 
+      // Validate modelId format (alphanumeric, dashes, underscores, dots only)
+      if (!/^[a-zA-Z0-9._-]+$/.test(modelId)) {
+        return res
+          .status(400)
+          .json({ status: "error", error: "Invalid model ID format" });
+      }
+
+      // Sanitize config - only allow specific keys with validated types
+      const allowedKeys = ["hidden", "pinned", "mapping", "alias"];
+      const sanitizedConfig = {};
+      for (const key of allowedKeys) {
+        if (key in newModelConfig) {
+          const value = newModelConfig[key];
+          // Validate types
+          if (
+            (key === "hidden" || key === "pinned") &&
+            typeof value === "boolean"
+          ) {
+            sanitizedConfig[key] = value;
+          } else if (
+            (key === "mapping" || key === "alias") &&
+            (typeof value === "string" || value === null)
+          ) {
+            // Validate mapping/alias format if provided
+            if (value !== null && !/^[a-zA-Z0-9._-]*$/.test(value)) {
+              return res
+                .status(400)
+                .json({ status: "error", error: `Invalid ${key} format` });
+            }
+            sanitizedConfig[key] = value;
+          }
+        }
+      }
+
+      if (Object.keys(sanitizedConfig).length === 0) {
+        return res.status(400).json({
+          status: "error",
+          error: "No valid configuration fields provided",
+        });
+      }
+
       // Load current config
       const currentMapping = config.modelMapping || {};
 
       // Update specific model config
       currentMapping[modelId] = {
         ...currentMapping[modelId],
-        ...newModelConfig,
+        ...sanitizedConfig,
       };
 
       // Save back to main config
@@ -677,15 +683,12 @@ export function mountWebUI(app, dirname, accountManager) {
             const accountData = await completeOAuthFlow(code, verifier);
 
             // Add or update the account
-            await addAccount({
+            await accountManager.addAccount({
               email: accountData.email,
               refreshToken: accountData.refreshToken,
               projectId: accountData.projectId,
               source: "oauth",
             });
-
-            // Reload AccountManager to pick up the new account
-            await accountManager.reload();
 
             logger.success(
               `[WebUI] Account ${accountData.email} added successfully`
@@ -701,11 +704,37 @@ export function mountWebUI(app, dirname, accountManager) {
           pendingOAuthFlows.delete(state);
         });
 
-      res.json({ status: "ok", url });
+      res.json({ status: "ok", url, state });
     } catch (error) {
       logger.error("[WebUI] Error generating auth URL:", error);
       res.status(500).json({ status: "error", error: error.message });
     }
+  });
+
+  /**
+   * GET /api/auth/status/:state - Poll OAuth flow status
+   * Allows frontend to check if OAuth flow completed or failed
+   */
+  app.get("/api/auth/status/:state", (req, res) => {
+    const flow = pendingOAuthFlows.get(req.params.state);
+
+    if (!flow) {
+      // Flow doesn't exist - either completed, expired, or never existed
+      return res.json({
+        status: "not_found",
+        message: "OAuth flow not found or already completed",
+      });
+    }
+
+    // Flow exists and is still pending
+    const elapsed = Date.now() - flow.timestamp;
+    const remainingMs = Math.max(0, 120000 - elapsed); // 2 minute timeout
+
+    res.json({
+      status: "pending",
+      elapsedMs: elapsed,
+      remainingMs: remainingMs,
+    });
   });
 
   /**

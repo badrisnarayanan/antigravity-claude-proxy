@@ -15,14 +15,24 @@ document.addEventListener("alpine:init", () => {
       if (validTabs.includes(initialHash)) {
         this.activeTab = initialHash;
       }
+      // Restore password from session storage (more secure than local storage)
+      // This ensures password persists across reloads but clears on browser close
+      this.webuiPassword = sessionStorage.getItem("webuiPassword") || "";
 
-      // 2. Sync State -> URL
+      // Sync state to URL hash
       Alpine.effect(() => {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        if (this.activeTab !== "dashboard") {
+          params.set("tab", this.activeTab);
+        } else {
+          params.delete("tab");
+        }
+        const newHash = params.toString();
         if (
-          validTabs.includes(this.activeTab) &&
-          getHash() !== this.activeTab
+          window.location.hash.slice(1) !== newHash &&
+          (newHash || window.location.hash)
         ) {
-          window.location.hash = this.activeTab;
+          window.location.hash = newHash;
         }
       });
 
@@ -248,7 +258,6 @@ document.addEventListener("alpine:init", () => {
         allCaps: "ALL",
         claudeCaps: "CLAUDE",
         geminiCaps: "GEMINI",
-        modelMapping: "Mapping (Target Model ID)",
         systemInfo: "System Information",
         refresh: "Refresh",
         runtimeConfig: "Runtime Configuration",
@@ -585,9 +594,7 @@ document.addEventListener("alpine:init", () => {
 
     // Toast Messages
     toast: null,
-
-    // Header Mode (cli or antigravity)
-    geminiHeaderMode: "cli",
+    _toastTimer: null, // Track timer for cleanup
 
     // OAuth Progress
     oauthProgress: {
@@ -595,19 +602,6 @@ document.addEventListener("alpine:init", () => {
       current: 0,
       max: 60,
       cancel: null,
-    },
-
-    // Fetch config to get header mode
-    async fetchHeaderMode() {
-      try {
-        const res = await fetch("/api/config");
-        if (res.ok) {
-          const data = await res.json();
-          this.geminiHeaderMode = data.config?.geminiHeaderMode || "cli";
-        }
-      } catch (e) {
-        console.error("Failed to fetch header mode:", e);
-      }
     },
 
     t(key, params = {}) {
@@ -626,10 +620,19 @@ document.addEventListener("alpine:init", () => {
     },
 
     showToast(message, type = "info") {
+      // Clear any existing timer to prevent race conditions
+      if (this._toastTimer) {
+        clearTimeout(this._toastTimer);
+        this._toastTimer = null;
+      }
+
       const id = Date.now();
       this.toast = { message, type, id };
-      setTimeout(() => {
-        if (this.toast && this.toast.id === id) this.toast = null;
+      this._toastTimer = setTimeout(() => {
+        if (this.toast && this.toast.id === id) {
+          this.toast = null;
+        }
+        this._toastTimer = null;
       }, 3000);
     },
   });

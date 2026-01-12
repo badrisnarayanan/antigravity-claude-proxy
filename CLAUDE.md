@@ -15,6 +15,7 @@ The proxy translates requests from Anthropic Messages API format → Google Gene
 npm install
 
 # Start server (runs on port 8672)
+# Start server (runs on port 8672)
 npm start
 
 # Start with model fallback enabled (falls back to alternate model when quota exhausted)
@@ -36,6 +37,7 @@ npm run accounts         # Interactive account management
 npm run accounts:add     # Add a new Google account via OAuth
 npm run accounts:add -- --no-browser  # Add account on headless server (manual code input)
 npm run accounts:list    # List configured accounts
+npm run accounts:remove  # Remove an account
 npm run accounts:verify  # Verify account tokens are valid
 
 # Run all tests (server must be running on port 8672)
@@ -50,6 +52,8 @@ npm run test:images        # Image processing
 npm run test:caching       # Prompt caching
 npm run test:crossmodel    # Cross-model thinking signatures
 npm run test:oauth         # OAuth no-browser mode
+npm run test:emptyretry    # Empty response retry logic
+npm run test:sanitizer     # JSON Schema sanitizer
 ```
 
 ## Architecture
@@ -57,64 +61,84 @@ npm run test:oauth         # OAuth no-browser mode
 **Request Flow:**
 
 ```
-Claude Code CLI → Express Server (server.js) → CloudCode Client → Antigravity Cloud Code API
+Claude Code CLI → Server (server.js) → Middleware → Controllers → CloudCode Client → Antigravity API
 ```
 
 **Directory Structure:**
 
 ```
+bin/
+└── cli.js                      # CLI entry point
+
 src/
-├── index.js                    # Entry point
-├── server.js                   # Express server
-├── constants.js                # Configuration values
+├── index.js                    # Programmatic entry point
+├── server.js                   # Express server setup
+├── config.js                   # Dynamic configuration
+├── constants.js                # Static configuration values
 ├── errors.js                   # Custom error classes
-├── fallback-config.js          # Model fallback mappings and helpers
+├── fallback-config.js          # Model fallback mappings
+│
+├── controllers/                # Route controllers
+│   ├── messages.controller.js  # Messages API logic
+│   ├── models.controller.js    # Models API logic
+│   └── system.controller.js    # System/Health routes
+│
+├── middleware/                 # Express middleware
+│   ├── error-handler.js        # Global error handling
+│   └── validation.js           # Request validation
+│
+├── modules/                    # Feature modules
+│   └── usage-stats.js          # Usage statistics tracking
 │
 ├── cloudcode/                  # Cloud Code API client
 │   ├── index.js                # Public API exports
 │   ├── session-manager.js      # Session ID derivation for caching
-│   ├── rate-limit-parser.js    # Parse reset times from headers/errors
-│   ├── request-builder.js      # Build API request payloads
+│   ├── rate-limit-parser.js    # Parse reset times
+│   ├── request-builder.js      # Build API payloads
 │   ├── sse-parser.js           # Parse SSE for non-streaming
-│   ├── sse-streamer.js         # Stream SSE events in real-time
-│   ├── message-handler.js      # Non-streaming message handling
-│   ├── streaming-handler.js    # Streaming message handling
-│   └── model-api.js            # Model listing and quota APIs
+│   ├── sse-streamer.js         # Stream SSE events
+│   ├── message-handler.js      # Non-streaming handling
+│   ├── streaming-handler.js    # Streaming handling
+│   └── model-api.js            # Model listing/quota
 │
-├── account-manager/            # Multi-account pool management
-│   ├── index.js                # AccountManager class facade
-│   ├── storage.js              # Config file I/O and persistence
-│   ├── selection.js            # Account picking (round-robin, sticky)
-│   ├── rate-limits.js          # Rate limit tracking and state
-│   └── credentials.js          # OAuth token and project handling
+├── account-manager/            # Multi-account pool
+│   ├── index.js                # Facade
+│   ├── storage.js              # Persistence
+│   ├── selection.js            # Account picking
+│   ├── rate-limits.js          # Rate tracking
+│   └── credentials.js          # OAuth/Tokens
 │
 ├── auth/                       # Authentication
-│   ├── oauth.js                # Google OAuth with PKCE
-│   ├── token-extractor.js      # Legacy token extraction from DB
-│   └── database.js             # SQLite database access
+│   ├── oauth.js                # Google OAuth
+│   ├── token-extractor.js      # Legacy token extraction
+│   └── database.js             # SQLite access
 │
 ├── webui/                      # Web Management Interface
-│   └── index.js                # Express router and API endpoints
+│   └── index.js                # Express router
 │
 ├── modules/                    # Feature modules
 │   └── usage-stats.js          # Request tracking and history persistence
 │
 ├── cli/                        # CLI tools
-│   └── accounts.js             # Account management CLI
+│   └── accounts.js             # Account management
 │
-├── format/                     # Format conversion (Anthropic ↔ Google)
-│   ├── index.js                # Re-exports all converters
-│   ├── request-converter.js    # Anthropic → Google conversion
-│   ├── response-converter.js   # Google → Anthropic conversion
-│   ├── content-converter.js    # Message content conversion
-│   ├── schema-sanitizer.js     # JSON Schema cleaning for Gemini
-│   ├── thinking-utils.js       # Thinking block validation/recovery
-│   └── signature-cache.js      # Signature cache (tool_use + thinking signatures)
+├── format/                     # Format conversion
+│   ├── index.js                # Exports
+│   ├── request-converter.js    # Anthropic -> Google
+│   ├── response-converter.js   # Google -> Anthropic
+│   ├── content-converter.js    # Content formatting
+│   ├── schema-sanitizer.js     # JSON Schema cleaning
+│   ├── thinking-utils.js       # Thinking block handling
+│   ├── signature-cache.js      # Signature caching
+│   └── response-utils.js       # Response formatting helpers
 │
 └── utils/                      # Utilities
-    ├── helpers.js              # formatDuration, sleep
-    ├── logger.js               # Structured logging
-    └── native-module-helper.js # Auto-rebuild for native modules
+    ├── claude-config.js        # Claude CLI config utils
+    ├── fetch-with-timeout.js   # Network utility
+    ├── helpers.js              # General helpers
+    ├── logger.js               # Logging
+    ├── native-module-helper.js # Rebuild helper
+    └── retry.js                # Retry logic
 ```
 
 **Frontend Structure (public/):**
@@ -127,28 +151,32 @@ public/
 │   └── src/
 │       └── input.css           # Tailwind source with @apply directives
 ├── js/
-│   ├── app.js                  # Main application logic (Alpine.js)
+│   ├── app-init.js             # Alpine.js initialization & Main Controller
+│   ├── utils.js                # Shared utilities (window.utils)
 │   ├── config/                 # Application configuration
 │   │   └── constants.js        # Centralized UI constants and limits
-│   ├── store.js                # Global state management
-│   ├── data-store.js           # Shared data store (accounts, models, quotas)
-│   ├── settings-store.js       # Settings management store
+│   ├── store.js                # Global store registration
+│   ├── data-store.js           # Data store (accounts, models, quotas)
+│   ├── settings-store.js       # Settings store
+│   ├── config/
+│   │   └── constants.js        # App constants
 │   ├── components/             # UI Components
-│   │   ├── dashboard.js        # Main dashboard orchestrator
-│   │   ├── account-manager.js  # Account list & OAuth handling
-│   │   ├── logs-viewer.js      # Live log streaming
-│   │   ├── claude-config.js    # CLI settings editor
-│   │   ├── model-manager.js    # Model configuration UI
-│   │   ├── server-config.js    # Server settings UI
+│   │   ├── dashboard.js        # Dashboard controller
+│   │   ├── account-manager.js  # Account management
+│   │   ├── logs-viewer.js      # Log viewer
+│   │   ├── claude-config.js    # Claude config editor
+│   │   ├── model-manager.js    # Model config UI
+│   │   ├── models.js           # Models list UI
+│   │   ├── server-config.js    # Server config UI
 │   │   └── dashboard/          # Dashboard sub-modules
-│   │       ├── stats.js        # Account statistics calculation
-│   │       ├── charts.js       # Chart.js visualizations
-│   │       └── filters.js      # Chart filter state management
-│   └── utils/                  # Frontend utilities
-│       ├── error-handler.js    # Centralized error handling with ErrorHandler.withLoading
-│       ├── account-actions.js  # Account operations service layer (NEW)
+│   │       ├── stats.js        # Statistics logic
+│   │       ├── charts.js       # Chart.js logic
+│   │       └── filters.js      # Filter logic
+│   └── utils/                  # Utility modules
+│       ├── error-handler.js    # Error handling
+│       ├── account-actions.js  # Account service layer
 │       ├── validators.js       # Input validation
-│       └── model-config.js     # Model configuration helpers
+│       └── model-config.js     # Model config helpers
 └── views/                      # HTML partials (loaded dynamically)
     ├── dashboard.html
     ├── accounts.html
@@ -159,17 +187,25 @@ public/
 
 **Key Modules:**
 
-- **src/server.js**: Express server exposing Anthropic-compatible endpoints (`/v1/messages`, `/v1/models`, `/health`, `/account-limits`) and mounting WebUI
+- **src/server.js**: Express server setup, middleware registration, and route mounting
+- **src/controllers/**: Request handlers for API endpoints
+  - `messages.controller.js`: Core chat completion logic (`/v1/messages`)
+  - `models.controller.js`: Model listing and info (`/v1/models`)
+  - `system.controller.js`: Health checks and system status
+- **src/middleware/**: Express middleware
+  - `validation.js`: Schema validation for requests
+  - `error-handler.js`: Centralized error handling
 - **src/webui/index.js**: WebUI backend handling API routes (`/api/*`) for config, accounts, and logs
 - **src/cloudcode/**: Cloud Code API client with retry/failover logic, streaming and non-streaming support
   - `model-api.js`: Model listing, quota retrieval (`getModelQuotas()`), and subscription tier detection (`getSubscriptionTier()`)
 - **src/account-manager/**: Multi-account pool with sticky selection, rate limit handling, and automatic cooldown
 - **src/auth/**: Authentication including Google OAuth, token extraction, database access, and auto-rebuild of native modules
 - **src/format/**: Format conversion between Anthropic and Google Generative AI formats
-- **src/constants.js**: API endpoints, model mappings, fallback config, OAuth config, and all configuration values
+- **src/config.js**: Dynamic configuration and environment variable parsing
+- **src/constants.js**: Static configuration values (API endpoints, model mappings)
 - **src/modules/usage-stats.js**: Tracks request volume by model/family, persists 30-day history to JSON, and auto-prunes old data.
 - **src/fallback-config.js**: Model fallback mappings (`getFallbackModel()`, `hasFallback()`)
-- **src/errors.js**: Custom error classes (`RateLimitError`, `AuthError`, `ApiError`, etc.)
+- **src/modules/usage-stats.js**: Tracking and persistence of usage statistics
 
 **Multi-Account Load Balancing:**
 
@@ -261,34 +297,36 @@ Each account object in `accounts.json` contains:
 
 ## Code Organization
 
-**Constants:** All configuration values are centralized in `src/constants.js`:
+**Configuration:** Split between static constants and dynamic config:
 
-- API endpoints and headers
-- Model mappings and model family detection (`getModelFamily()`, `isThinkingModel()`)
-- Model fallback mappings (`MODEL_FALLBACK_MAP`)
-- OAuth configuration
-- Rate limit thresholds
-- Thinking model settings
+- **`src/constants.js`**: Static values (API endpoints, headers, default timeouts, model mappings)
+- **`src/config.js`**: Dynamic configuration loaded from `~/.config/antigravity-proxy/config.json` and environment variables
+  - Supports hot-reloading for some values
+  - Manages `modelMapping` for aliasing and hiding models
 
 **Model Family Handling:**
 
-- `getModelFamily(model)` returns `'claude'` or `'gemini'` based on model name
+- `getModelFamily(model)` returns `'claude'`, `'gemini'`, or `'gpt'` based on model name
 - Claude models use `signature` field on thinking blocks
 - Gemini models use `thoughtSignature` field on functionCall parts (cached or sentinel value)
 - When Claude Code strips `thoughtSignature`, the proxy tries to restore from cache, then falls back to `skip_thought_signature_validator`
 
-**Error Handling:** Use custom error classes from `src/errors.js`:
+**Error Handling:**
 
-- `RateLimitError` - 429/RESOURCE_EXHAUSTED errors
-- `AuthError` - Authentication failures
-- `ApiError` - Upstream API errors
-- Helper functions: `isRateLimitError()`, `isAuthError()`
+- **Classes**: Custom errors in `src/errors.js` (`RateLimitError`, `AuthError`, `ApiError`)
+- **Middleware**: Centralized handler in `src/middleware/error-handler.js`
+  - Parses upstream errors into user-friendly messages
+  - Handles SSE error events for streaming responses
+  - Auto-refreshes tokens on 401/Authentication errors
 
-**Utilities:** Shared helpers in `src/utils/helpers.js`:
+**Utilities:** Shared helpers in `src/utils/`:
 
-- `formatDuration(ms)` - Format milliseconds as "1h23m45s"
-- `sleep(ms)` - Promise-based delay
-- `isNetworkError(error)` - Check if error is a transient network error
+- `helpers.js`: General utilities (`formatDuration`, `sleep`, `isNetworkError`)
+- `retry.js`: Configurable retry logic with exponential backoff
+- `fetch-with-timeout.js`: Fetch wrapper with timeout support
+- `claude-config.js`: Interaction with local Claude CLI configuration
+- `logger.js`: Structured logging
+- `native-module-helper.js`: Auto-rebuild for native modules
 
 **Data Persistence:**
 
@@ -309,15 +347,18 @@ Each account object in `accounts.json` contains:
 
 **WebUI APIs:**
 
-- `/api/accounts/*` - Account management (list, add, remove, refresh)
-- `/api/config/*` - Server configuration (read/write)
+- `/api/accounts/*` - Account management (list, toggle, remove, refresh)
+- `/api/config` - Server configuration (read/write)
+- `/api/config/password` - Update WebUI password
 - `/api/claude/config` - Claude CLI settings
+- `/api/models/config` - Model visibility and aliasing
 - `/api/logs/stream` - SSE endpoint for real-time logs
 - `/api/stats/history` - Retrieve 30-day request history (sorted chronologically)
 - `/api/auth/url` - Generate Google OAuth URL
+- `/api/auth/status/:state` - Poll OAuth flow status
 - `/account-limits` - Fetch account quotas and subscription data
-  - Returns: `{ accounts: [{ email, subscription: { tier, projectId }, limits: {...} }], models: [...] }`
-  - Query params: `?format=table` (ASCII table) or `?includeHistory=true` (adds usage stats)
+  - Returns: `{ accounts: [...], models: [...] }`
+  - Query params: `?format=table` (ASCII) or `?includeHistory=true` (usage stats)
 
 ## Frontend Development
 

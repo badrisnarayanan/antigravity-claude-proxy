@@ -16,73 +16,152 @@ import {
   getSubscriptionTier,
 } from "./cloudcode/index.js";
 import { mountWebUI } from "./webui/index.js";
-import { config } from "./config.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { config, loadConfig } from "./config.js";
 import { forceRefresh } from "./auth/token-extractor.js";
-import { REQUEST_BODY_LIMIT } from "./constants.js";
-import { AccountManager } from "./account-manager/index.js";
-import { formatDuration } from "./utils/helpers.js";
+import {
+  REQUEST_BODY_LIMIT,
+  DEFAULT_PORT,
+  MODEL_FALLBACK_MAP,
+} from "./constants.js";
+import {
+  requestIdMiddleware,
+  contentTypeMiddleware,
+  messagesValidationMiddleware,
+  errorHandlerMiddleware,
+} from "./middleware/index.js";
+import {
+  createModelsController,
+  createSystemController,
+  createMessagesController,
+} from "./controllers/index.js";
+import AccountManager from "./account-manager/index.js";
 import { logger } from "./utils/logger.js";
 import usageStats from "./modules/usage-stats.js";
+import { formatDuration } from "./utils/helpers.js";
 
-// Parse fallback flag directly from command line args to avoid circular dependency
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Global state
+let accountManager;
+let server;
+let initPromise = null;
+
+/**
+ * Initialize the system
+ */
+async function initialize() {
+  loadConfig();
+  logger.info("[Server] Configuration loaded");
+
+  // Initialize account manager
+  accountManager = new AccountManager(config.accountConfigPath);
+  await accountManager.loadAccounts();
+  await accountManager.initialize();
+
+  logger.info(
+    `[Server] Account manager initialized with ${accountManager.getAccountCount()} accounts`
+  );
+
+  return true;
+}
+
+/**
+ * Ensure the system is initialized before handling requests
+ */
+async function ensureInitialized(req, res, next) {
+  if (!initPromise) {
+    initPromise = initialize().catch((err) => {
+      logger.error("[Server] Initialization failed:", err);
+      process.exit(1);
+    });
+  }
+
+  try {
+    await initPromise;
+    if (next) next();
+  } catch (error) {
+    logger.error("[Server] Failed to ensure initialization:", error);
+    if (res) {
+      res.status(503).json({
+        error: {
+          type: "server_error",
+          message: "Server failed to initialize",
+        },
+      });
+    }
+  }
+}
+
+// Parse fallback flag directly from command line args
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED =
   args.includes("--fallback") || process.env.FALLBACK === "true";
 
 const app = express();
 
-// Initialize account manager (will be fully initialized on first request or startup)
-const accountManager = new AccountManager();
+// Basic Middleware
+app.use(cors());
+app.use(requestIdMiddleware);
+app.use(
+  express.json({
+    limit: REQUEST_BODY_LIMIT,
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
+app.use(contentTypeMiddleware);
 
-// Track initialization status
-let isInitialized = false;
-let initError = null;
-let initPromise = null;
+// Request Logging
+app.use((req, res, next) => {
+  if (req.path === "/api/event_logging/batch") {
+    if (logger.isDebugEnabled) {
+      logger.debug(`[${req.requestId}] ${req.method} ${req.path}`);
+    }
+  } else if (req.path !== "/health") {
+    logger.info(`[${req.requestId}] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
+// Serve WebUI static files
+// Only mount if WebUI is enabled (default true)
+// Note: WebUI mounting happens before API routes to avoid conflicts if we ever have root routes
+mountWebUI(app, __dirname, accountManager);
 
 /**
- * Ensure account manager is initialized (with race condition protection)
+ * Validate the fallback map for cycles at startup
  */
-async function ensureInitialized() {
-  if (isInitialized) return;
+function validateFallbackMap() {
+  for (const [model, fallback] of Object.entries(MODEL_FALLBACK_MAP)) {
+    const visited = new Set([model]);
+    let current = fallback;
 
-  // If initialization is already in progress, wait for it
-  if (initPromise) return initPromise;
-
-  initPromise = (async () => {
-    try {
-      await accountManager.initialize();
-      isInitialized = true;
-      const status = accountManager.getStatus();
-      logger.success(`[Server] Account pool initialized: ${status.summary}`);
-    } catch (error) {
-      initError = error;
-      initPromise = null; // Allow retry on failure
-      logger.error(
-        "[Server] Failed to initialize account manager:",
-        error.message
-      );
-      throw error;
+    while (current && MODEL_FALLBACK_MAP[current]) {
+      if (visited.has(current)) {
+        const cycle = [...visited, current].join(" -> ");
+        throw new Error(`Fallback cycle detected: ${cycle}`);
+      }
+      visited.add(current);
+      current = MODEL_FALLBACK_MAP[current];
     }
-  })();
-
-  return initPromise;
+  }
+  logger.debug("[Server] Fallback map validated - no cycles detected");
 }
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+// Validate fallback map at module load time
+try {
+  validateFallbackMap();
+} catch (error) {
+  logger.error(`[Server] ${error.message}`);
+  process.exit(1);
+}
 
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
 
-// Mount WebUI (optional web interface for account management)
-mountWebUI(app, __dirname, accountManager);
-
 /**
- * Parse error message to extract error type, status code, and user-friendly message
+ * Parse error into appropriate response format
  */
 function parseError(error) {
   let errorType = "api_error";
@@ -102,14 +181,12 @@ function parseError(error) {
     error.message.includes("RESOURCE_EXHAUSTED") ||
     error.message.includes("QUOTA_EXHAUSTED")
   ) {
-    errorType = "invalid_request_error"; // Use invalid_request_error to force client to purge/stop
-    statusCode = 400; // Use 400 to ensure client does not retry (429 and 529 trigger retries)
+    errorType = "invalid_request_error";
+    statusCode = 400;
 
-    // Try to extract the quota reset time from the error
     const resetMatch = error.message.match(
       /quota will reset after ([\dh\dm\ds]+)/i
     );
-    // Try to extract model from our error format "Rate limited on <model>" or JSON format
     const modelMatch =
       error.message.match(/Rate limited on ([^.]+)\./) ||
       error.message.match(/"model":\s*"([^"]+)"/);
@@ -141,19 +218,6 @@ function parseError(error) {
 
   return { errorType, statusCode, errorMessage };
 }
-
-// Request logging middleware
-app.use((req, res, next) => {
-  // Skip logging for event logging batch unless in debug mode
-  if (req.path === "/api/event_logging/batch") {
-    if (logger.isDebugEnabled) {
-      logger.debug(`[${req.method}] ${req.path}`);
-    }
-  } else {
-    logger.info(`[${req.method}] ${req.path}`);
-  }
-  next();
-});
 
 /**
  * Health check endpoint - Detailed status
@@ -646,10 +710,6 @@ app.post("/v1/messages/count_tokens", (req, res) => {
 });
 
 /**
- * Main messages endpoint - Anthropic Messages API compatible
- */
-
-/**
  * Anthropic-compatible Messages API
  * POST /v1/messages
  */
@@ -832,22 +892,62 @@ app.post("/v1/messages", async (req, res) => {
   }
 });
 
-/**
- * Catch-all for unsupported endpoints
- */
-usageStats.setupRoutes(app);
+// Event Logging (for Cline/WebUI clients)
+app.post("/api/event_logging/batch", (req, res) => {
+  // Silent success for now, logic to be implemented
+  res.status(200).send("OK");
+});
 
-app.use("*", (req, res) => {
-  if (logger.isDebugEnabled) {
-    logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
-  }
+// 404 Handler
+app.use((req, res) => {
   res.status(404).json({
-    type: "error",
     error: {
       type: "not_found_error",
-      message: `Endpoint ${req.method} ${req.originalUrl} not found`,
+      message: "Route not found",
     },
   });
 });
 
-export default app;
+// Central Error Handler
+app.use(errorHandlerMiddleware);
+
+/**
+ * Start the server
+ */
+async function startServer() {
+  try {
+    // Start listening immediately
+    // Initialization happens lazily on first request via ensureInitialized
+    server = app.listen(config.port || DEFAULT_PORT, () => {
+      logger.info(`[Server] Listening on port ${config.port || DEFAULT_PORT}`);
+      logger.info(
+        `[Server] WebUI available at http://localhost:${
+          config.port || DEFAULT_PORT
+        }`
+      );
+    });
+
+    // Handle graceful shutdown
+    const cleanup = async () => {
+      logger.info("[Server] Shutting down...");
+      if (server) server.close();
+      if (accountManager) {
+        // cleanup logic
+      }
+      process.exit(0);
+    };
+
+    process.on("SIGTERM", cleanup);
+    process.on("SIGINT", cleanup);
+  } catch (error) {
+    logger.error("[Server] Failed to start:", error);
+    process.exit(1);
+  }
+}
+
+// Start if run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
+}
+
+export { app, startServer };

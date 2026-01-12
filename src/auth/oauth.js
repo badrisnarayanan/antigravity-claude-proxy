@@ -16,6 +16,9 @@ import {
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
 
+// Mutex for OAuth callback server to prevent port conflicts
+let activeOAuthServer = null;
+
 /**
  * Generate PKCE code verifier and challenge
  */
@@ -111,13 +114,23 @@ export function extractCodeFromInput(input) {
 /**
  * Start a local server to receive the OAuth callback
  * Returns a promise that resolves with the authorization code
+ * Uses mutex to prevent multiple servers from trying to use the same port
  *
  * @param {string} expectedState - Expected state parameter for CSRF protection
  * @param {number} timeoutMs - Timeout in milliseconds (default 120000)
  * @returns {Promise<string>} Authorization code from OAuth callback
  */
 export function startCallbackServer(expectedState, timeoutMs = 120000) {
-    return new Promise((resolve, reject) => {
+    // If there's already an active OAuth server, wait for it to finish
+    if (activeOAuthServer) {
+        logger.warn('[OAuth] Another OAuth flow is in progress, waiting for it to complete...');
+        return activeOAuthServer.then(() => {
+            // Retry after previous flow completes
+            return startCallbackServer(expectedState, timeoutMs);
+        });
+    }
+
+    const serverPromise = new Promise((resolve, reject) => {
         const server = http.createServer((req, res) => {
             const url = new URL(req.url, `http://localhost:${OAUTH_CONFIG.callbackPort}`);
 
@@ -217,6 +230,13 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
             reject(new Error('OAuth callback timeout - no response received'));
         }, timeoutMs);
     });
+
+    // Set the active server promise and clear it when done
+    activeOAuthServer = serverPromise.finally(() => {
+        activeOAuthServer = null;
+    });
+
+    return serverPromise;
 }
 
 /**

@@ -36,10 +36,21 @@ export class AccountManager {
     #configPath;
     #settings = {};
     #initialized = false;
+    // Map to track sticky accounts per session: sessionId -> accountEmail
+    #sessionMap = new Map();
 
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
+
+    // Save state tracking
+    #savePromise = null;
+    #pendingSave = false;
+    #lastSaveError = null;
+    #saveErrorCount = 0;
+
+    // Reload lock to prevent concurrent reload operations
+    #reloadPromise = null;
 
     constructor(configPath = ACCOUNT_CONFIG_PATH) {
         this.#configPath = configPath;
@@ -74,11 +85,112 @@ export class AccountManager {
     /**
      * Reload accounts from disk (force re-initialization)
      * Useful when accounts.json is modified externally (e.g., by WebUI)
+     * Uses a lock to prevent concurrent reload operations
      */
     async reload() {
-        this.#initialized = false;
-        await this.initialize();
-        logger.info('[AccountManager] Accounts reloaded from disk');
+        // If a reload is already in progress, wait for it
+        if (this.#reloadPromise) {
+            return this.#reloadPromise;
+        }
+
+        this.#reloadPromise = (async () => {
+            try {
+                this.#initialized = false;
+                await this.initialize();
+                logger.info('[AccountManager] Accounts reloaded from disk');
+            } finally {
+                this.#reloadPromise = null;
+            }
+        })();
+
+        return this.#reloadPromise;
+    }
+
+    /**
+     * Add a new account
+     * @param {Object} accountData - Account data
+     * @returns {Promise<void>}
+     */
+    async addAccount(accountData) {
+        // Check if account already exists
+        const existingIndex = this.#accounts.findIndex(a => a.email === accountData.email);
+
+        if (existingIndex !== -1) {
+             // Update existing account
+             this.#accounts[existingIndex] = {
+                 ...this.#accounts[existingIndex],
+                 ...accountData,
+                 enabled: true,
+                 isInvalid: false,
+                 invalidReason: null,
+                 addedAt: this.#accounts[existingIndex].addedAt || new Date().toISOString()
+             };
+             logger.info(`[AccountManager] Account ${accountData.email} updated`);
+        } else {
+             // Add new account
+             this.#accounts.push({
+                 ...accountData,
+                 enabled: true,
+                 isInvalid: false,
+                 invalidReason: null,
+                 modelRateLimits: {},
+                 lastUsed: null,
+                 activeRequests: 0,
+                 addedAt: new Date().toISOString()
+             });
+             logger.info(`[AccountManager] Account ${accountData.email} added`);
+        }
+
+        return this.saveToDisk();
+    }
+
+    /**
+     * Remove an account
+     * @param {string} email - Email of the account to remove
+     * @returns {Promise<void>}
+     */
+    async removeAccount(email) {
+        const index = this.#accounts.findIndex(a => a.email === email);
+        if (index === -1) {
+            throw new Error(`Account ${email} not found`);
+        }
+
+        this.#accounts.splice(index, 1);
+
+        // Adjust activeIndex if needed
+        if (this.#currentIndex >= this.#accounts.length) {
+            this.#currentIndex = Math.max(0, this.#accounts.length - 1);
+        }
+
+        logger.info(`[AccountManager] Account ${email} removed`);
+        return this.saveToDisk();
+    }
+
+    /**
+     * Update account details
+     * @param {string} email - Email of the account
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<void>}
+     */
+    async updateAccount(email, updates) {
+        const index = this.#accounts.findIndex(a => a.email === email);
+        if (index === -1) {
+            throw new Error(`Account ${email} not found`);
+        }
+
+        this.#accounts[index] = { ...this.#accounts[index], ...updates };
+        return this.saveToDisk();
+    }
+
+    /**
+     * Toggle account enabled state
+     * @param {string} email - Email of the account
+     * @param {boolean} enabled - New enabled state
+     * @returns {Promise<void>}
+     */
+    async toggleAccount(email, enabled) {
+        await this.updateAccount(email, { enabled });
+        logger.info(`[AccountManager] Account ${email} ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     /**
@@ -87,6 +199,15 @@ export class AccountManager {
      */
     getAccountCount() {
         return this.#accounts.length;
+    }
+
+    /**
+     * Get the index of an account by email
+     * @param {string} email - Email of the account
+     * @returns {number} Index of the account, or -1 if not found
+     */
+    getAccountIndex(email) {
+        return this.#accounts.findIndex(a => a.email === email);
     }
 
     /**
@@ -175,11 +296,31 @@ export class AccountManager {
      * Prefers the current account for cache continuity, only switches when:
      * - Current account is rate-limited for > 2 minutes
      * - Current account is invalid
+     * - Session ID has changed (new conversation)
      * @param {string} [modelId] - Optional model ID
+     * @param {string} [sessionId] - Optional session ID
      * @returns {{account: Object|null, waitMs: number}} Account to use and optional wait time
      */
-    pickStickyAccount(modelId = null) {
-        const { account, waitMs, newIndex } = selectSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
+    pickStickyAccount(modelId = null, sessionId = null) {
+        // Prune session map if it grows too large (prevent memory leaks)
+        if (this.#sessionMap.size > 1000) {
+            // Remove the first 200 entries (oldest insertion order)
+            let count = 0;
+            for (const key of this.#sessionMap.keys()) {
+                if (count++ > 200) break;
+                this.#sessionMap.delete(key);
+            }
+        }
+
+        const { account, waitMs, newIndex } = selectSticky(
+            this.#accounts,
+            this.#currentIndex,
+            () => this.saveToDisk(),
+            modelId,
+            sessionId,
+            this.#sessionMap
+        );
+
         this.#currentIndex = newIndex;
         return { account, waitMs };
     }
@@ -212,6 +353,48 @@ export class AccountManager {
      */
     getMinWaitTimeMs(modelId = null) {
         return getMinWait(this.#accounts, modelId);
+    }
+
+    /**
+     * Increment active requests for an account
+     * @param {Object} account - Account object
+     * @returns {number} The new count after incrementing
+     */
+    incrementActiveRequests(account) {
+        if (!account) return 0;
+        const newCount = (account.activeRequests || 0) + 1;
+        account.activeRequests = newCount;
+        logger.debug(`[AccountManager] Account ${account.email} concurrency: ${newCount}`);
+        return newCount;
+    }
+
+    /**
+     * Decrement active requests for an account
+     * @param {Object} account - Account object
+     * @returns {number} The new count after decrementing
+     */
+    decrementActiveRequests(account) {
+        if (!account) return 0;
+        // Ensure we never go below 0
+        const currentCount = account.activeRequests || 0;
+        const newCount = Math.max(0, currentCount - 1);
+        account.activeRequests = newCount;
+
+        // Log warning if we tried to decrement below 0
+        if (currentCount === 0) {
+            logger.warn(`[AccountManager] Attempted to decrement activeRequests below 0 for ${account.email}`);
+        } else {
+            logger.debug(`[AccountManager] Account ${account.email} concurrency: ${newCount}`);
+        }
+        return newCount;
+    }
+
+    /**
+     * Check if there are any active requests across all accounts
+     * @returns {boolean} True if any account has active requests
+     */
+    hasActiveRequests() {
+        return this.#accounts.some(a => (a.activeRequests || 0) > 0);
     }
 
     /**
@@ -256,11 +439,56 @@ export class AccountManager {
     }
 
     /**
-     * Save current state to disk (async)
+     * Save current state to disk (async with debouncing and error tracking)
+     * Uses a debounce pattern to coalesce rapid saves and avoid blocking
      * @returns {Promise<void>}
      */
     async saveToDisk() {
-        await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
+        // If a save is already in progress, mark that we need another save after it completes
+        if (this.#savePromise) {
+            this.#pendingSave = true;
+            return this.#savePromise;
+        }
+
+        this.#savePromise = (async () => {
+            try {
+                await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
+                this.#lastSaveError = null;
+                this.#saveErrorCount = 0;
+            } catch (error) {
+                this.#lastSaveError = error;
+                this.#saveErrorCount++;
+                logger.error(`[AccountManager] Failed to save config (attempt ${this.#saveErrorCount}): ${error.message}`);
+
+                // Log warning if errors persist
+                if (this.#saveErrorCount >= 3) {
+                    logger.warn('[AccountManager] Persistent save failures - account state may not be persisted');
+                }
+            } finally {
+                this.#savePromise = null;
+
+                // If another save was requested while we were saving, do it now
+                if (this.#pendingSave) {
+                    this.#pendingSave = false;
+                    // Use setImmediate to avoid deep recursion
+                    setImmediate(() => this.saveToDisk());
+                }
+            }
+        })();
+
+        return this.#savePromise;
+    }
+
+    /**
+     * Check if there have been recent save errors
+     * @returns {{hasError: boolean, errorCount: number, lastError: Error|null}}
+     */
+    getSaveStatus() {
+        return {
+            hasError: this.#lastSaveError !== null,
+            errorCount: this.#saveErrorCount,
+            lastError: this.#lastSaveError
+        };
     }
 
     /**
@@ -293,7 +521,8 @@ export class AccountManager {
                 modelRateLimits: a.modelRateLimits || {},
                 isInvalid: a.isInvalid || false,
                 invalidReason: a.invalidReason || null,
-                lastUsed: a.lastUsed
+                lastUsed: a.lastUsed,
+                activeRequests: a.activeRequests || 0
             }))
         };
     }

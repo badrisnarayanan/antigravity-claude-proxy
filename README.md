@@ -2,9 +2,6 @@
 
 [![npm version](https://img.shields.io/npm/v/antigravity-claude-proxy.svg)](https://www.npmjs.com/package/antigravity-claude-proxy)
 [![npm downloads](https://img.shields.io/npm/dm/antigravity-claude-proxy.svg)](https://www.npmjs.com/package/antigravity-claude-proxy)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-<a href="https://buymeacoffee.com/badrinarayanans" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50"></a>
 
 A proxy server that exposes an **Anthropic-compatible API** backed by **Antigravity's Cloud Code**, letting you use Claude and Gemini models with **Claude Code CLI**.
 
@@ -49,7 +46,7 @@ antigravity-claude-proxy start
 ### Option 2: Clone Repository
 
 ```bash
-git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
+git clone https://github.com/boredom1234/antigravity-claude-proxy.git
 cd antigravity-claude-proxy
 npm install
 npm start
@@ -178,6 +175,23 @@ Or to use Gemini models:
 }
 ```
 
+Or to use GPT-OSS models:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "test",
+    "ANTHROPIC_BASE_URL": "http://localhost:8672",
+    "ANTHROPIC_MODEL": "gpt-oss-120b-medium",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gpt-oss-120b-medium",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-oss-120b-medium",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-2.5-flash-lite[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "gpt-oss-120b-medium",
+    "ENABLE_EXPERIMENTAL_MCP_CLI": "true"
+  }
+}
+```
+
 ### Load Environment Variables
 
 Add the proxy settings to your shell profile:
@@ -265,6 +279,12 @@ Then run `claude` for official API or `claude-antigravity` for this proxy.
 | `gemini-3-flash`    | Gemini 3 Flash with thinking    |
 | `gemini-3-pro-low`  | Gemini 3 Pro Low with thinking  |
 | `gemini-3-pro-high` | Gemini 3 Pro High with thinking |
+
+### GPT Models
+
+| Model ID              | Description             |
+| --------------------- | ----------------------- |
+| `gpt-oss-120b-medium` | GPT-OSS 120B Medium     |
 
 Gemini models include full thinking support with `thoughtSignature` handling for multi-turn conversations.
 
@@ -528,15 +548,3 @@ This project is based on insights and code from:
 
 - [opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) - Antigravity OAuth plugin for OpenCode
 - [claude-code-proxy](https://github.com/1rgs/claude-code-proxy) - Anthropic API proxy using LiteLLM
-
----
-
-## License
-
-MIT
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=badrisnarayanan/antigravity-claude-proxy&type=date&legend=top-left&cache-control=no-cache)](https://www.star-history.com/#badrisnarayanan/antigravity-claude-proxy&type=date&legend=top-left)

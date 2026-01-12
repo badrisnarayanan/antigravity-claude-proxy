@@ -11,6 +11,7 @@ import {
   MAX_EMPTY_RESPONSE_RETRIES,
   MAX_WAIT_BEFORE_ERROR_MS,
   getModelFamily,
+  ANTIGRAVITY_ENDPOINT_FALLBACKS,
 } from "../constants.js";
 import { config } from "../config.js";
 import {
@@ -24,6 +25,7 @@ import { parseResetTime } from "./rate-limit-parser.js";
 import { buildCloudCodeRequest, buildHeaders } from "./request-builder.js";
 import { streamSSEResponse } from "./sse-streamer.js";
 import { getFallbackModel } from "../fallback-config.js";
+import { deriveSessionId } from "./session-manager.js";
 import crypto from "crypto";
 
 /**
@@ -45,6 +47,7 @@ export async function* sendMessageStream(
   fallbackEnabled = false
 ) {
   const model = anthropicRequest.model;
+  const sessionId = deriveSessionId(anthropicRequest);
 
   // Retry loop with account failover
   // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -56,8 +59,10 @@ export async function* sendMessageStream(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Use sticky account selection for cache continuity
-    const { account: stickyAccount, waitMs } =
-      accountManager.pickStickyAccount(model);
+    const { account: stickyAccount, waitMs } = accountManager.pickStickyAccount(
+      model,
+      sessionId
+    );
     let account = stickyAccount;
 
     // Handle waiting for sticky account
@@ -130,6 +135,18 @@ export async function* sendMessageStream(
         throw new Error("No accounts available");
       }
     }
+
+    accountManager.incrementActiveRequests(account);
+
+    // Log which account is being used for this request
+    const requestId = anthropicRequest._requestId || "unknown";
+    const accountIndex = accountManager.getAccountIndex?.(account.email) ?? "?";
+    const accountCount = accountManager.getAccountCount();
+    logger.info(
+      `[${requestId}] Using account: ${account.email} (${
+        accountIndex + 1
+      }/${accountCount})`
+    );
 
     try {
       // Get token and project for this account
@@ -366,6 +383,8 @@ export async function* sendMessageStream(
       }
 
       throw error;
+    } finally {
+      accountManager.decrementActiveRequests(account);
     }
   }
 
