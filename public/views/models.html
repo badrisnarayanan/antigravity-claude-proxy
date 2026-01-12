@@ -86,6 +86,18 @@
                     @click="$store.data.filters.family = 'gemini'; $store.data.computeQuotaRows()"
                     x-text="$store.global.t('geminiCaps')">GEMINI</button>
             </div>
+
+            <!-- Show Hidden Toggle -->
+            <button
+                class="btn h-9 px-4 ml-2 border border-space-border/50 bg-space-800 hover:bg-space-700 hover:border-space-border hover:text-white transition-all gap-2 min-h-0"
+                :class="$store.settings.showHiddenModels ? 'text-neon-purple border-neon-purple/50 bg-neon-purple/10' : 'text-gray-400'"
+                @click="$store.settings.toggle('showHiddenModels'); $store.data.computeQuotaRows()"
+                :title="$store.settings.showHiddenModels ? $store.global.t('hideHidden') : $store.global.t('showHidden')">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+                <span class="text-[10px] font-medium uppercase tracking-wide" x-text="$store.settings.showHiddenModels ? $store.global.t('hiddenOn') : $store.global.t('hiddenOff')"></span>
+            </button>
         </div>
     </div>
 
@@ -156,7 +168,7 @@
             </thead>
             <tbody class="text-sm">
                 <template x-for="row in $store.data.quotaRows" :key="row.modelId">
-                    <tr class="group">
+                    <tr class="group transition-all duration-300" :class="row.hidden ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0 bg-space-900/50' : ''">
                         <td class="pl-4">
                             <div class="w-2 h-2 rounded-full transition-all duration-500"
                                 :class="row.avgQuota > 0 ? 'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'">

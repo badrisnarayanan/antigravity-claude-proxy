@@ -235,8 +235,9 @@ document.addEventListener('alpine:init', () => {
                     isHidden = (family === 'other' || family === 'unknown');
                 }
 
-                // Models Page: ALWAYS hide hidden models (use Settings to restore)
-                if (isHidden) return;
+                // Models Page: Check settings for visibility
+                const showHidden = Alpine.store('settings')?.showHiddenModels ?? false;
+                if (isHidden && !showHidden) return;
 
                 // Filters
                 if (this.filters.family !== 'all' && this.filters.family !== family) return;

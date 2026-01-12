@@ -71,20 +71,14 @@
                         <label class="label">
                             <span class="label-text text-gray-300" x-text="$store.global.t('language')">Language</span>
                         </label>
-                        <div class="join w-full grid grid-cols-2">
-                            <button
-                                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
-                                :class="$store.global.lang === 'en'
-                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
-                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
-                                @click="$store.global.setLang('en')">English</button>
-                            <button
-                                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
-                                :class="$store.global.lang === 'zh'
-                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
-                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
-                                @click="$store.global.setLang('zh')">中文</button>
-                        </div>
+                        <select
+                            class="select select-bordered select-sm w-full bg-space-800 border-space-border/50 text-gray-300 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple/50 font-medium transition-all !py-0 leading-tight"
+                            :value="$store.global.lang"
+                            @change="$store.global.setLang($event.target.value)">
+                            <option value="en">English</option>
+                            <option value="zh">中文</option>
+                            <option value="tr">Türkçe</option>
+                        </select>
                     </div>
 
                     <!-- Polling Interval -->
@@ -641,15 +635,19 @@
                                             </svg>
                                         </div>
                                         <div x-show="isEditing(modelId)" class="flex items-center gap-1">
-                                            <input type="text" x-model="newMapping"
+                                            <select x-model="newMapping"
                                                 :x-ref="'input-' + modelId"
-                                                class="input input-xs bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs"
-                                                placeholder="e.g. claude-sonnet-4-5 or gemini-3-flash"
+                                                class="select select-sm bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs !h-8 min-h-0"
                                                 @keydown.enter="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
                                                 @keydown.escape="newMapping = config.mapping || ''; stopEditing()">
+                                                <option value="" x-text="$store.global.t('none')">None</option>
+                                                <template x-for="mId in $store.data.models" :key="mId">
+                                                    <option :value="mId" x-text="mId" :selected="mId === newMapping"></option>
+                                                </template>
+                                            </select>
                                             <button class="btn-action-success"
                                                 @click="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
-                                                title="Save">
+                                                :title="$store.global.t('saveChanges')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
                                                     viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -658,7 +656,7 @@
                                             </button>
                                             <button class="btn-action-neutral"
                                                 @click="newMapping = config.mapping || ''; stopEditing()"
-                                                title="Cancel">
+                                                :title="$store.global.t('cancel')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
                                                     viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -668,7 +666,7 @@
                                             <button x-show="config.mapping"
                                                     class="btn-action-danger"
                                                     @click="await updateModelConfig(modelId, { mapping: '' }); stopEditing()"
-                                                    title="Clear mapping">
+                                                    :title="$store.global.t('delete')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
                                                     viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"

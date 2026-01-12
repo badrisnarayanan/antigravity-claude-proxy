@@ -509,6 +509,12 @@
   @apply skeleton h-12 w-full mb-2;
 }
 
+/* Fix DaisyUI toggle hover background override */
+.toggle-success:checked,
+.toggle-success[aria-checked="true"] {
+  background-color: oklch(var(--su)) !important;
+}
+
 /* Desktop Sidebar Collapsed State */
 @media (min-width: 1024px) {
   body .sidebar-collapsed {

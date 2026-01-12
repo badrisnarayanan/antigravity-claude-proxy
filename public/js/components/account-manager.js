@@ -11,6 +11,8 @@ window.Components.accountManager = () => ({
     toggling: false,
     deleting: false,
     reloading: false,
+    selectedAccountEmail: '',
+    selectedAccountLimits: {},
 
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
@@ -172,6 +174,12 @@ window.Components.accountManager = () => ({
                 throw new Error(data.error || store.t('reloadFailed'));
             }
         }, this, 'reloading', { errorMessage: 'Failed to reload accounts' });
+    },
+
+    openQuotaModal(account) {
+        this.selectedAccountEmail = account.email;
+        this.selectedAccountLimits = account.limits || {};
+        document.getElementById('quota_modal').showModal();
     },
 
     /**

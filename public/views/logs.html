@@ -48,7 +48,7 @@
             <div class="text-[10px] font-mono text-gray-600 hidden lg:block">
                 <span x-text="filteredLogs.length"></span>/<span x-text="logs.length"></span>
             </div>
-            <label class="cursor-pointer flex items-center gap-2" title="Auto-scroll to bottom">
+            <label class="cursor-pointer flex items-center gap-2">
                 <span class="text-[10px] font-mono text-gray-500 uppercase hidden sm:inline-block"
                     x-text="$store.global.t('autoScroll')">Auto-Scroll</span>
                 <input type="checkbox" class="toggle toggle-xs toggle-success" x-model="isAutoScroll">

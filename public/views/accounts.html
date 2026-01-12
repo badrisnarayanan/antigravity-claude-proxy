@@ -129,7 +129,7 @@
                                   x-text="(acc.subscription?.tier || 'free').toUpperCase()">
                             </span>
                         </td>
-                        <td class="py-4">
+                        <td class="py-4 cursor-pointer" @click="openQuotaModal(acc)">
                             <div x-data="{ quota: getMainModelQuota(acc) }">
                                 <template x-if="quota.percent !== null">
                                     <div class="flex items-center gap-2">
@@ -262,6 +262,64 @@
                     </svg>
                     <span x-text="$store.global.t('confirmDelete')">Confirm Delete</span>
                 </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <!-- Quota Distribution Modal -->
+    <dialog id="quota_modal" class="modal backdrop-blur-sm">
+        <div class="modal-box max-w-2xl w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6">
+            <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
+                <svg class="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span x-text="$store.global.t('quotaDistribution')">Quota Distribution</span>
+            </h3>
+            <p class="text-sm text-gray-500 font-mono mb-6" x-text="selectedAccountEmail"></p>
+
+            <div class="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+                <template x-for="(limit, modelId) in selectedAccountLimits" :key="modelId">
+                    <div class="p-3 bg-space-800/50 border border-space-border/30 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold text-gray-200" x-text="modelId"></span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono"
+                                      :class="limit.remainingFraction > 0.5 ? 'text-neon-green' : (limit.remainingFraction > 0.2 ? 'text-yellow-500' : 'text-red-500')"
+                                      x-text="Math.round(limit.remainingFraction * 100) + '%'"></span>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-gray-700 rounded-full h-2.5 mb-2 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500"
+                                 :class="limit.remainingFraction > 0.5 ? 'bg-neon-green' : (limit.remainingFraction > 0.2 ? 'bg-yellow-500' : 'bg-red-500')"
+                                 :style="`width: ${limit.remainingFraction * 100}%`">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-gray-500 uppercase font-bold" x-text="$store.data.getModelFamily(modelId)"></span>
+                            <template x-if="limit.resetTime">
+                                <span class="text-[10px] text-yellow-500/80 font-mono italic"
+                                      x-text="$store.global.t('resetsIn', { time: window.utils.formatTimeUntil(limit.resetTime) })"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="Object.keys(selectedAccountLimits).length === 0">
+                    <div class="text-center py-8 text-gray-500" x-text="$store.global.t('noQuotaData')">
+                        No quota data available for this account yet.
+                    </div>
+                </template>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
+                </form>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
