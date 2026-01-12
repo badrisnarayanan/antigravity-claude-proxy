@@ -148,6 +148,9 @@ export function mountWebUI(app, dirname, accountManager) {
     // Serve static files from public directory
     app.use(express.static(path.join(dirname, '../public')));
 
+    // Serve assets directory (for icons, images)
+    app.use('/assets', express.static(path.join(dirname, '../assets')));
+
     // ==========================================
     // Account Management API
     // ==========================================

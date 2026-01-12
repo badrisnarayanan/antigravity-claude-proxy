@@ -131,36 +131,12 @@ window.DashboardCharts.createDataset = function (label, data, color, canvas) {
 };
 
 /**
- * Update quota distribution donut chart
- * @param {object} component - Dashboard component instance
+ * Build quota chart data from store
+ * @returns {object} { data, colors, labels, overallHealth }
  */
-window.DashboardCharts.updateCharts = function (component) {
-  // Safely destroy existing chart instance FIRST
-  if (component.charts.quotaDistribution) {
-    try {
-      component.charts.quotaDistribution.destroy();
-    } catch (e) {
-      console.error("Failed to destroy quota chart:", e);
-    }
-    component.charts.quotaDistribution = null;
-  }
-
-  const canvas = document.getElementById("quotaChart");
-
-  // Safety checks
-  if (!canvas) {
-    return;
-  }
-  if (typeof Chart === "undefined") {
-    return;
-  }
-  if (!isCanvasReady(canvas)) {
-    return;
-  }
-
-  // Use UNFILTERED data for global health chart
+function buildQuotaChartData() {
   const rows = Alpine.store("data").getUnfilteredQuotaData();
-  if (!rows || rows.length === 0) return;
+  if (!rows || rows.length === 0) return null;
 
   const healthByFamily = {};
   let totalHealthSum = 0;
@@ -172,8 +148,6 @@ window.DashboardCharts.updateCharts = function (component) {
       healthByFamily[family] = { total: 0, weighted: 0 };
     }
 
-    // Calculate average health from quotaInfo (each entry has { pct })
-    // Health = average of all account quotas for this model
     const quotaInfo = row.quotaInfo || [];
     if (quotaInfo.length > 0) {
       const avgHealth = quotaInfo.reduce((sum, q) => sum + (q.pct || 0), 0) / quotaInfo.length;
@@ -184,8 +158,7 @@ window.DashboardCharts.updateCharts = function (component) {
     }
   });
 
-  // Update overall health for dashboard display
-  component.stats.overallHealth = totalModelCount > 0
+  const overallHealth = totalModelCount > 0
     ? Math.round(totalHealthSum / totalModelCount)
     : 0;
 
@@ -208,14 +181,10 @@ window.DashboardCharts.updateCharts = function (component) {
     const inactiveVal = segmentSize - activeVal;
 
     const familyColor = familyColors[family] || familyColors["unknown"];
-
-    // Get translation keys
     const store = Alpine.store("global");
-    const familyKey =
-      "family" + family.charAt(0).toUpperCase() + family.slice(1);
+    const familyKey = "family" + family.charAt(0).toUpperCase() + family.slice(1);
     const familyName = store.t(familyKey);
 
-    // Labels using translations if possible
     const activeLabel =
       family === "claude"
         ? store.t("claudeActive")
@@ -230,26 +199,63 @@ window.DashboardCharts.updateCharts = function (component) {
         ? store.t("geminiEmpty")
         : `${familyName} ${store.t("depleted")}`;
 
-    // Active segment
     data.push(activeVal);
     colors.push(familyColor);
     labels.push(activeLabel);
 
-    // Inactive segment
     data.push(inactiveVal);
     colors.push(window.DashboardCharts.hexToRgba(familyColor, 0.1));
     labels.push(depletedLabel);
   });
 
+  return { data, colors, labels, overallHealth };
+}
+
+/**
+ * Update quota distribution donut chart
+ * Uses .update() for existing charts instead of destroy/recreate (performance)
+ * @param {object} component - Dashboard component instance
+ */
+window.DashboardCharts.updateCharts = function (component) {
+  const canvas = document.getElementById("quotaChart");
+
+  // Safety checks
+  if (!canvas || typeof Chart === "undefined" || !isCanvasReady(canvas)) {
+    return;
+  }
+
+  // Build chart data
+  const chartData = buildQuotaChartData();
+  if (!chartData) return;
+
+  // Update overall health for dashboard display
+  component.stats.overallHealth = chartData.overallHealth;
+
+  // If chart exists, update data instead of recreating (much faster)
+  if (component.charts.quotaDistribution) {
+    try {
+      const chart = component.charts.quotaDistribution;
+      chart.data.labels = chartData.labels;
+      chart.data.datasets[0].data = chartData.data;
+      chart.data.datasets[0].backgroundColor = chartData.colors;
+      chart.update('none'); // 'none' mode skips animation for instant update
+      return;
+    } catch (e) {
+      // Chart update failed, fall through to recreate
+      component.charts.quotaDistribution = null;
+    }
+  }
+
+  // Create new chart only if it doesn't exist
   try {
     component.charts.quotaDistribution = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels: labels,
+        labels: chartData.labels,
         datasets: [
           {
-            data: data,
-            backgroundColor: colors,
+            data: chartData.data,
+            backgroundColor: chartData.colors,
             borderColor: getThemeColor("--color-space-950"),
             borderWidth: 2,
             hoverOffset: 0,
@@ -280,60 +286,16 @@ window.DashboardCharts.updateCharts = function (component) {
 };
 
 /**
- * Update usage trend line chart
+ * Build trend chart data from component state
  * @param {object} component - Dashboard component instance
+ * @param {HTMLCanvasElement} canvas - Canvas element
+ * @returns {object|null} { labels, datasets } or null if no data
  */
-window.DashboardCharts.updateTrendChart = function (component) {
-  // Prevent concurrent updates (fixes race condition on rapid toggling)
-  if (_trendChartUpdateLock) {
-    return;
-  }
-  _trendChartUpdateLock = true;
-
-  // Safely destroy existing chart instance FIRST
-  if (component.charts.usageTrend) {
-    try {
-      // Stop all animations before destroying to prevent null context errors
-      component.charts.usageTrend.stop();
-      component.charts.usageTrend.destroy();
-    } catch (e) {
-      // Chart destruction failed, continue anyway
-    }
-    component.charts.usageTrend = null;
-  }
-
-  const canvas = document.getElementById("usageTrendChart");
-
-  // Safety checks
-  if (!canvas || typeof Chart === "undefined") {
-    _trendChartUpdateLock = false;
-    return;
-  }
-
-  if (!isCanvasReady(canvas)) {
-    _trendChartUpdateLock = false;
-    return;
-  }
-
-  // Clear canvas to ensure clean state after destroy
-  try {
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-  } catch (e) {
-    // Canvas clear failed, continue anyway
-  }
-
-  // Use filtered history data based on time range
+function buildTrendChartData(component, canvas) {
   const history = window.DashboardFilters.getFilteredHistoryData(component);
   if (!history || Object.keys(history).length === 0) {
-    component.hasFilteredTrendData = false;
-    _trendChartUpdateLock = false;
-    return;
+    return null;
   }
-
-  component.hasFilteredTrendData = true;
 
   // Sort entries by timestamp for correct order
   const sortedEntries = Object.entries(history).sort(
@@ -350,14 +312,11 @@ window.DashboardCharts.updateTrendChart = function (component) {
     const timeRange = component.timeRange || '24h';
 
     if (timeRange === '7d') {
-      // Week view: show MM/DD
       return date.toLocaleDateString([], { month: '2-digit', day: '2-digit' });
     } else if (isMultiDay || timeRange === 'all') {
-      // Multi-day data: show MM/DD HH:MM
       return date.toLocaleDateString([], { month: '2-digit', day: '2-digit' }) + ' ' +
              date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else {
-      // Same day: show HH:MM only
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
   };
@@ -366,32 +325,25 @@ window.DashboardCharts.updateTrendChart = function (component) {
   const datasets = [];
 
   if (component.displayMode === "family") {
-    // Aggregate by family
     const dataByFamily = {};
     component.selectedFamilies.forEach((family) => {
       dataByFamily[family] = [];
     });
 
     sortedEntries.forEach(([iso, hourData]) => {
-      const date = new Date(iso);
-      labels.push(formatLabel(date));
-
+      labels.push(formatLabel(new Date(iso)));
       component.selectedFamilies.forEach((family) => {
         const familyData = hourData[family];
-        const count = familyData?._subtotal || 0;
-        dataByFamily[family].push(count);
+        dataByFamily[family].push(familyData?._subtotal || 0);
       });
     });
 
-    // Build datasets for families
     component.selectedFamilies.forEach((family) => {
       const color = window.DashboardFilters.getFamilyColor(family);
-      const familyKey =
-        "family" + family.charAt(0).toUpperCase() + family.slice(1);
-      const label = Alpine.store("global").t(familyKey);
+      const familyKey = "family" + family.charAt(0).toUpperCase() + family.slice(1);
       datasets.push(
         window.DashboardCharts.createDataset(
-          label,
+          Alpine.store("global").t(familyKey),
           dataByFamily[family],
           color,
           canvas
@@ -399,56 +351,106 @@ window.DashboardCharts.updateTrendChart = function (component) {
       );
     });
   } else {
-    // Show individual models
     const dataByModel = {};
-
-    // Initialize data arrays
     component.families.forEach((family) => {
       (component.selectedModels[family] || []).forEach((model) => {
-        const key = `${family}:${model}`;
-        dataByModel[key] = [];
+        dataByModel[`${family}:${model}`] = [];
       });
     });
 
     sortedEntries.forEach(([iso, hourData]) => {
-      const date = new Date(iso);
-      labels.push(formatLabel(date));
-
+      labels.push(formatLabel(new Date(iso)));
       component.families.forEach((family) => {
         const familyData = hourData[family] || {};
         (component.selectedModels[family] || []).forEach((model) => {
-          const key = `${family}:${model}`;
-          dataByModel[key].push(familyData[model] || 0);
+          dataByModel[`${family}:${model}`].push(familyData[model] || 0);
         });
       });
     });
 
-    // Build datasets for models
     component.families.forEach((family) => {
       (component.selectedModels[family] || []).forEach((model, modelIndex) => {
         const key = `${family}:${model}`;
         const color = window.DashboardFilters.getModelColor(family, modelIndex);
         datasets.push(
-          window.DashboardCharts.createDataset(
-            model,
-            dataByModel[key],
-            color,
-            canvas
-          )
+          window.DashboardCharts.createDataset(model, dataByModel[key], color, canvas)
         );
       });
     });
   }
 
+  return { labels, datasets };
+}
+
+/**
+ * Update usage trend line chart
+ * Uses .update() for existing charts instead of destroy/recreate (performance)
+ * @param {object} component - Dashboard component instance
+ */
+window.DashboardCharts.updateTrendChart = function (component) {
+  // Prevent concurrent updates (fixes race condition on rapid toggling)
+  if (_trendChartUpdateLock) {
+    return;
+  }
+  _trendChartUpdateLock = true;
+
+  const canvas = document.getElementById("usageTrendChart");
+
+  // Safety checks
+  if (!canvas || typeof Chart === "undefined" || !isCanvasReady(canvas)) {
+    _trendChartUpdateLock = false;
+    return;
+  }
+
+  // Build chart data
+  const chartData = buildTrendChartData(component, canvas);
+  if (!chartData) {
+    component.hasFilteredTrendData = false;
+    _trendChartUpdateLock = false;
+    return;
+  }
+
+  component.hasFilteredTrendData = true;
+
+  // If chart exists, try to update data instead of recreating (much faster)
+  if (component.charts.usageTrend) {
+    try {
+      const chart = component.charts.usageTrend;
+
+      // For trend chart, dataset count can change (filter changes), so check if we can update in-place
+      if (chart.data.datasets.length === chartData.datasets.length) {
+        chart.data.labels = chartData.labels;
+        chartData.datasets.forEach((newDataset, i) => {
+          chart.data.datasets[i].data = newDataset.data;
+          chart.data.datasets[i].label = newDataset.label;
+          chart.data.datasets[i].borderColor = newDataset.borderColor;
+          chart.data.datasets[i].backgroundColor = newDataset.backgroundColor;
+        });
+        chart.update('none'); // 'none' mode skips animation for instant update
+        _trendChartUpdateLock = false;
+        return;
+      } else {
+        // Dataset count changed, need to recreate
+        chart.stop();
+        chart.destroy();
+        component.charts.usageTrend = null;
+      }
+    } catch (e) {
+      // Chart update failed, fall through to recreate
+      component.charts.usageTrend = null;
+    }
+  }
+
+  // Create new chart only if it doesn't exist or dataset structure changed
   try {
     component.charts.usageTrend = new Chart(canvas, {
       type: "line",
-      data: { labels, datasets },
+      data: { labels: chartData.labels, datasets: chartData.datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: {
-          duration: 300, // Reduced animation for faster updates
+          duration: 150, // Faster animation for snappier feel
         },
         interaction: {
           mode: "index",
@@ -501,7 +503,6 @@ window.DashboardCharts.updateTrendChart = function (component) {
   } catch (e) {
     console.error("Failed to create trend chart:", e);
   } finally {
-    // Always release lock
     _trendChartUpdateLock = false;
   }
 };

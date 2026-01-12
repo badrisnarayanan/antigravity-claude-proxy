@@ -7,8 +7,8 @@
     <title>Antigravity Console</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Libraries (deferred for performance) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Alpine.js must be deferred so stores register their listeners first -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body class="electron-body" x-cloak x-data="app" x-init="console.log('App initialized'); initElectron()">
+<body class="electron-body" x-cloak x-data="app" x-init="initElectron()">
     <!-- Window Chrome Wrapper (handles rounded corners) -->
     <div id="window-chrome" class="window-chrome" :class="{ 'window-maximized': isMaximized }">
 
@@ -65,7 +65,7 @@
         <!-- Drag region with logo and title -->
         <div class="titlebar-drag">
             <div class="flex items-center gap-2">
-                <img src="icon.png" alt="Logo" class="w-4 h-4" />
+                <img src="/assets/icon.png" alt="Logo" class="w-4 h-4" />
                 <span class="text-xs font-semibold text-gray-300 tracking-wide">Antigravity Claude Proxy</span>
             </div>
         </div>
@@ -101,14 +101,11 @@
     <!-- Navbar -->
     <div
         class="h-14 border-b border-space-border flex items-center px-6 justify-between bg-space-900/50 backdrop-blur-md z-50">
-        <div class="flex items-center gap-3">
-            <img src="icon.png" alt="Logo" class="w-8 h-8" />
-            <div class="flex flex-col">
-                <span class="text-sm font-bold tracking-wide text-white"
-                    x-text="$store.global.t('systemName')">ANTIGRAVITY</span>
-                <span class="text-[10px] text-gray-500 font-mono tracking-wider"
-                    x-text="$store.global.t('systemDesc')">CLAUDE PROXY SYSTEM</span>
-            </div>
+        <div class="flex flex-col">
+            <span class="text-sm font-bold tracking-wide text-white"
+                x-text="$store.global.t('systemName')">ANTIGRAVITY</span>
+            <span class="text-[10px] text-gray-500 font-mono tracking-wider"
+                x-text="$store.global.t('systemDesc')">CLAUDE PROXY SYSTEM</span>
         </div>
 
         <div class="flex items-center gap-4">

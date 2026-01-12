@@ -2,6 +2,10 @@
  * Dashboard Component (Refactored)
  * Orchestrates stats, charts, and filters modules
  * Registers itself to window.Components for Alpine.js to consume
+ *
+ * Performance optimizations:
+ * - Consolidated watchers with debounced refresh to prevent redundant updates
+ * - Single unified update path for all data changes
  */
 window.Components = window.Components || {};
 
@@ -18,61 +22,83 @@ window.Components.dashboard = () => ({
     // Filter state (from module)
     ...window.DashboardFilters.getInitialState(),
 
-    // Debounced chart update to prevent rapid successive updates
-    _debouncedUpdateTrendChart: null,
+    // Debounced update functions to prevent rapid successive updates
+    _debouncedRefresh: null,
+    _refreshScheduled: false,
 
     init() {
-        // Create debounced version of updateTrendChart (300ms delay for stability)
-        this._debouncedUpdateTrendChart = window.utils.debounce(() => {
-            window.DashboardCharts.updateTrendChart(this);
-        }, 300);
+        // Create debounced refresh function (consolidates all update logic)
+        this._debouncedRefresh = window.utils.debounce(() => {
+            this._performRefresh();
+        }, 100);
 
         // Load saved preferences from localStorage
         window.DashboardFilters.loadPreferences(this);
 
-        // Update stats when dashboard becomes active (skip initial trigger)
+        // Single consolidated watcher for tab activation
         this.$watch('$store.global.activeTab', (val, oldVal) => {
             if (val === 'dashboard' && oldVal !== undefined) {
-                this.$nextTick(() => {
-                    this.updateStats();
-                    this.updateCharts();
-                    this.updateTrendChart();
-                });
+                this._scheduleRefresh();
             }
         });
 
-        // Watch for data changes
+        // Consolidated watcher for data changes - only refresh if on dashboard tab
         this.$watch('$store.data.accounts', () => {
             if (this.$store.global.activeTab === 'dashboard') {
-                this.updateStats();
-                this.$nextTick(() => this.updateCharts());
+                this._scheduleRefresh();
             }
         });
 
-        // Watch for history updates from data-store (automatically loaded with account data)
+        // Watch for history updates - merge with main refresh cycle
         this.$watch('$store.data.usageHistory', (newHistory) => {
-            if (this.$store.global.activeTab === 'dashboard' && newHistory && Object.keys(newHistory).length > 0) {
+            if (newHistory && Object.keys(newHistory).length > 0) {
                 this.historyData = newHistory;
-                this.processHistory(newHistory);
-                this.stats.hasTrendData = true;
+                if (this.$store.global.activeTab === 'dashboard') {
+                    this._scheduleRefresh();
+                }
             }
         });
 
         // Initial update if already on dashboard
         if (this.$store.global.activeTab === 'dashboard') {
             this.$nextTick(() => {
-                this.updateStats();
-                this.updateCharts();
-
                 // Load history if already in store
                 const history = Alpine.store('data').usageHistory;
                 if (history && Object.keys(history).length > 0) {
                     this.historyData = history;
-                    this.processHistory(history);
-                    this.stats.hasTrendData = true;
                 }
+                this._performRefresh();
             });
         }
+    },
+
+    /**
+     * Schedule a debounced refresh - prevents multiple rapid updates
+     */
+    _scheduleRefresh() {
+        if (this._debouncedRefresh) {
+            this._debouncedRefresh();
+        }
+    },
+
+    /**
+     * Perform the actual refresh - updates all dashboard components in optimal order
+     */
+    _performRefresh() {
+        // Update stats first (fastest, needed for display)
+        this.updateStats();
+
+        // Process history if available (needed for trend chart)
+        if (this.historyData && Object.keys(this.historyData).length > 0) {
+            this.processHistory(this.historyData);
+            this.stats.hasTrendData = true;
+        }
+
+        // Update charts after DOM settles
+        this.$nextTick(() => {
+            window.DashboardCharts.updateCharts(this);
+            window.DashboardCharts.updateTrendChart(this);
+        });
     },
 
     processHistory(history) {
@@ -129,8 +155,6 @@ window.Components.dashboard = () => ({
 
         // Auto-select new families/models that haven't been configured
         this.autoSelectNew();
-
-        this.updateTrendChart();
     },
 
     // Delegation methods for stats
@@ -144,13 +168,7 @@ window.Components.dashboard = () => ({
     },
 
     updateTrendChart() {
-        // Use debounced version to prevent rapid successive updates
-        if (this._debouncedUpdateTrendChart) {
-            this._debouncedUpdateTrendChart();
-        } else {
-            // Fallback if debounced version not initialized
-            window.DashboardCharts.updateTrendChart(this);
-        }
+        window.DashboardCharts.updateTrendChart(this);
     },
 
     // Delegation methods for filters

@@ -14,27 +14,26 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('claudeConfig', window.Components.claudeConfig);
     Alpine.data('logsViewer', window.Components.logsViewer);
 
-    // View Loader Directive
+    // View Loader Directive (with caching for performance)
     Alpine.directive('load-view', (el, { expression }, { evaluate }) => {
         if (!window.viewCache) window.viewCache = new Map();
 
-        // Evaluate the expression to get the actual view name (removes quotes)
         const viewName = evaluate(expression);
 
+        // Use cached view immediately if available
         if (window.viewCache.has(viewName)) {
             el.innerHTML = window.viewCache.get(viewName);
             Alpine.initTree(el);
             return;
         }
 
-        fetch(`views/${viewName}.html?t=${Date.now()}`)
+        // Fetch without cache-busting for better performance
+        fetch(`views/${viewName}.html`)
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.text();
             })
             .then(html => {
-                // Update cache (optional, or remove if we want always-fresh)
-                // keeping cache for session performance, but initial load will now bypass browser cache
                 window.viewCache.set(viewName, html);
                 el.innerHTML = html;
                 Alpine.initTree(el);
@@ -54,6 +53,10 @@ document.addEventListener('alpine:init', () => {
         isElectron: false,
         isMaximized: false,
 
+        // Visibility state for throttling
+        _isTabVisible: true,
+        _visibilityHandler: null,
+
         get connectionStatus() {
             return Alpine.store('data')?.connectionStatus || 'connecting';
         },
@@ -66,12 +69,11 @@ document.addEventListener('alpine:init', () => {
             document.documentElement.setAttribute('data-theme', 'black');
             document.documentElement.classList.add('dark');
 
-            // Chart Defaults
-            if (typeof Chart !== 'undefined') {
-                Chart.defaults.color = window.utils.getThemeColor('--color-text-dim');
-                Chart.defaults.borderColor = window.utils.getThemeColor('--color-space-border');
-                Chart.defaults.font.family = '"JetBrains Mono", monospace';
-            }
+            // Chart Defaults (defer until Chart.js is loaded)
+            this._initChartDefaults();
+
+            // Tab visibility handling for performance
+            this._setupVisibilityHandler();
 
             // Start Data Polling
             this.startAutoRefresh();
@@ -79,6 +81,29 @@ document.addEventListener('alpine:init', () => {
 
             // Initial Fetch
             Alpine.store('data').fetchData();
+        },
+
+        _initChartDefaults() {
+            // Wait for Chart.js to be available (it's deferred)
+            if (typeof Chart !== 'undefined') {
+                Chart.defaults.color = window.utils?.getThemeColor?.('--color-text-dim') || '#a1a1aa';
+                Chart.defaults.borderColor = window.utils?.getThemeColor?.('--color-space-border') || '#27272a';
+                Chart.defaults.font.family = '"JetBrains Mono", monospace';
+            } else {
+                // Retry after a short delay if Chart.js isn't loaded yet
+                setTimeout(() => this._initChartDefaults(), 100);
+            }
+        },
+
+        _setupVisibilityHandler() {
+            this._visibilityHandler = () => {
+                this._isTabVisible = !document.hidden;
+                if (this._isTabVisible) {
+                    // Refresh immediately when tab becomes visible
+                    Alpine.store('data').fetchData();
+                }
+            };
+            document.addEventListener('visibilitychange', this._visibilityHandler);
         },
 
         // Initialize Electron-specific features
@@ -100,15 +125,15 @@ document.addEventListener('alpine:init', () => {
 
         // Window control methods
         minimizeWindow() {
-            if (window.electronAPI) window.electronAPI.minimize();
+            window.electronAPI?.minimize();
         },
 
         maximizeWindow() {
-            if (window.electronAPI) window.electronAPI.maximize();
+            window.electronAPI?.maximize();
         },
 
         closeWindow() {
-            if (window.electronAPI) window.electronAPI.close();
+            window.electronAPI?.close();
         },
 
         refreshTimer: null,
@@ -121,7 +146,12 @@ document.addEventListener('alpine:init', () => {
             if (this.refreshTimer) clearInterval(this.refreshTimer);
             const interval = parseInt(Alpine.store('settings')?.refreshInterval || 60);
             if (interval > 0) {
-                this.refreshTimer = setInterval(() => Alpine.store('data').fetchData(), interval * 1000);
+                this.refreshTimer = setInterval(() => {
+                    // Skip refresh if tab is not visible (performance optimization)
+                    if (this._isTabVisible) {
+                        Alpine.store('data').fetchData();
+                    }
+                }, interval * 1000);
             }
         },
 
@@ -142,20 +172,15 @@ document.addEventListener('alpine:init', () => {
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    // Show info toast that OAuth is in progress
                     Alpine.store('global').showToast(Alpine.store('global').t('oauthInProgress'), 'info');
 
-                    // Open OAuth window
                     const oauthWindow = window.open(data.url, 'google_oauth', 'width=600,height=700,scrollbars=yes');
 
-                    // Poll for account changes instead of relying on postMessage
-                    // (since OAuth callback is now on port 51121, not this server)
                     const initialAccountCount = Alpine.store('data').accounts.length;
                     let pollCount = 0;
-                    const maxPolls = 60; // 2 minutes (2 second intervals)
+                    const maxPolls = 60;
                     let cancelled = false;
 
-                    // Show progress modal
                     Alpine.store('global').oauthProgress = {
                         active: true,
                         current: 0,
@@ -180,7 +205,6 @@ document.addEventListener('alpine:init', () => {
                         pollCount++;
                         Alpine.store('global').oauthProgress.current = pollCount;
 
-                        // Check if OAuth window was closed manually
                         if (oauthWindow && oauthWindow.closed && !cancelled) {
                             clearInterval(pollInterval);
                             Alpine.store('global').oauthProgress.active = false;
@@ -188,10 +212,8 @@ document.addEventListener('alpine:init', () => {
                             return;
                         }
 
-                        // Refresh account list
                         await Alpine.store('data').fetchData();
 
-                        // Check if new account was added
                         const currentAccountCount = Alpine.store('data').accounts.length;
                         if (currentAccountCount > initialAccountCount) {
                             clearInterval(pollInterval);
@@ -209,7 +231,6 @@ document.addEventListener('alpine:init', () => {
                             }
                         }
 
-                        // Stop polling after max attempts
                         if (pollCount >= maxPolls) {
                             clearInterval(pollInterval);
                             Alpine.store('global').oauthProgress.active = false;
@@ -218,7 +239,7 @@ document.addEventListener('alpine:init', () => {
                                 'warning'
                             );
                         }
-                    }, 2000); // Poll every 2 seconds
+                    }, 2000);
                 } else {
                     Alpine.store('global').showToast(data.error || Alpine.store('global').t('failedToGetAuthUrl'), 'error');
                 }

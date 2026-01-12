@@ -2,26 +2,41 @@
  * Electron Preload Script
  *
  * Exposes safe IPC methods to the renderer process for window controls.
- * This enables the custom titlebar to control minimize, maximize, and close.
+ * Uses contextBridge to maintain security with contextIsolation enabled.
+ *
+ * @module electron/preload
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+// IPC channel names
+const CHANNELS = {
+    MINIMIZE: 'window-minimize',
+    MAXIMIZE: 'window-maximize',
+    CLOSE: 'window-close',
+    IS_MAXIMIZED: 'window-is-maximized',
+    MAXIMIZE_CHANGE: 'window-maximize-change',
+};
+
 // Expose window control API to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
     // Window controls
-    minimize: () => ipcRenderer.send('window-minimize'),
-    maximize: () => ipcRenderer.send('window-maximize'),
-    close: () => ipcRenderer.send('window-close'),
+    minimize: () => ipcRenderer.send(CHANNELS.MINIMIZE),
+    maximize: () => ipcRenderer.send(CHANNELS.MAXIMIZE),
+    close: () => ipcRenderer.send(CHANNELS.CLOSE),
 
-    // Window state
-    isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+    // Window state query
+    isMaximized: () => ipcRenderer.invoke(CHANNELS.IS_MAXIMIZED),
 
-    // Listen for maximize state changes
+    // Window state change listener
     onMaximizeChange: (callback) => {
-        ipcRenderer.on('window-maximize-change', (_, isMaximized) => callback(isMaximized));
+        const handler = (_, isMaximized) => callback(isMaximized);
+        ipcRenderer.on(CHANNELS.MAXIMIZE_CHANGE, handler);
+
+        // Return cleanup function
+        return () => ipcRenderer.removeListener(CHANNELS.MAXIMIZE_CHANGE, handler);
     },
 
-    // Check if running in Electron
-    isElectron: true
+    // Runtime check
+    isElectron: true,
 });
