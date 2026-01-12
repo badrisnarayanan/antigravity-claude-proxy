@@ -307,6 +307,94 @@ export class AccountManager {
     }
 
     /**
+     * Add or update an account
+     * @param {Object} accountData - Account data to add/update
+     * @returns {Promise<void>}
+     */
+    async addAccount(accountData) {
+        if (!accountData.email) {
+            throw new Error('Account email is required');
+        }
+
+        const existingIndex = this.#accounts.findIndex(a => a.email === accountData.email);
+
+        if (existingIndex !== -1) {
+            // Update existing account
+            this.#accounts[existingIndex] = {
+                ...this.#accounts[existingIndex],
+                ...accountData,
+                // Preserve critical state unless explicitly overwritten
+                enabled: accountData.enabled !== undefined ? accountData.enabled : this.#accounts[existingIndex].enabled,
+                isInvalid: false, // Reset invalid state on update
+                invalidReason: null,
+                addedAt: this.#accounts[existingIndex].addedAt || new Date().toISOString()
+            };
+            logger.info(`[AccountManager] Account updated: ${accountData.email}`);
+        } else {
+            // Add new account
+            this.#accounts.push({
+                ...accountData,
+                enabled: true,
+                isInvalid: false,
+                invalidReason: null,
+                modelRateLimits: {},
+                lastUsed: null,
+                addedAt: new Date().toISOString(),
+                subscription: { tier: 'unknown', projectId: null, detectedAt: null },
+                quota: { models: {}, lastChecked: null }
+            });
+            logger.info(`[AccountManager] Account added: ${accountData.email}`);
+        }
+
+        await this.saveToDisk();
+    }
+
+    /**
+     * Remove an account
+     * @param {string} email - Email of the account to remove
+     * @returns {Promise<boolean>} True if account was removed, false if not found
+     */
+    async removeAccount(email) {
+        const index = this.#accounts.findIndex(a => a.email === email);
+        if (index === -1) {
+            return false;
+        }
+
+        this.#accounts.splice(index, 1);
+
+        // Adjust active index if needed
+        if (this.#currentIndex >= this.#accounts.length) {
+            this.#currentIndex = Math.max(0, this.#accounts.length - 1);
+        }
+
+        // Clear caches
+        this.#tokenCache.delete(email);
+        this.#projectCache.delete(email);
+
+        logger.info(`[AccountManager] Account removed: ${email}`);
+        await this.saveToDisk();
+        return true;
+    }
+
+    /**
+     * Enable or disable an account
+     * @param {string} email - Email of the account
+     * @param {boolean} enabled - New enabled state
+     * @returns {Promise<boolean>} True if updated, false if not found
+     */
+    async toggleAccount(email, enabled) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account) {
+            return false;
+        }
+
+        account.enabled = enabled;
+        logger.info(`[AccountManager] Account ${email} ${enabled ? 'enabled' : 'disabled'}`);
+        await this.saveToDisk();
+        return true;
+    }
+
+    /**
      * Get all accounts (internal use for quota fetching)
      * Returns the full account objects including credentials
      * @returns {Array<Object>} Array of account objects

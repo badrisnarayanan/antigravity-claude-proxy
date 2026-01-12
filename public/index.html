@@ -141,7 +141,8 @@
             >CLAUDE PROXY SYSTEM</span
           >
           <span
-            class="text-[9px] text-gray-500 font-mono tracking-wider"
+            class="text-[9px] font-mono tracking-wider transition-colors duration-300"
+            :class="$store.global.geminiHeaderMode === 'cli' ? 'text-orange-500' : ($store.global.geminiHeaderMode === 'antigravity' ? 'text-neon-green' : 'text-gray-500')"
             x-text="$store.global.geminiHeaderMode.toUpperCase()"
             x-init="$store.global.fetchHeaderMode()"
           ></span>

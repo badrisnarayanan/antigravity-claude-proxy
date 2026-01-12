@@ -337,6 +337,7 @@ While most users can use the default settings, you can tune the proxy behavior v
 - **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.
 - **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
+- **Fallback Mode**: Enable `FALLBACK=true` or `--fallback` to use local Antigravity as a backup when all accounts are rate-limited.
 
 Refer to `config.example.json` for a complete list of fields and documentation.
 
@@ -344,13 +345,14 @@ Refer to `config.example.json` for a complete list of fields and documentation.
 
 ## API Endpoints
 
-| Endpoint          | Method | Description                                                           |
-| ----------------- | ------ | --------------------------------------------------------------------- |
-| `/health`         | GET    | Health check                                                          |
-| `/account-limits` | GET    | Account status and quota limits (add `?format=table` for ASCII table) |
-| `/v1/messages`    | POST   | Anthropic Messages API                                                |
-| `/v1/models`      | GET    | List available models                                                 |
-| `/refresh-token`  | POST   | Force token refresh                                                   |
+| Endpoint             | Method | Description                                                           |
+| -------------------- | ------ | --------------------------------------------------------------------- |
+| `/health`            | GET    | Health check                                                          |
+| `/account-limits`    | GET    | Account status and quota limits (add `?format=table` for ASCII table) |
+| `/v1/messages`       | POST   | Anthropic Messages API                                                |
+| `/v1/models`         | GET    | List available models                                                 |
+| `/api/stats/history` | GET    | Get historical usage statistics                                       |
+| `/refresh-token`     | POST   | Force token refresh                                                   |
 
 ---
 
