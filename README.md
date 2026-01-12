@@ -33,34 +33,7 @@
 </p>
 
 ---
-
-## Table of Contents
-
-- [Overview](#-overview)
-- [Features](#-features)
-- [How It Works](#-how-it-works)
-- [Installation](#-installation)
-  - [Quick Start (npm)](#option-1-npm-recommended)
-  - [Clone Repository](#option-2-clone-repository)
-  - [Desktop App (Electron)](#option-3-desktop-app-electron)
-- [Building Windows EXE](#-building-windows-exe)
-- [Available Models](#-available-models)
-- [Usage](#-usage)
-  - [Starting the Server](#1-start-the-proxy-server)
-  - [Adding Accounts](#2-link-accounts)
-  - [Configuring Claude Code CLI](#3-configure-claude-code-cli)
-- [Web Management Console](#-web-management-console)
-- [Multi-Account Load Balancing](#-multi-account-load-balancing)
-- [All Commands Reference](#-all-commands-reference)
-- [API Endpoints](#-api-endpoints)
-- [Testing](#-testing)
-- [Project Structure](#-project-structure)
-- [Troubleshooting](#-troubleshooting)
-- [Legal & Disclaimer](#%EF%B8%8F-legal--disclaimer)
-- [Credits](#-credits)
-- [License](#-license)
-
----
+## Download
 
 ## Overview
 
