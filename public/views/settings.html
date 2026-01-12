@@ -1,616 +1,1070 @@
-<div x-data="{
+<div
+  x-data="{
     activeTab: 'ui'
-}" class="view-container">
-    <!-- Header & Tabs -->
-    <div class="view-card !p-0 flex flex-col overflow-hidden">
-        <div class="bg-space-900/50 border-b border-space-border px-8 pt-8 pb-0 shrink-0">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                    <svg class="w-5 h-5 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span x-text="$store.global.t('systemConfig')">System Configuration</span>
-                </h3>
-            </div>
+}"
+  class="view-container"
+>
+  <!-- Header & Tabs -->
+  <div class="view-card !p-0 flex flex-col overflow-hidden">
+    <div
+      class="bg-space-900/50 border-b border-space-border px-8 pt-8 pb-0 shrink-0"
+    >
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+          <svg
+            class="w-5 h-5 text-neon-purple"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          <span x-text="$store.global.t('systemConfig')"
+            >System Configuration</span
+          >
+        </h3>
+      </div>
 
-            <div class="flex gap-6 overflow-x-auto">
-                <button @click="activeTab = 'ui'"
-                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'ui' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                    </svg>
-                    <span x-text="$store.global.t('tabInterface')">Interface</span>
-                </button>
-                <button @click="activeTab = 'claude'"
-                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'claude' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span x-text="$store.global.t('tabClaude')">Claude CLI</span>
-                </button>
-                <button @click="activeTab = 'models'"
-                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'models' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <span x-text="$store.global.t('tabModels')">Models</span>
-                </button>
-                <button @click="activeTab = 'server'"
-                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'server' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                    </svg>
-                    <span x-text="$store.global.t('tabServer')">Server</span>
-                </button>
+      <div class="flex gap-6 overflow-x-auto">
+        <button
+          @click="activeTab = 'ui'"
+          class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+          :class="activeTab === 'ui' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+            />
+          </svg>
+          <span x-text="$store.global.t('tabInterface')">Interface</span>
+        </button>
+        <button
+          @click="activeTab = 'claude'"
+          class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+          :class="activeTab === 'claude' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <span x-text="$store.global.t('tabClaude')">Claude CLI</span>
+        </button>
+        <button
+          @click="activeTab = 'models'"
+          class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+          :class="activeTab === 'models' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
+          </svg>
+          <span x-text="$store.global.t('tabModels')">Models</span>
+        </button>
+        <button
+          @click="activeTab = 'server'"
+          class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+          :class="activeTab === 'server' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+            />
+          </svg>
+          <span x-text="$store.global.t('tabServer')">Server</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="p-8 overflow-y-auto flex-1 custom-scrollbar">
+      <!-- Tab 1: UI Preferences -->
+      <div
+        x-show="activeTab === 'ui'"
+        class="space-y-8 max-w-2xl animate-fade-in"
+      >
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Language -->
+          <div class="form-control">
+            <label class="label">
+              <span
+                class="label-text text-gray-300"
+                x-text="$store.global.t('language')"
+                >Language</span
+              >
+            </label>
+            <div class="join w-full grid grid-cols-3">
+              <button
+                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
+                :class="$store.global.lang === 'en'
+                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
+                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
+                @click="$store.global.setLang('en')"
+              >
+                English
+              </button>
+              <button
+                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
+                :class="$store.global.lang === 'zh'
+                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
+                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
+                @click="$store.global.setLang('zh')"
+              >
+                中文
+              </button>
+              <button
+                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
+                :class="$store.global.lang === 'pt'
+                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
+                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
+                @click="$store.global.setLang('pt')"
+              >
+                Português
+              </button>
             </div>
+          </div>
+
+          <!-- Polling Interval -->
+          <div class="form-control">
+            <label class="label">
+              <span
+                class="label-text text-gray-300"
+                x-text="$store.global.t('pollingInterval')"
+                >Polling Interval</span
+              >
+              <span
+                class="label-text-alt font-mono text-neon-purple"
+                x-text="$store.settings.refreshInterval + 's'"
+              ></span>
+            </label>
+            <div class="flex gap-3 items-center">
+              <input
+                type="range"
+                min="10"
+                max="300"
+                class="custom-range custom-range-purple flex-1"
+                x-model.number="$store.settings.refreshInterval"
+                :style="`background-size: ${($store.settings.refreshInterval - 10) / 2.9}% 100%`"
+                @change="$store.settings.saveSettings(true)"
+                aria-label="Polling interval slider"
+              />
+              <input
+                type="number"
+                min="10"
+                max="300"
+                class="input input-sm input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
+                x-model.number="$store.settings.refreshInterval"
+                @change="$store.settings.saveSettings(true)"
+                aria-label="Polling interval value"
+              />
+            </div>
+            <div
+              class="w-full flex justify-between text-xs px-2 mt-2 text-gray-600 font-mono"
+            >
+              <span>10s</span>
+              <span>300s</span>
+            </div>
+          </div>
+
+          <!-- Log Buffer -->
+          <div class="form-control col-span-full">
+            <label class="label">
+              <span
+                class="label-text text-gray-300"
+                x-text="$store.global.t('maxDisplayLogs')"
+                >Log Buffer Size</span
+              >
+              <span
+                class="label-text-alt font-mono text-neon-purple"
+                x-text="$store.settings.logLimit + ' ' + $store.global.t('lines')"
+              ></span>
+            </label>
+            <div class="flex gap-3 items-center">
+              <input
+                type="range"
+                min="500"
+                max="5000"
+                step="500"
+                class="custom-range custom-range-purple flex-1"
+                x-model.number="$store.settings.logLimit"
+                :style="`background-size: ${($store.settings.logLimit - 500) / 45}% 100%`"
+                @change="$store.settings.saveSettings(true)"
+                aria-label="Log buffer size slider"
+              />
+              <input
+                type="number"
+                min="500"
+                max="5000"
+                step="500"
+                class="input input-sm input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
+                x-model.number="$store.settings.logLimit"
+                @change="$store.settings.saveSettings(true)"
+                aria-label="Log buffer size value"
+              />
+            </div>
+            <div
+              class="w-full flex justify-between text-xs px-2 mt-2 text-gray-600 font-mono"
+            >
+              <span>500</span>
+              <span>5000</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Scrollable Content -->
-        <div class="p-8 overflow-y-auto flex-1 custom-scrollbar">
+        <div class="divider border-space-border/50"></div>
 
-            <!-- Tab 1: UI Preferences -->
-            <div x-show="activeTab === 'ui'" class="space-y-8 max-w-2xl animate-fade-in">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Language -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text text-gray-300" x-text="$store.global.t('language')">Language</span>
-                        </label>
-                        <div class="join w-full grid grid-cols-2">
-                            <button
-                                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
-                                :class="$store.global.lang === 'en'
-                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
-                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
-                                @click="$store.global.setLang('en')">English</button>
-                            <button
-                                class="join-item btn btn-sm border-space-border/50 bg-space-800 transition-all font-medium"
-                                :class="$store.global.lang === 'zh'
-                                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
-                                    : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
-                                @click="$store.global.setLang('zh')">中文</button>
-                        </div>
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-purple/50"
+            :class="$store.settings.showExhausted ? 'border-neon-purple/50 bg-neon-purple/5 shadow-[0_0_15px_rgba(168,85,247,0.1)]' : 'border-space-border/50'"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col gap-1">
+                <span
+                  class="label-text font-medium transition-colors"
+                  :class="$store.settings.showExhausted ? 'text-neon-purple' : 'text-gray-300'"
+                  x-text="$store.global.t('showExhausted')"
+                  >Show Exhausted Models</span
+                >
+                <span
+                  class="text-xs text-gray-500"
+                  x-text="$store.global.t('showExhaustedDesc')"
+                  >Display models even if they have 0% remaining quota.</span
+                >
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  :checked="$store.settings.showExhausted === true"
+                  @change="$store.settings.showExhausted = $event.target.checked; $store.settings.saveSettings(true)"
+                  aria-label="Show exhausted models toggle"
+                />
+                <div
+                  class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white"
+                ></div>
+              </label>
+            </div>
+          </div>
 
-                    <!-- Polling Interval -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text text-gray-300" x-text="$store.global.t('pollingInterval')">Polling
-                                Interval</span>
-                            <span class="label-text-alt font-mono text-neon-purple"
-                                x-text="$store.settings.refreshInterval + 's'"></span>
-                        </label>
-                        <div class="flex gap-3 items-center">
-                            <input type="range" min="10" max="300" class="custom-range custom-range-purple flex-1"
-                                x-model.number="$store.settings.refreshInterval"
-                                :style="`background-size: ${($store.settings.refreshInterval - 10) / 2.9}% 100%`"
-                                @change="$store.settings.saveSettings(true)"
-                                aria-label="Polling interval slider">
-                            <input type="number" min="10" max="300"
-                                class="input input-sm input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
-                                x-model.number="$store.settings.refreshInterval"
-                                @change="$store.settings.saveSettings(true)"
-                                aria-label="Polling interval value">
-                        </div>
-                        <div class="w-full flex justify-between text-xs px-2 mt-2 text-gray-600 font-mono">
-                            <span>10s</span>
-                            <span>300s</span>
-                        </div>
-                    </div>
+          <div
+            class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-green/50"
+            :class="$store.settings.compact ? 'border-neon-green/50 bg-neon-green/5 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-space-border/50'"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col gap-1">
+                <span
+                  class="label-text font-medium transition-colors"
+                  :class="$store.settings.compact ? 'text-neon-green' : 'text-gray-300'"
+                  x-text="$store.global.t('compactMode')"
+                  >Compact Mode</span
+                >
+                <span
+                  class="text-xs text-gray-500"
+                  x-text="$store.global.t('compactModeDesc')"
+                  >Reduce padding in tables for higher information
+                  density.</span
+                >
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  :checked="$store.settings.compact === true"
+                  @change="$store.settings.compact = $event.target.checked; $store.settings.saveSettings(true)"
+                  aria-label="Compact mode toggle"
+                />
+                <div
+                  class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"
+                ></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                    <!-- Log Buffer -->
-                    <div class="form-control col-span-full">
-                        <label class="label">
-                            <span class="label-text text-gray-300" x-text="$store.global.t('maxDisplayLogs')">Log Buffer
-                                Size</span>
-                            <span class="label-text-alt font-mono text-neon-purple"
-                                x-text="$store.settings.logLimit + ' ' + $store.global.t('lines')"></span>
-                        </label>
-                        <div class="flex gap-3 items-center">
-                            <input type="range" min="500" max="5000" step="500" class="custom-range custom-range-purple flex-1"
-                                x-model.number="$store.settings.logLimit"
-                                :style="`background-size: ${($store.settings.logLimit - 500) / 45}% 100%`"
-                                @change="$store.settings.saveSettings(true)"
-                                aria-label="Log buffer size slider">
-                            <input type="number" min="500" max="5000" step="500"
-                                class="input input-sm input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
-                                x-model.number="$store.settings.logLimit"
-                                @change="$store.settings.saveSettings(true)"
-                                aria-label="Log buffer size value">
-                        </div>
-                        <div class="w-full flex justify-between text-xs px-2 mt-2 text-gray-600 font-mono">
-                            <span>500</span>
-                            <span>5000</span>
-                        </div>
-                    </div>
+      <!-- Tab 2: Claude CLI Configuration -->
+      <div
+        x-show="activeTab === 'claude'"
+        x-data="claudeConfig"
+        class="space-y-6 max-w-3xl animate-fade-in"
+      >
+        <div
+          class="alert bg-space-900/50 border-space-border text-sm shadow-none"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="stroke-info shrink-0 w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <span class="text-gray-400">
+            <span x-text="$store.global.t('claudeSettingsAlertPrefix')"
+              >Settings below directly modify</span
+            >
+            <code class="text-neon-cyan font-mono" x-text="configPath"
+              >~/.claude/settings.json</code
+            >.
+            <span x-text="$store.global.t('claudeSettingsAlertSuffix')"
+              >Restart Claude CLI to apply.</span
+            >
+          </span>
+        </div>
+
+        <!-- Base URL -->
+        <div class="card bg-space-900/30 border border-space-border/50 p-5">
+          <label
+            class="label text-xs uppercase text-gray-500 font-semibold mb-2"
+            x-text="$store.global.t('proxyConnection')"
+            >Proxy Connection</label
+          >
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div class="text-[11px] text-gray-400 mb-1 font-mono">
+                ANTHROPIC_BASE_URL
+              </div>
+              <input
+                type="text"
+                x-model="config.env.ANTHROPIC_BASE_URL"
+                placeholder="http://localhost:8080"
+                class="input input-sm input-bordered !bg-space-800 w-full font-mono text-sm !border-space-border focus:!border-neon-purple !text-white placeholder:!text-gray-600"
+              />
+            </div>
+            <div>
+              <div class="text-[11px] text-gray-400 mb-1 font-mono">
+                ANTHROPIC_AUTH_TOKEN
+              </div>
+              <input
+                type="password"
+                x-model="config.env.ANTHROPIC_AUTH_TOKEN"
+                placeholder="any-string"
+                class="input input-sm input-bordered !bg-space-800 w-full font-mono text-sm !border-space-border focus:!border-neon-purple !text-white placeholder:!text-gray-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Models Selection -->
+        <div class="card bg-space-900/30 border border-space-border/50 p-5">
+          <label
+            class="label text-xs uppercase text-gray-500 font-semibold mb-2"
+            x-text="$store.global.t('modelSelection')"
+            >Model Selection</label
+          >
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Primary -->
+            <div class="form-control">
+              <label
+                class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
+                x-text="$store.global.t('primaryModel')"
+                >Primary Model</label
+              >
+              <div
+                class="relative w-full"
+                x-data="{ open: false, searchTerm: '' }"
+              >
+                <input
+                  type="text"
+                  :value="open ? searchTerm : config.env.ANTHROPIC_MODEL"
+                  @input="searchTerm = $event.target.value"
+                  @focus="open = true; searchTerm = ''"
+                  @click.away="open = false; searchTerm = ''"
+                  class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
+                  :placeholder="open ? $store.global.t('typeToSearch') : ''"
+                  :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_MODEL }"
+                  aria-label="Primary model selection"
+                />
+                <div
+                  class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
+                  @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                  @mousedown.prevent
+                >
+                  ▼
                 </div>
 
-                <div class="divider border-space-border/50"></div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-purple/50"
-                        :class="$store.settings.showExhausted ? 'border-neon-purple/50 bg-neon-purple/5 shadow-[0_0_15px_rgba(168,85,247,0.1)]' : 'border-space-border/50'">
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col gap-1">
-                                <span class="label-text font-medium transition-colors"
-                                    :class="$store.settings.showExhausted ? 'text-neon-purple' : 'text-gray-300'"
-                                    x-text="$store.global.t('showExhausted')">Show Exhausted Models</span>
-                                <span class="text-xs text-gray-500"
-                                    x-text="$store.global.t('showExhaustedDesc')">Display models even if they have 0%
-                                    remaining quota.</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer"
-                                    :checked="$store.settings.showExhausted === true"
-                                    @change="$store.settings.showExhausted = $event.target.checked; $store.settings.saveSettings(true)"
-                                    aria-label="Show exhausted models toggle">
-                                <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
-                                </div>
-                            </label>
+                <ul
+                  x-show="open"
+                  x-transition:enter="transition ease-out duration-100"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar"
+                >
+                  <template
+                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
+                    :key="modelId"
+                  >
+                    <li>
+                      <a
+                        @mousedown.prevent="selectModel('ANTHROPIC_MODEL', modelId); open = false; searchTerm = ''"
+                        class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                        :class="config.env.ANTHROPIC_MODEL === modelId || config.env.ANTHROPIC_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                          ></span>
+                          <span x-text="modelId"></span>
                         </div>
-                    </div>
-
-                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-green/50"
-                        :class="$store.settings.compact ? 'border-neon-green/50 bg-neon-green/5 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-space-border/50'">
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col gap-1">
-                                <span class="label-text font-medium transition-colors"
-                                    :class="$store.settings.compact ? 'text-neon-green' : 'text-gray-300'"
-                                    x-text="$store.global.t('compactMode')">Compact Mode</span>
-                                <span class="text-xs text-gray-500" x-text="$store.global.t('compactModeDesc')">Reduce
-                                    padding in tables for higher information density.</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" :checked="$store.settings.compact === true"
-                                    @change="$store.settings.compact = $event.target.checked; $store.settings.saveSettings(true)"
-                                    aria-label="Compact mode toggle">
-                                <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                        <template
+                          x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'"
+                        >
+                          <span
+                            class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter"
+                            >[1M]</span
+                          >
+                        </template>
+                      </a>
+                    </li>
+                  </template>
+                  <li
+                    x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0"
+                  >
+                    <span
+                      class="text-xs text-gray-500 italic py-2"
+                      x-text="$store.global.t('noMatchingModels')"
+                      >No matching models</span
+                    >
+                  </li>
+                </ul>
+              </div>
+              <span class="text-[10px] text-gray-600 mt-1 font-mono"
+                >ANTHROPIC_MODEL</span
+              >
             </div>
 
-            <!-- Tab 2: Claude CLI Configuration -->
-            <div x-show="activeTab === 'claude'" x-data="claudeConfig" class="space-y-6 max-w-3xl animate-fade-in">
-                <div class="alert bg-space-900/50 border-space-border text-sm shadow-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        class="stroke-info shrink-0 w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-gray-400">
-                        <span x-text="$store.global.t('claudeSettingsAlertPrefix')">Settings below directly modify</span>
-                        <code class="text-neon-cyan font-mono" x-text="configPath">~/.claude/settings.json</code>.
-                        <span x-text="$store.global.t('claudeSettingsAlertSuffix')">Restart Claude CLI to apply.</span>
-                    </span>
+            <!-- Sub-agent -->
+            <div class="form-control">
+              <label
+                class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
+                x-text="$store.global.t('subAgentModel')"
+                >Sub-agent Model</label
+              >
+              <div
+                class="relative w-full"
+                x-data="{ open: false, searchTerm: '' }"
+              >
+                <input
+                  type="text"
+                  :value="open ? searchTerm : config.env.CLAUDE_CODE_SUBAGENT_MODEL"
+                  @input="searchTerm = $event.target.value"
+                  @focus="open = true; searchTerm = ''"
+                  @click.away="open = false; searchTerm = ''"
+                  class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-purple pr-8 placeholder:!text-gray-600"
+                  :placeholder="open ? $store.global.t('typeToSearch') : ''"
+                  :class="{ '!text-gray-500': !open && !config.env.CLAUDE_CODE_SUBAGENT_MODEL }"
+                  aria-label="Sub-agent model selection"
+                />
+                <div
+                  class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
+                  @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                  @mousedown.prevent
+                >
+                  ▼
                 </div>
 
-                <!-- Base URL -->
-                <div class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <label class="label text-xs uppercase text-gray-500 font-semibold mb-2"
-                        x-text="$store.global.t('proxyConnection')">Proxy Connection</label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <div class="text-[11px] text-gray-400 mb-1 font-mono">ANTHROPIC_BASE_URL</div>
-                            <input type="text" x-model="config.env.ANTHROPIC_BASE_URL"
-                                placeholder="http://localhost:8080"
-                                class="input input-sm input-bordered !bg-space-800 w-full font-mono text-sm !border-space-border focus:!border-neon-purple !text-white placeholder:!text-gray-600">
+                <ul
+                  x-show="open"
+                  x-transition:enter="transition ease-out duration-100"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar"
+                >
+                  <template
+                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
+                    :key="modelId"
+                  >
+                    <li>
+                      <a
+                        @mousedown.prevent="selectModel('CLAUDE_CODE_SUBAGENT_MODEL', modelId); open = false; searchTerm = ''"
+                        class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                        :class="config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId || config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                          ></span>
+                          <span x-text="modelId"></span>
                         </div>
-                        <div>
-                            <div class="text-[11px] text-gray-400 mb-1 font-mono">ANTHROPIC_AUTH_TOKEN</div>
-                            <input type="password" x-model="config.env.ANTHROPIC_AUTH_TOKEN" placeholder="any-string"
-                                class="input input-sm input-bordered !bg-space-800 w-full font-mono text-sm !border-space-border focus:!border-neon-purple !text-white placeholder:!text-gray-600">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Models Selection -->
-                <div class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <label class="label text-xs uppercase text-gray-500 font-semibold mb-2"
-                        x-text="$store.global.t('modelSelection')">Model Selection</label>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Primary -->
-                        <div class="form-control">
-                            <label class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
-                                x-text="$store.global.t('primaryModel')">Primary Model</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.ANTHROPIC_MODEL"
-                                    @input="searchTerm = $event.target.value"
-                                    @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('typeToSearch') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_MODEL }"
-                                    aria-label="Primary model selection">
-                                <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
-                                    @mousedown.prevent>▼</div>
-
-                                <ul x-show="open" x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                <template
-                                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                    :key="modelId">
-                                    <li>
-                                        <a @mousedown.prevent="selectModel('ANTHROPIC_MODEL', modelId); open = false; searchTerm = ''"
-                                            class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_MODEL === modelId || config.env.ANTHROPIC_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-1.5 h-1.5 rounded-full"
-                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                <span x-text="modelId"></span>
-                                            </div>
-                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
-                                            </template>
-                                        </a>
-                                    </li>
-                                </template>
-                                    <li x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
-                                        <span class="text-xs text-gray-500 italic py-2"
-                                            x-text="$store.global.t('noMatchingModels')">No matching models</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono">ANTHROPIC_MODEL</span>
-                        </div>
-
-                        <!-- Sub-agent -->
-                        <div class="form-control">
-                            <label class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
-                                x-text="$store.global.t('subAgentModel')">Sub-agent Model</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.CLAUDE_CODE_SUBAGENT_MODEL"
-                                    @input="searchTerm = $event.target.value"
-                                    @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-purple pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('typeToSearch') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.CLAUDE_CODE_SUBAGENT_MODEL }"
-                                    aria-label="Sub-agent model selection">
-                                <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
-                                    @mousedown.prevent>▼</div>
-
-                                <ul x-show="open" x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                <template
-                                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                    :key="modelId">
-                                    <li>
-                                        <a @mousedown.prevent="selectModel('CLAUDE_CODE_SUBAGENT_MODEL', modelId); open = false; searchTerm = ''"
-                                            class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId || config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-1.5 h-1.5 rounded-full"
-                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                <span x-text="modelId"></span>
-                                            </div>
-                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
-                                            </template>
-                                        </a>
-                                    </li>
-                                </template>
-                                    <li x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
-                                        <span class="text-xs text-gray-500 italic py-2"
-                                            x-text="$store.global.t('noMatchingModels')">No matching models</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono">CLAUDE_CODE_SUBAGENT_MODEL</span>
-                        </div>
-                    </div>
-
-                    <div class="divider text-xs font-mono text-gray-600 my-2"
-                        x-text="$store.global.t('defaultModelAliases')">DEFAULT MODEL ALIASES</div>
-
-                    <!-- Overrides -->
-                    <div class="space-y-4">
-                        <!-- Opus -->
-                        <div class="form-control">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('opusAlias')">Opus Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_OPUS_MODEL"
-                                    @input="searchTerm = $event.target.value"
-                                    @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_OPUS_MODEL }"
-                                    aria-label="Opus model alias selection">
-                                <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
-                                    @mousedown.prevent>▼</div>
-                                <ul x-show="open" x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                <template
-                                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                    :key="modelId">
-                                    <li>
-                                        <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_OPUS_MODEL', modelId); open = false; searchTerm = ''"
-                                            class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-1.5 h-1.5 rounded-full"
-                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                <span x-text="modelId"></span>
-                                            </div>
-                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
-                                            </template>
-                                        </a>
-                                    </li>
-                                </template>
-                                    <li x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
-                                        <span class="text-xs text-gray-500 italic py-2"
-                                            x-text="$store.global.t('noMatchingModels')">No matching models</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <!-- Sonnet -->
-                        <div class="form-control">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('sonnetAlias')">Sonnet Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_SONNET_MODEL"
-                                    @input="searchTerm = $event.target.value"
-                                    @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_SONNET_MODEL }"
-                                    aria-label="Sonnet model alias selection">
-                                <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
-                                    @mousedown.prevent>▼</div>
-                                <ul x-show="open" x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                <template
-                                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                    :key="modelId">
-                                    <li>
-                                        <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_SONNET_MODEL', modelId); open = false; searchTerm = ''"
-                                            class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-1.5 h-1.5 rounded-full"
-                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                <span x-text="modelId"></span>
-                                            </div>
-                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
-                                            </template>
-                                        </a>
-                                    </li>
-                                </template>
-                                    <li x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
-                                        <span class="text-xs text-gray-500 italic py-2"
-                                            x-text="$store.global.t('noMatchingModels')">No matching models</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <!-- Haiku -->
-                        <div class="form-control">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('haikuAlias')">Haiku Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL"
-                                    @input="searchTerm = $event.target.value"
-                                    @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL }"
-                                    aria-label="Haiku model alias selection">
-                                <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
-                                    @mousedown.prevent>▼</div>
-                                <ul x-show="open" x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 scale-95"
-                                    x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                <template
-                                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                    :key="modelId">
-                                    <li>
-                                        <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_HAIKU_MODEL', modelId); open = false; searchTerm = ''"
-                                            class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                            :class="config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                            <div class="flex items-center gap-2">
-                                                <span class="w-1.5 h-1.5 rounded-full"
-                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                <span x-text="modelId"></span>
-                                            </div>
-                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
-                                            </template>
-                                        </a>
-                                    </li>
-                                </template>
-                                    <li x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
-                                        <span class="text-xs text-gray-500 italic py-2"
-                                            x-text="$store.global.t('noMatchingModels')">No matching models</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MCP CLI Experimental Mode -->
-                <div class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <div class="flex items-center justify-between">
-                        <div class="flex flex-col gap-1">
-                            <span class="text-sm font-medium transition-colors"
-                                :class="config.env.ENABLE_EXPERIMENTAL_MCP_CLI === 'true' ? 'text-neon-green' : 'text-gray-300'"
-                                x-text="$store.global.t('mcpCliExperimental')">Experimental MCP CLI</span>
-                            <span class="text-[11px] text-gray-500" x-text="$store.global.t('mcpCliDesc')">
-                                Enables experimental MCP integration for reliable tool usage with reduced context consumption.
-                            </span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer"
-                                :checked="config.env.ENABLE_EXPERIMENTAL_MCP_CLI === 'true'"
-                                @change="config.env.ENABLE_EXPERIMENTAL_MCP_CLI = $event.target.checked ? 'true' : 'false'"
-                                aria-label="Experimental MCP CLI toggle">
-                            <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Gemini 1M Context Suffix Toggle -->
-                <div class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <div class="flex items-center justify-between">
-                        <div class="flex flex-col gap-1">
-                            <span class="text-sm font-medium transition-colors"
-                                :class="gemini1mSuffix ? 'text-neon-green' : 'text-gray-300'"
-                                x-text="$store.global.t('gemini1mMode')">Gemini 1M Context Mode</span>
-                            <span class="text-[11px] text-gray-500" x-text="$store.global.t('gemini1mDesc')">
-                                Appends [1m] suffix to Gemini models for 1M context window support.
-                            </span>
-                            <span class="text-[10px] text-yellow-500/80" x-text="$store.global.t('gemini1mWarning')">
-                                ⚠ Large context may reduce Gemini-3-Pro performance.
-                            </span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer"
-                                :checked="gemini1mSuffix"
-                                @change="toggleGemini1mSuffix($event.target.checked)"
-                                aria-label="Gemini 1M context mode toggle">
-                            <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="flex justify-end pt-2 gap-3">
-                    <button class="btn btn-sm btn-ghost border border-space-border/50 hover:border-red-500/30 hover:bg-red-500/5 text-gray-400 hover:text-red-400 px-6 gap-2"
-                        @click="restoreDefaultClaudeConfig" :disabled="restoring">
-                        <svg x-show="!restoring" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span x-show="!restoring" x-text="$store.global.t('restoreDefault')">Restore Default</span>
-                        <span x-show="restoring" class="loading loading-spinner loading-xs"></span>
-                    </button>
-                    <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white px-6 gap-2"
-                        @click="saveClaudeConfig" :disabled="loading">
-                        <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        <span x-show="!loading" x-text="$store.global.t('applyToClaude')">Apply to Claude CLI</span>
-                        <span x-show="loading" class="loading loading-spinner loading-xs"></span>
-                    </button>
-                </div>
-
-                <!-- Restore Defaults Confirmation Modal -->
-                <dialog id="restore_defaults_modal" class="modal">
-                    <div class="modal-box bg-space-900 border-2 border-red-500/50">
-                        <h3 class="font-bold text-lg text-red-400 flex items-center gap-2">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <span x-text="$store.global.t('confirmRestoreTitle')">Confirm Restore</span>
-                        </h3>
-                        <p class="py-4 text-gray-300" x-text="$store.global.t('confirmRestoreMessage')">
-                            Are you sure you want to restore Claude CLI to default settings? This will remove proxy configuration.
-                        </p>
-                        <div class="modal-action">
-                            <button class="btn btn-ghost text-gray-400" onclick="document.getElementById('restore_defaults_modal').close()"
-                                x-text="$store.global.t('cancel')">Cancel</button>
-                            <button class="btn bg-red-500 hover:bg-red-600 border-none text-white" @click="executeRestore()"
-                                :disabled="restoring"
-                                :class="{ 'loading': restoring }">
-                                <span x-text="$store.global.t('confirmRestore')" x-show="!restoring">Confirm Restore</span>
-                            </button>
-                        </div>
-                    </div>
-                    <form method="dialog" class="modal-backdrop">
-                        <button>close</button>
-                    </form>
-                </dialog>
+                        <template
+                          x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'"
+                        >
+                          <span
+                            class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter"
+                            >[1M]</span
+                          >
+                        </template>
+                      </a>
+                    </li>
+                  </template>
+                  <li
+                    x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0"
+                  >
+                    <span
+                      class="text-xs text-gray-500 italic py-2"
+                      x-text="$store.global.t('noMatchingModels')"
+                      >No matching models</span
+                    >
+                  </li>
+                </ul>
+              </div>
+              <span class="text-[10px] text-gray-600 mt-1 font-mono"
+                >CLAUDE_CODE_SUBAGENT_MODEL</span
+              >
             </div>
+          </div>
 
-            <!-- Tab 3: Models Configuration -->
-            <div x-show="activeTab === 'models'" x-data="window.Components.modelManager()"
-                class="space-y-6 max-w-3xl animate-fade-in">
+          <div
+            class="divider text-xs font-mono text-gray-600 my-2"
+            x-text="$store.global.t('defaultModelAliases')"
+          >
+            DEFAULT MODEL ALIASES
+          </div>
 
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="text-sm text-gray-400" x-text="$store.global.t('modelsDesc')">Configure model visibility, pinning, and request mapping.</div>
-                        <div class="text-xs text-gray-600 mt-1" x-text="$store.global.t('modelMappingHint')">Model mapping: server-side redirection. Claude Code users: see 'Claude CLI' tab for client-side setup.</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500" x-text="$store.global.t('showHidden')">Show Hidden Models</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer"
-                                :checked="$store.settings.showHiddenModels === true"
-                                @change="$store.settings.showHiddenModels = $event.target.checked; $store.settings.saveSettings(true)"
-                                aria-label="Show hidden models toggle">
-                            <div
-                                class="w-8 h-[18px] bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
-                            </div>
-                        </label>
-                    </div>
+          <!-- Overrides -->
+          <div class="space-y-4">
+            <!-- Opus -->
+            <div class="form-control">
+              <label
+                class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                x-text="$store.global.t('opusAlias')"
+                >Opus Alias</label
+              >
+              <div
+                class="relative w-full"
+                x-data="{ open: false, searchTerm: '' }"
+              >
+                <input
+                  type="text"
+                  :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_OPUS_MODEL"
+                  @input="searchTerm = $event.target.value"
+                  @focus="open = true; searchTerm = ''"
+                  @click.away="open = false; searchTerm = ''"
+                  class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
+                  :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
+                  :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_OPUS_MODEL }"
+                  aria-label="Opus model alias selection"
+                />
+                <div
+                  class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
+                  @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                  @mousedown.prevent
+                >
+                  ▼
                 </div>
+                <ul
+                  x-show="open"
+                  x-transition:enter="transition ease-out duration-100"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar"
+                >
+                  <template
+                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
+                    :key="modelId"
+                  >
+                    <li>
+                      <a
+                        @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_OPUS_MODEL', modelId); open = false; searchTerm = ''"
+                        class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                        :class="config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                          ></span>
+                          <span x-text="modelId"></span>
+                        </div>
+                        <template
+                          x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'"
+                        >
+                          <span
+                            class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter"
+                            >[1M]</span
+                          >
+                        </template>
+                      </a>
+                    </li>
+                  </template>
+                  <li
+                    x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0"
+                  >
+                    <span
+                      class="text-xs text-gray-500 italic py-2"
+                      x-text="$store.global.t('noMatchingModels')"
+                      >No matching models</span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <!-- Sonnet -->
+            <div class="form-control">
+              <label
+                class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                x-text="$store.global.t('sonnetAlias')"
+                >Sonnet Alias</label
+              >
+              <div
+                class="relative w-full"
+                x-data="{ open: false, searchTerm: '' }"
+              >
+                <input
+                  type="text"
+                  :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_SONNET_MODEL"
+                  @input="searchTerm = $event.target.value"
+                  @focus="open = true; searchTerm = ''"
+                  @click.away="open = false; searchTerm = ''"
+                  class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
+                  :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
+                  :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_SONNET_MODEL }"
+                  aria-label="Sonnet model alias selection"
+                />
+                <div
+                  class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
+                  @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                  @mousedown.prevent
+                >
+                  ▼
+                </div>
+                <ul
+                  x-show="open"
+                  x-transition:enter="transition ease-out duration-100"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar"
+                >
+                  <template
+                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
+                    :key="modelId"
+                  >
+                    <li>
+                      <a
+                        @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_SONNET_MODEL', modelId); open = false; searchTerm = ''"
+                        class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                        :class="config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                          ></span>
+                          <span x-text="modelId"></span>
+                        </div>
+                        <template
+                          x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'"
+                        >
+                          <span
+                            class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter"
+                            >[1M]</span
+                          >
+                        </template>
+                      </a>
+                    </li>
+                  </template>
+                  <li
+                    x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0"
+                  >
+                    <span
+                      class="text-xs text-gray-500 italic py-2"
+                      x-text="$store.global.t('noMatchingModels')"
+                      >No matching models</span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <!-- Haiku -->
+            <div class="form-control">
+              <label
+                class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                x-text="$store.global.t('haikuAlias')"
+                >Haiku Alias</label
+              >
+              <div
+                class="relative w-full"
+                x-data="{ open: false, searchTerm: '' }"
+              >
+                <input
+                  type="text"
+                  :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL"
+                  @input="searchTerm = $event.target.value"
+                  @focus="open = true; searchTerm = ''"
+                  @click.away="open = false; searchTerm = ''"
+                  class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
+                  :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
+                  :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL }"
+                  aria-label="Haiku model alias selection"
+                />
+                <div
+                  class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
+                  @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                  @mousedown.prevent
+                >
+                  ▼
+                </div>
+                <ul
+                  x-show="open"
+                  x-transition:enter="transition ease-out duration-100"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar"
+                >
+                  <template
+                    x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
+                    :key="modelId"
+                  >
+                    <li>
+                      <a
+                        @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_HAIKU_MODEL', modelId); open = false; searchTerm = ''"
+                        class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                        :class="config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                          ></span>
+                          <span x-text="modelId"></span>
+                        </div>
+                        <template
+                          x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'"
+                        >
+                          <span
+                            class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter"
+                            >[1M]</span
+                          >
+                        </template>
+                      </a>
+                    </li>
+                  </template>
+                  <li
+                    x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0"
+                  >
+                    <span
+                      class="text-xs text-gray-500 italic py-2"
+                      x-text="$store.global.t('noMatchingModels')"
+                      >No matching models</span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                <!-- Models List -->
-                <div class="view-card !p-0">
-                    <table class="standard-table">
-                        <thead>
-                            <tr>
-                                <th class="pl-4 w-5/12" x-text="$store.global.t('modelId')">Model ID</th>
-                                <th class="w-5/12" x-text="$store.global.t('modelMapping')">Mapping (Target Model ID)</th>
-                                <th class="w-2/12 text-right pr-4" x-text="$store.global.t('actions')">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="modelId in $store.data.models" :key="modelId">
-                                <tr class="hover:bg-white/5 transition-colors group"
-                                    :class="isHidden ? 'opacity-50' : ''"
-                                    x-show="!isHidden || $store.settings.showHiddenModels"
-                                    x-data="{
+        <!-- MCP CLI Experimental Mode -->
+        <div class="card bg-space-900/30 border border-space-border/50 p-5">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-1">
+              <span
+                class="text-sm font-medium transition-colors"
+                :class="config.env.ENABLE_EXPERIMENTAL_MCP_CLI === 'true' ? 'text-neon-green' : 'text-gray-300'"
+                x-text="$store.global.t('mcpCliExperimental')"
+                >Experimental MCP CLI</span
+              >
+              <span
+                class="text-[11px] text-gray-500"
+                x-text="$store.global.t('mcpCliDesc')"
+              >
+                Enables experimental MCP integration for reliable tool usage
+                with reduced context consumption.
+              </span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                :checked="config.env.ENABLE_EXPERIMENTAL_MCP_CLI === 'true'"
+                @change="config.env.ENABLE_EXPERIMENTAL_MCP_CLI = $event.target.checked ? 'true' : 'false'"
+                aria-label="Experimental MCP CLI toggle"
+              />
+              <div
+                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"
+              ></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Gemini 1M Context Suffix Toggle -->
+        <div class="card bg-space-900/30 border border-space-border/50 p-5">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-1">
+              <span
+                class="text-sm font-medium transition-colors"
+                :class="gemini1mSuffix ? 'text-neon-green' : 'text-gray-300'"
+                x-text="$store.global.t('gemini1mMode')"
+                >Gemini 1M Context Mode</span
+              >
+              <span
+                class="text-[11px] text-gray-500"
+                x-text="$store.global.t('gemini1mDesc')"
+              >
+                Appends [1m] suffix to Gemini models for 1M context window
+                support.
+              </span>
+              <span
+                class="text-[10px] text-yellow-500/80"
+                x-text="$store.global.t('gemini1mWarning')"
+              >
+                ⚠ Large context may reduce Gemini-3-Pro performance.
+              </span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                :checked="gemini1mSuffix"
+                @change="toggleGemini1mSuffix($event.target.checked)"
+                aria-label="Gemini 1M context mode toggle"
+              />
+              <div
+                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"
+              ></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 gap-3">
+          <button
+            class="btn btn-sm btn-ghost border border-space-border/50 hover:border-red-500/30 hover:bg-red-500/5 text-gray-400 hover:text-red-400 px-6 gap-2"
+            @click="restoreDefaultClaudeConfig"
+            :disabled="restoring"
+          >
+            <svg
+              x-show="!restoring"
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span x-show="!restoring" x-text="$store.global.t('restoreDefault')"
+              >Restore Default</span
+            >
+            <span
+              x-show="restoring"
+              class="loading loading-spinner loading-xs"
+            ></span>
+          </button>
+          <button
+            class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white px-6 gap-2"
+            @click="saveClaudeConfig"
+            :disabled="loading"
+          >
+            <svg
+              x-show="!loading"
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+              />
+            </svg>
+            <span x-show="!loading" x-text="$store.global.t('applyToClaude')"
+              >Apply to Claude CLI</span
+            >
+            <span
+              x-show="loading"
+              class="loading loading-spinner loading-xs"
+            ></span>
+          </button>
+        </div>
+
+        <!-- Restore Defaults Confirmation Modal -->
+        <dialog id="restore_defaults_modal" class="modal">
+          <div class="modal-box bg-space-900 border-2 border-red-500/50">
+            <h3 class="font-bold text-lg text-red-400 flex items-center gap-2">
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <span x-text="$store.global.t('confirmRestoreTitle')"
+                >Confirm Restore</span
+              >
+            </h3>
+            <p
+              class="py-4 text-gray-300"
+              x-text="$store.global.t('confirmRestoreMessage')"
+            >
+              Are you sure you want to restore Claude CLI to default settings?
+              This will remove proxy configuration.
+            </p>
+            <div class="modal-action">
+              <button
+                class="btn btn-ghost text-gray-400"
+                onclick="document.getElementById('restore_defaults_modal').close()"
+                x-text="$store.global.t('cancel')"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn bg-red-500 hover:bg-red-600 border-none text-white"
+                @click="executeRestore()"
+                :disabled="restoring"
+                :class="{ 'loading': restoring }"
+              >
+                <span
+                  x-text="$store.global.t('confirmRestore')"
+                  x-show="!restoring"
+                  >Confirm Restore</span
+                >
+              </button>
+            </div>
+          </div>
+          <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+          </form>
+        </dialog>
+      </div>
+
+      <!-- Tab 3: Models Configuration -->
+      <div
+        x-show="activeTab === 'models'"
+        x-data="window.Components.modelManager()"
+        class="space-y-6 max-w-3xl animate-fade-in"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <div
+              class="text-sm text-gray-400"
+              x-text="$store.global.t('modelsDesc')"
+            >
+              Configure model visibility, pinning, and request mapping.
+            </div>
+            <div
+              class="text-xs text-gray-600 mt-1"
+              x-text="$store.global.t('modelMappingHint')"
+            >
+              Model mapping: server-side redirection. Claude Code users: see
+              'Claude CLI' tab for client-side setup.
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs text-gray-500"
+              x-text="$store.global.t('showHidden')"
+              >Show Hidden Models</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                :checked="$store.settings.showHiddenModels === true"
+                @change="$store.settings.showHiddenModels = $event.target.checked; $store.settings.saveSettings(true)"
+                aria-label="Show hidden models toggle"
+              />
+              <div
+                class="w-8 h-[18px] bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white"
+              ></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Models List -->
+        <div class="view-card !p-0">
+          <table class="standard-table">
+            <thead>
+              <tr>
+                <th class="pl-4 w-5/12" x-text="$store.global.t('modelId')">
+                  Model ID
+                </th>
+                <th class="w-5/12" x-text="$store.global.t('modelMapping')">
+                  Mapping (Target Model ID)
+                </th>
+                <th
+                  class="w-2/12 text-right pr-4"
+                  x-text="$store.global.t('actions')"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="modelId in $store.data.models" :key="modelId">
+                <tr
+                  class="hover:bg-white/5 transition-colors group"
+                  :class="isHidden ? 'opacity-50' : ''"
+                  x-show="!isHidden || $store.settings.showHiddenModels"
+                  x-data="{
                                     newMapping: '',
                                     get config() { return $store.data.modelConfig[modelId] || {} },
                                     get isPinned() { return !!this.config.pinned },
@@ -619,441 +1073,751 @@
                                         const family = $store.data.getModelFamily(modelId);
                                         return (family === 'other' || family === 'unknown');
                                     }
-                                }" x-init="newMapping = config.mapping || ''">
-                                    <td class="pl-4 font-mono text-xs text-gray-300">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-1.5 h-1.5 rounded-full"
-                                                :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                            <span x-text="modelId"></span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div x-show="!isEditing(modelId)"
-                                            class="flex items-center gap-2 group-hover:text-white transition-colors cursor-pointer py-2"
-                                            @click="startEditing(modelId); newMapping = config.mapping || ''; $nextTick(() => $refs['input-' + modelId]?.focus())">
-                                            <span x-text="config.mapping || $store.global.t('clickToSet')"
-                                                :class="{'text-gray-600 italic': !config.mapping, 'text-gray-300': config.mapping}"
-                                                class="text-xs font-mono"></span>
-                                            <svg class="w-3 h-3 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
-                                        </div>
-                                        <div x-show="isEditing(modelId)" class="flex items-center gap-1">
-                                            <input type="text" x-model="newMapping"
-                                                :x-ref="'input-' + modelId"
-                                                class="input input-xs bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs"
-                                                placeholder="e.g. claude-sonnet-4-5 or gemini-3-flash"
-                                                @keydown.enter="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
-                                                @keydown.escape="newMapping = config.mapping || ''; stopEditing()">
-                                            <button class="btn-action-success"
-                                                @click="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
-                                                title="Save">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            </button>
-                                            <button class="btn-action-neutral"
-                                                @click="newMapping = config.mapping || ''; stopEditing()"
-                                                title="Cancel">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                            <button x-show="config.mapping"
-                                                    class="btn-action-danger"
-                                                    @click="await updateModelConfig(modelId, { mapping: '' }); stopEditing()"
-                                                    title="Clear mapping">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td class="text-right pr-4">
-                                        <div class="flex items-center justify-end gap-2">
-                                            <!-- Pin Toggle -->
-                                            <button class="btn btn-xs btn-circle transition-colors"
-                                                :class="isPinned ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/50 hover:bg-neon-purple/30' : 'btn-ghost text-gray-600 hover:text-gray-300'"
-                                                @click="await updateModelConfig(modelId, { pinned: !isPinned })"
-                                                :title="$store.global.t('pinToTop')">
-                                                <svg x-show="isPinned" xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                                                </svg>
-                                                <svg x-show="!isPinned" xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                                                </svg>
-                                            </button>
-
-                                            <!-- Hide Toggle -->
-                                            <button class="btn btn-xs btn-circle transition-colors"
-                                                :class="isHidden ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30' : 'btn-ghost text-gray-400 hover:text-white'"
-                                                @click="await updateModelConfig(modelId, { hidden: !isHidden })"
-                                                :title="$store.global.t('toggleVisibility')">
-                                                <svg x-show="!isHidden" xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                <svg x-show="isHidden" xmlns="http://www.w3.org/2000/svg"
-                                                    class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                            <tr x-show="!$store.data.models.length">
-                                <td colspan="3" class="text-center py-8 text-gray-600 text-xs font-mono"
-                                    x-text="$store.global.t('noModels')">
-                                    NO MODELS DETECTED
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tab 4: Server Configuration -->
-            <div x-show="activeTab === 'server'" x-data="window.Components.serverConfig()"
-                class="space-y-6 max-w-2xl animate-fade-in pb-10">
-                <!-- 🔐 Security Section -->
-                <div class="view-card border-neon-yellow/20 bg-neon-yellow/5">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div
-                                class="w-10 h-10 rounded-lg bg-neon-yellow/10 flex items-center justify-center text-neon-yellow">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-white mb-0.5"
-                                    x-text="$store.global.t('changePassword')">WebUI Password</h4>
-                                <p class="text-xs text-gray-500" x-text="$store.global.t('changePasswordDesc')">
-                                    Authentication for accessing this dashboard</p>
-                            </div>
-                        </div>
-                        <button
-                            class="btn btn-sm border-neon-yellow/30 bg-transparent text-neon-yellow hover:bg-neon-yellow hover:text-black transition-all gap-2"
-                            @click="showPasswordDialog()">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                            </svg>
-                            <span x-text="$store.global.t('changePassword')">Change Password</span>
-                        </button>
+                                }"
+                  x-init="newMapping = config.mapping || ''"
+                >
+                  <td class="pl-4 font-mono text-xs text-gray-300">
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="w-1.5 h-1.5 rounded-full"
+                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"
+                      ></span>
+                      <span x-text="modelId"></span>
                     </div>
-                </div>
-
-                <!-- ⚡ Common Settings -->
-                <div class="space-y-3">
-                    <div class="flex items-center gap-2 mb-1 px-1">
-                        <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
-                            x-text="$store.global.t('runtimeConfig')">Common Settings</span>
-                        <div class="h-px flex-1 bg-space-border/30"></div>
-                    </div>
-
-                    <!-- Debug Mode -->
+                  </td>
+                  <td>
                     <div
-                        class="form-control view-card border-space-border/50 hover:border-neon-purple/50">
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium text-gray-200"
-                                    :class="serverConfig.debug ? 'text-neon-purple' : ''"
-                                    x-text="$store.global.t('debugMode')">Debug Mode</span>
-                                <span class="text-[11px] text-gray-500" x-text="$store.global.t('debugDesc')">Detailed
-                                    logging in the Logs tab</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" :checked="serverConfig.debug === true"
-                                    @change="toggleDebug($el.checked)"
-                                    aria-label="Debug mode toggle">
-                                <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
-                                </div>
-                            </label>
-                        </div>
+                      x-show="!isEditing(modelId)"
+                      class="flex items-center gap-2 group-hover:text-white transition-colors cursor-pointer py-2"
+                      @click="startEditing(modelId); newMapping = config.mapping || ''; $nextTick(() => $refs['input-' + modelId]?.focus())"
+                    >
+                      <span
+                        x-text="config.mapping || $store.global.t('clickToSet')"
+                        :class="{'text-gray-600 italic': !config.mapping, 'text-gray-300': config.mapping}"
+                        class="text-xs font-mono"
+                      ></span>
+                      <svg
+                        class="w-3 h-3 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
                     </div>
-
-                    <!-- Token Cache -->
                     <div
-                        class="form-control view-card border-space-border/50 hover:border-neon-green/50">
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium text-gray-200"
-                                    :class="serverConfig.persistTokenCache ? 'text-neon-green' : ''"
-                                    x-text="$store.global.t('persistentSessions')">Persist Token Cache</span>
-                                <span class="text-[11px] text-gray-500"
-                                    x-text="$store.global.t('persistTokenDesc')">Save OAuth tokens to disk for faster
-                                    restarts</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer"
-                                    :checked="serverConfig.persistTokenCache === true"
-                                    @change="toggleTokenCache($el.checked)"
-                                    aria-label="Persist token cache toggle">
-                                <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ▼ Advanced Tuning (Fixed Logic) -->
-                <div class="view-card !p-0 border-space-border/50">
-                    <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
-                        @click="advancedExpanded = !advancedExpanded">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded bg-space-800 flex items-center justify-center text-neon-cyan">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                                </svg>
-                            </div>
-                            <div>
-                                <span class="text-sm font-semibold text-gray-200"
-                                    x-text="$store.global.t('advancedSettings')">Advanced Settings</span>
-                                <span class="text-[10px] text-gray-600 block"
-                                    x-text="$store.global.t('serverReadOnly')">Settings managed via config.json</span>
-                            </div>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="w-5 h-5 text-gray-600 transition-transform duration-300"
-                            :class="advancedExpanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      x-show="isEditing(modelId)"
+                      class="flex items-center gap-1"
+                    >
+                      <input
+                        type="text"
+                        x-model="newMapping"
+                        :x-ref="'input-' + modelId"
+                        class="input input-xs bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs"
+                        placeholder="e.g. claude-sonnet-4-5 or gemini-3-flash"
+                        @keydown.enter="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
+                        @keydown.escape="newMapping = config.mapping || ''; stopEditing()"
+                      />
+                      <button
+                        class="btn-action-success"
+                        @click="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
+                        title="Save"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
+                      </button>
+                      <button
+                        class="btn-action-neutral"
+                        @click="newMapping = config.mapping || ''; stopEditing()"
+                        title="Cancel"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        x-show="config.mapping"
+                        class="btn-action-danger"
+                        @click="await updateModelConfig(modelId, { mapping: '' }); stopEditing()"
+                        title="Clear mapping"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </div>
+                  </td>
+                  <td class="text-right pr-4">
+                    <div class="flex items-center justify-end gap-2">
+                      <!-- Pin Toggle -->
+                      <button
+                        class="btn btn-xs btn-circle transition-colors"
+                        :class="isPinned ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/50 hover:bg-neon-purple/30' : 'btn-ghost text-gray-600 hover:text-gray-300'"
+                        @click="await updateModelConfig(modelId, { pinned: !isPinned })"
+                        :title="$store.global.t('pinToTop')"
+                      >
+                        <svg
+                          x-show="isPinned"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-3.5 w-3.5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"
+                          />
+                        </svg>
+                        <svg
+                          x-show="!isPinned"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                          />
+                        </svg>
+                      </button>
 
-                    <div x-show="advancedExpanded" x-cloak class="p-5 pt-0 space-y-6">
-                        <div class="h-px bg-space-border/20 mb-4"></div>
-
-                        <!-- Network Retry Settings -->
-                        <div class="space-y-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
-                                    x-text="$store.global.t('networkRetry')">Network Retry Settings</span>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label pt-0">
-                                    <span class="label-text text-gray-400 text-xs"
-                                        x-text="$store.global.t('maxRetries')">Max Retries</span>
-                                    <span class="label-text-alt font-mono text-neon-purple text-xs font-semibold"
-                                        x-text="serverConfig.maxRetries || 5"></span>
-                                </label>
-                                <div class="flex gap-3 items-center">
-                                    <input type="range" min="1" max="20" class="custom-range custom-range-purple flex-1"
-                                        :value="serverConfig.maxRetries || 5"
-                                        :style="`background-size: ${((serverConfig.maxRetries || 5) - 1) / 19 * 100}% 100%`"
-                                        @input="toggleMaxRetries($event.target.value)"
-                                        aria-label="Max retries slider">
-                                    <input type="number" min="1" max="20"
-                                        class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.maxRetries || 5"
-                                        @change="toggleMaxRetries($event.target.value)"
-                                        aria-label="Max retries value">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="form-control">
-                                    <label class="label pt-0">
-                                        <span class="label-text text-gray-400 text-xs"
-                                            x-text="$store.global.t('retryBaseDelay')">Base Delay</span>
-                                        <span class="label-text-alt font-mono text-neon-green text-xs font-semibold"
-                                            x-text="((serverConfig.retryBaseMs || 1000) < 10000 ? (serverConfig.retryBaseMs || 1000) + 'ms' : Math.round((serverConfig.retryBaseMs || 1000) / 1000) + 's')"></span>
-                                    </label>
-                                    <div class="flex gap-2 items-center">
-                                        <input type="range" min="100" max="10000" step="100"
-                                            class="custom-range custom-range-green flex-1"
-                                            :value="serverConfig.retryBaseMs || 1000"
-                                            :style="`background-size: ${((serverConfig.retryBaseMs || 1000) - 100) / 99}% 100%`"
-                                            @input="toggleRetryBaseMs($event.target.value)"
-                                            aria-label="Retry base delay slider">
-                                        <input type="number" min="100" max="10000" step="100"
-                                            class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
-                                            :value="serverConfig.retryBaseMs || 1000"
-                                            @change="toggleRetryBaseMs($event.target.value)"
-                                            aria-label="Retry base delay value">
-                                    </div>
-                                </div>
-                                <div class="form-control">
-                                    <label class="label pt-0">
-                                        <span class="label-text text-gray-400 text-xs"
-                                            x-text="$store.global.t('retryMaxDelay')">Max Delay</span>
-                                        <span class="label-text-alt font-mono text-neon-green text-xs font-semibold"
-                                            x-text="Math.round((serverConfig.retryMaxMs || 30000) / 1000) + 's'"></span>
-                                    </label>
-                                    <div class="flex gap-2 items-center">
-                                        <input type="range" min="1000" max="120000" step="1000"
-                                            class="custom-range custom-range-green flex-1"
-                                            :value="serverConfig.retryMaxMs || 30000"
-                                            :style="`background-size: ${((serverConfig.retryMaxMs || 30000) - 1000) / 1190}% 100%`"
-                                            @input="toggleRetryMaxMs($event.target.value)"
-                                            aria-label="Retry max delay slider">
-                                        <input type="number" min="1000" max="120000" step="1000"
-                                            class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
-                                            :value="serverConfig.retryMaxMs || 30000"
-                                            @change="toggleRetryMaxMs($event.target.value)"
-                                            aria-label="Retry max delay value">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Account Rate Limiting -->
-                        <div class="space-y-4 pt-2 border-t border-space-border/10">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
-                                    x-text="$store.global.t('rateLimiting')">Rate Limiting & Timeouts</span>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label pt-0">
-                                    <span class="label-text text-gray-400 text-xs"
-                                        x-text="$store.global.t('defaultCooldown')">Default Cooldown</span>
-                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
-                                        x-text="Math.round((serverConfig.defaultCooldownMs || 60000) / 1000) + 's'"></span>
-                                </label>
-                                <div class="flex gap-3 items-center">
-                                    <input type="range" min="1000" max="300000" step="1000"
-                                        class="custom-range custom-range-cyan flex-1"
-                                        :value="serverConfig.defaultCooldownMs || 60000"
-                                        :style="`background-size: ${((serverConfig.defaultCooldownMs || 60000) - 1000) / 2990}% 100%`"
-                                        @input="toggleDefaultCooldownMs($event.target.value)"
-                                        aria-label="Default cooldown slider">
-                                    <input type="number" min="1000" max="300000" step="1000"
-                                        class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.defaultCooldownMs || 60000"
-                                        @change="toggleDefaultCooldownMs($event.target.value)"
-                                        aria-label="Default cooldown value">
-                                </div>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label pt-0">
-                                    <span class="label-text text-gray-400 text-xs"
-                                        x-text="$store.global.t('maxWaitThreshold')">Max Wait (Sticky)</span>
-                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
-                                        x-text="((serverConfig.maxWaitBeforeErrorMs || 120000) >= 60000 ? Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 60000) + 'm' : Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 1000) + 's')"></span>
-                                </label>
-                                <div class="flex gap-3 items-center">
-                                    <input type="range" min="0" max="600000" step="10000"
-                                        class="custom-range custom-range-cyan flex-1"
-                                        :value="serverConfig.maxWaitBeforeErrorMs || 120000"
-                                        :style="`background-size: ${(serverConfig.maxWaitBeforeErrorMs || 120000) / 6000}% 100%`"
-                                        @input="toggleMaxWaitBeforeErrorMs($event.target.value)"
-                                        aria-label="Max wait threshold slider">
-                                    <input type="number" min="0" max="600000" step="10000"
-                                        class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.maxWaitBeforeErrorMs || 120000"
-                                        @change="toggleMaxWaitBeforeErrorMs($event.target.value)"
-                                        aria-label="Max wait threshold value">
-                                </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
-                                    x-text="$store.global.t('maxWaitDesc')">Maximum time to wait for a sticky account to
-                                    reset before switching.</p>
-                            </div>
-                        </div>
+                      <!-- Hide Toggle -->
+                      <button
+                        class="btn btn-xs btn-circle transition-colors"
+                        :class="isHidden ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30' : 'btn-ghost text-gray-400 hover:text-white'"
+                        @click="await updateModelConfig(modelId, { hidden: !isHidden })"
+                        :title="$store.global.t('toggleVisibility')"
+                      >
+                        <svg
+                          x-show="!isHidden"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                        <svg
+                          x-show="isHidden"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                          />
+                        </svg>
+                      </button>
                     </div>
+                  </td>
+                </tr>
+              </template>
+              <tr x-show="!$store.data.models.length">
+                <td
+                  colspan="3"
+                  class="text-center py-8 text-gray-600 text-xs font-mono"
+                  x-text="$store.global.t('noModels')"
+                >
+                  NO MODELS DETECTED
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 4: Server Configuration -->
+      <div
+        x-show="activeTab === 'server'"
+        x-data="window.Components.serverConfig()"
+        class="space-y-6 max-w-2xl animate-fade-in pb-10"
+      >
+        <!-- 🔐 Security Section -->
+        <div class="view-card border-neon-yellow/20 bg-neon-yellow/5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div
+                class="w-10 h-10 rounded-lg bg-neon-yellow/10 flex items-center justify-center text-neon-yellow"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4
+                  class="text-sm font-bold text-white mb-0.5"
+                  x-text="$store.global.t('changePassword')"
+                >
+                  WebUI Password
+                </h4>
+                <p
+                  class="text-xs text-gray-500"
+                  x-text="$store.global.t('changePasswordDesc')"
+                >
+                  Authentication for accessing this dashboard
+                </p>
+              </div>
+            </div>
+            <button
+              class="btn btn-sm border-neon-yellow/30 bg-transparent text-neon-yellow hover:bg-neon-yellow hover:text-black transition-all gap-2"
+              @click="showPasswordDialog()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                />
+              </svg>
+              <span x-text="$store.global.t('changePassword')"
+                >Change Password</span
+              >
+            </button>
+          </div>
+        </div>
+
+        <!-- ⚡ Common Settings -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-2 mb-1 px-1">
+            <span
+              class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
+              x-text="$store.global.t('runtimeConfig')"
+              >Common Settings</span
+            >
+            <div class="h-px flex-1 bg-space-border/30"></div>
+          </div>
+
+          <!-- Debug Mode -->
+          <div
+            class="form-control view-card border-space-border/50 hover:border-neon-purple/50"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col gap-1">
+                <span
+                  class="text-sm font-medium text-gray-200"
+                  :class="serverConfig.debug ? 'text-neon-purple' : ''"
+                  x-text="$store.global.t('debugMode')"
+                  >Debug Mode</span
+                >
+                <span
+                  class="text-[11px] text-gray-500"
+                  x-text="$store.global.t('debugDesc')"
+                  >Detailed logging in the Logs tab</span
+                >
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  :checked="serverConfig.debug === true"
+                  @change="toggleDebug($el.checked)"
+                  aria-label="Debug mode toggle"
+                />
+                <div
+                  class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white"
+                ></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Token Cache -->
+          <div
+            class="form-control view-card border-space-border/50 hover:border-neon-green/50"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col gap-1">
+                <span
+                  class="text-sm font-medium text-gray-200"
+                  :class="serverConfig.persistTokenCache ? 'text-neon-green' : ''"
+                  x-text="$store.global.t('persistentSessions')"
+                  >Persist Token Cache</span
+                >
+                <span
+                  class="text-[11px] text-gray-500"
+                  x-text="$store.global.t('persistTokenDesc')"
+                  >Save OAuth tokens to disk for faster restarts</span
+                >
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  :checked="serverConfig.persistTokenCache === true"
+                  @change="toggleTokenCache($el.checked)"
+                  aria-label="Persist token cache toggle"
+                />
+                <div
+                  class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"
+                ></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ▼ Advanced Tuning (Fixed Logic) -->
+        <div class="view-card !p-0 border-space-border/50">
+          <div
+            class="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+            @click="advancedExpanded = !advancedExpanded"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-8 h-8 rounded bg-space-800 flex items-center justify-center text-neon-cyan"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                  />
+                </svg>
+              </div>
+              <div>
+                <span
+                  class="text-sm font-semibold text-gray-200"
+                  x-text="$store.global.t('advancedSettings')"
+                  >Advanced Settings</span
+                >
+                <span
+                  class="text-[10px] text-gray-600 block"
+                  x-text="$store.global.t('serverReadOnly')"
+                  >Settings managed via config.json</span
+                >
+              </div>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5 text-gray-600 transition-transform duration-300"
+              :class="advancedExpanded ? 'rotate-180' : ''"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+
+          <div x-show="advancedExpanded" x-cloak class="p-5 pt-0 space-y-6">
+            <div class="h-px bg-space-border/20 mb-4"></div>
+
+            <!-- Network Retry Settings -->
+            <div class="space-y-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span
+                  class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                  x-text="$store.global.t('networkRetry')"
+                  >Network Retry Settings</span
+                >
+              </div>
+
+              <div class="form-control">
+                <label class="label pt-0">
+                  <span
+                    class="label-text text-gray-400 text-xs"
+                    x-text="$store.global.t('maxRetries')"
+                    >Max Retries</span
+                  >
+                  <span
+                    class="label-text-alt font-mono text-neon-purple text-xs font-semibold"
+                    x-text="serverConfig.maxRetries || 5"
+                  ></span>
+                </label>
+                <div class="flex gap-3 items-center">
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    class="custom-range custom-range-purple flex-1"
+                    :value="serverConfig.maxRetries || 5"
+                    :style="`background-size: ${((serverConfig.maxRetries || 5) - 1) / 19 * 100}% 100%`"
+                    @input="toggleMaxRetries($event.target.value)"
+                    aria-label="Max retries slider"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                    :value="serverConfig.maxRetries || 5"
+                    @change="toggleMaxRetries($event.target.value)"
+                    aria-label="Max retries value"
+                  />
                 </div>
+              </div>
 
-                <!-- ℹ️ Info Notice -->
-                <div class="flex items-center gap-3 text-xs text-gray-600 italic pt-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label pt-0">
                     <span
-                        x-text="$store.global.t('serverRestartAlert', {path: '~/.config/antigravity-proxy/config.json'})">All
-                        changes are saved automatically. Some settings may require server restart.</span>
+                      class="label-text text-gray-400 text-xs"
+                      x-text="$store.global.t('retryBaseDelay')"
+                      >Base Delay</span
+                    >
+                    <span
+                      class="label-text-alt font-mono text-neon-green text-xs font-semibold"
+                      x-text="((serverConfig.retryBaseMs || 1000) < 10000 ? (serverConfig.retryBaseMs || 1000) + 'ms' : Math.round((serverConfig.retryBaseMs || 1000) / 1000) + 's')"
+                    ></span>
+                  </label>
+                  <div class="flex gap-2 items-center">
+                    <input
+                      type="range"
+                      min="100"
+                      max="10000"
+                      step="100"
+                      class="custom-range custom-range-green flex-1"
+                      :value="serverConfig.retryBaseMs || 1000"
+                      :style="`background-size: ${((serverConfig.retryBaseMs || 1000) - 100) / 99}% 100%`"
+                      @input="toggleRetryBaseMs($event.target.value)"
+                      aria-label="Retry base delay slider"
+                    />
+                    <input
+                      type="number"
+                      min="100"
+                      max="10000"
+                      step="100"
+                      class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
+                      :value="serverConfig.retryBaseMs || 1000"
+                      @change="toggleRetryBaseMs($event.target.value)"
+                      aria-label="Retry base delay value"
+                    />
+                  </div>
                 </div>
-
-                <!-- Password Dialog -->
-                <div x-show="passwordDialog.show"
-                    class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
-                    @click.self="hidePasswordDialog()" x-cloak>
-                    <div class="bg-space-900 border border-space-border rounded-lg p-6 max-w-md w-full mx-4"
-                        @click.stop>
-                        <h3 class="text-lg font-bold text-white mb-4" x-text="$store.global.t('changePassword')">Change
-                            WebUI Password</h3>
-
-                        <div class="space-y-4">
-                            <div class="form-control">
-                                <label class="label">
-                                    <span class="label-text text-gray-300"
-                                        x-text="$store.global.t('currentPassword')">Current Password</span>
-                                </label>
-                                <input type="password" x-model="passwordDialog.oldPassword"
-                                    class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
-                                    :placeholder="$store.global.t('passwordEmptyDesc')"
-                                    aria-label="Current password">
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label">
-                                    <span class="label-text text-gray-300" x-text="$store.global.t('newPassword')">New
-                                        Password</span>
-                                </label>
-                                <input type="password" x-model="passwordDialog.newPassword"
-                                    class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
-                                    :placeholder="$store.global.t('passwordLengthDesc')"
-                                    aria-label="New password">
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label">
-                                    <span class="label-text text-gray-300"
-                                        x-text="$store.global.t('confirmNewPassword')">Confirm New Password</span>
-                                </label>
-                                <input type="password" x-model="passwordDialog.confirmPassword"
-                                    class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
-                                    :placeholder="$store.global.t('passwordConfirmDesc')"
-                                    @keydown.enter="changePassword()"
-                                    aria-label="Confirm new password">
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end gap-2 mt-6">
-                            <button class="btn btn-sm btn-ghost text-gray-400" @click="hidePasswordDialog()"
-                                x-text="$store.global.t('cancel')">Cancel</button>
-                            <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white"
-                                @click="changePassword()" x-text="$store.global.t('changePassword')">
-                                Change Password
-                            </button>
-                        </div>
-                    </div>
+                <div class="form-control">
+                  <label class="label pt-0">
+                    <span
+                      class="label-text text-gray-400 text-xs"
+                      x-text="$store.global.t('retryMaxDelay')"
+                      >Max Delay</span
+                    >
+                    <span
+                      class="label-text-alt font-mono text-neon-green text-xs font-semibold"
+                      x-text="Math.round((serverConfig.retryMaxMs || 30000) / 1000) + 's'"
+                    ></span>
+                  </label>
+                  <div class="flex gap-2 items-center">
+                    <input
+                      type="range"
+                      min="1000"
+                      max="120000"
+                      step="1000"
+                      class="custom-range custom-range-green flex-1"
+                      :value="serverConfig.retryMaxMs || 30000"
+                      :style="`background-size: ${((serverConfig.retryMaxMs || 30000) - 1000) / 1190}% 100%`"
+                      @input="toggleRetryMaxMs($event.target.value)"
+                      aria-label="Retry max delay slider"
+                    />
+                    <input
+                      type="number"
+                      min="1000"
+                      max="120000"
+                      step="1000"
+                      class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
+                      :value="serverConfig.retryMaxMs || 30000"
+                      @change="toggleRetryMaxMs($event.target.value)"
+                      aria-label="Retry max delay value"
+                    />
+                  </div>
                 </div>
+              </div>
             </div>
 
+            <!-- Account Rate Limiting -->
+            <div class="space-y-4 pt-2 border-t border-space-border/10">
+              <div class="flex items-center gap-2 mb-2">
+                <span
+                  class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                  x-text="$store.global.t('rateLimiting')"
+                  >Rate Limiting & Timeouts</span
+                >
+              </div>
+
+              <div class="form-control">
+                <label class="label pt-0">
+                  <span
+                    class="label-text text-gray-400 text-xs"
+                    x-text="$store.global.t('defaultCooldown')"
+                    >Default Cooldown</span
+                  >
+                  <span
+                    class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                    x-text="Math.round((serverConfig.defaultCooldownMs || 60000) / 1000) + 's'"
+                  ></span>
+                </label>
+                <div class="flex gap-3 items-center">
+                  <input
+                    type="range"
+                    min="1000"
+                    max="300000"
+                    step="1000"
+                    class="custom-range custom-range-cyan flex-1"
+                    :value="serverConfig.defaultCooldownMs || 60000"
+                    :style="`background-size: ${((serverConfig.defaultCooldownMs || 60000) - 1000) / 2990}% 100%`"
+                    @input="toggleDefaultCooldownMs($event.target.value)"
+                    aria-label="Default cooldown slider"
+                  />
+                  <input
+                    type="number"
+                    min="1000"
+                    max="300000"
+                    step="1000"
+                    class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
+                    :value="serverConfig.defaultCooldownMs || 60000"
+                    @change="toggleDefaultCooldownMs($event.target.value)"
+                    aria-label="Default cooldown value"
+                  />
+                </div>
+              </div>
+
+              <div class="form-control">
+                <label class="label pt-0">
+                  <span
+                    class="label-text text-gray-400 text-xs"
+                    x-text="$store.global.t('maxWaitThreshold')"
+                    >Max Wait (Sticky)</span
+                  >
+                  <span
+                    class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                    x-text="((serverConfig.maxWaitBeforeErrorMs || 120000) >= 60000 ? Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 60000) + 'm' : Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 1000) + 's')"
+                  ></span>
+                </label>
+                <div class="flex gap-3 items-center">
+                  <input
+                    type="range"
+                    min="0"
+                    max="600000"
+                    step="10000"
+                    class="custom-range custom-range-cyan flex-1"
+                    :value="serverConfig.maxWaitBeforeErrorMs || 120000"
+                    :style="`background-size: ${(serverConfig.maxWaitBeforeErrorMs || 120000) / 6000}% 100%`"
+                    @input="toggleMaxWaitBeforeErrorMs($event.target.value)"
+                    aria-label="Max wait threshold slider"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="600000"
+                    step="10000"
+                    class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
+                    :value="serverConfig.maxWaitBeforeErrorMs || 120000"
+                    @change="toggleMaxWaitBeforeErrorMs($event.target.value)"
+                    aria-label="Max wait threshold value"
+                  />
+                </div>
+                <p
+                  class="text-[9px] text-gray-600 mt-1 leading-tight"
+                  x-text="$store.global.t('maxWaitDesc')"
+                >
+                  Maximum time to wait for a sticky account to reset before
+                  switching.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- ℹ️ Info Notice -->
+        <div class="flex items-center gap-3 text-xs text-gray-600 italic pt-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span
+            x-text="$store.global.t('serverRestartAlert', {path: '~/.config/antigravity-proxy/config.json'})"
+            >All changes are saved automatically. Some settings may require
+            server restart.</span
+          >
+        </div>
+
+        <!-- Password Dialog -->
+        <div
+          x-show="passwordDialog.show"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+          @click.self="hidePasswordDialog()"
+          x-cloak
+        >
+          <div
+            class="bg-space-900 border border-space-border rounded-lg p-6 max-w-md w-full mx-4"
+            @click.stop
+          >
+            <h3
+              class="text-lg font-bold text-white mb-4"
+              x-text="$store.global.t('changePassword')"
+            >
+              Change WebUI Password
+            </h3>
+
+            <div class="space-y-4">
+              <div class="form-control">
+                <label class="label">
+                  <span
+                    class="label-text text-gray-300"
+                    x-text="$store.global.t('currentPassword')"
+                    >Current Password</span
+                  >
+                </label>
+                <input
+                  type="password"
+                  x-model="passwordDialog.oldPassword"
+                  class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
+                  :placeholder="$store.global.t('passwordEmptyDesc')"
+                  aria-label="Current password"
+                />
+              </div>
+
+              <div class="form-control">
+                <label class="label">
+                  <span
+                    class="label-text text-gray-300"
+                    x-text="$store.global.t('newPassword')"
+                    >New Password</span
+                  >
+                </label>
+                <input
+                  type="password"
+                  x-model="passwordDialog.newPassword"
+                  class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
+                  :placeholder="$store.global.t('passwordLengthDesc')"
+                  aria-label="New password"
+                />
+              </div>
+
+              <div class="form-control">
+                <label class="label">
+                  <span
+                    class="label-text text-gray-300"
+                    x-text="$store.global.t('confirmNewPassword')"
+                    >Confirm New Password</span
+                  >
+                </label>
+                <input
+                  type="password"
+                  x-model="passwordDialog.confirmPassword"
+                  class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
+                  :placeholder="$store.global.t('passwordConfirmDesc')"
+                  @keydown.enter="changePassword()"
+                  aria-label="Confirm new password"
+                />
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+              <button
+                class="btn btn-sm btn-ghost text-gray-400"
+                @click="hidePasswordDialog()"
+                x-text="$store.global.t('cancel')"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white"
+                @click="changePassword()"
+                x-text="$store.global.t('changePassword')"
+              >
+                Change Password
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
