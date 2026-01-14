@@ -9,6 +9,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier } from './cloudcode/index.js';
+import { createCountTokensHandler } from './cloudcode/count-tokens.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -597,16 +598,19 @@ app.get('/v1/models', async (req, res) => {
 });
 
 /**
- * Count tokens endpoint (not supported)
+ * Count tokens endpoint - Anthropic Messages API compatible
+ * Uses local tokenization with official tokenizers (@anthropic-ai/tokenizer for Claude, @lenml/tokenizer-gemini for Gemini)
  */
-app.post('/v1/messages/count_tokens', (req, res) => {
-    res.status(501).json({
-        type: 'error',
-        error: {
-            type: 'not_implemented',
-            message: 'Token counting is not implemented. Use /v1/messages with max_tokens or configure your client to skip token counting.'
-        }
-    });
+app.post('/v1/messages/count_tokens', async (req, res) => {
+    try {
+        // Ensure account manager is initialized for API-based counting
+        await ensureInitialized();
+    } catch (error) {
+        // If initialization fails, handler will fall back to local estimation
+        logger.debug(`[TokenCounter] Account manager not initialized: ${error.message}`);
+    }
+
+    return createCountTokensHandler(accountManager)(req, res);
 });
 
 /**
