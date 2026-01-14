@@ -332,6 +332,7 @@ While most users can use the default settings, you can tune the proxy behavior v
 
 ### Configurable Options
 
+- **API Key Authentication**: Protect `/v1/*` API endpoints with `API_KEY` env var or `apiKey` in config.
 - **WebUI Password**: Secure your dashboard with `WEBUI_PASSWORD` env var or in config.
 - **Custom Port**: Change the default `8080` port.
 - **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.

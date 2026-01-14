@@ -165,7 +165,7 @@ drwxr-xr-x   4 user  staff   128 Dec 19 10:00 tests`
 }
 
 async function runTests() {
-    const models = getTestModels();
+    const models = await getTestModels();
     let allPassed = true;
 
     for (const { family, model } of models) {

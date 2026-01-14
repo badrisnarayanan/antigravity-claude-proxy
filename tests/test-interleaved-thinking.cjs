@@ -13,7 +13,7 @@
  * the anthropic-beta header which is specific to Claude thinking models.
  */
 const { streamRequest, commonTools } = require('./helpers/http-client.cjs');
-const { getThinkingModels, getModelConfig } = require('./helpers/test-models.cjs');
+const { getTestModels, getModelConfig } = require('./helpers/test-models.cjs');
 
 // Multiple tools to encourage interleaved thinking
 const tools = [commonTools.readFile, commonTools.writeFile, commonTools.runTests];
@@ -172,7 +172,7 @@ Please do this step by step, reading each file before modifying.`
 
 async function runTests() {
     // Interleaved thinking is Claude-only (requires anthropic-beta header)
-    const models = getThinkingModels(['gemini']);
+    const models = await getTestModels(['gemini']);
     let allPassed = true;
 
     for (const { family, model } of models) {

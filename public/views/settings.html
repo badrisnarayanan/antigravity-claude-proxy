@@ -198,6 +198,52 @@
                     </span>
                 </div>
 
+                <!-- Configuration Presets -->
+                <div class="card bg-space-900/30 border border-neon-cyan/30 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            <label class="text-xs uppercase text-neon-cyan font-semibold" x-text="$store.global.t('configPresets') || 'Configuration Presets'">Configuration Presets</label>
+                        </div>
+                        <button class="btn btn-xs btn-ghost text-neon-cyan hover:bg-neon-cyan/10 gap-1"
+                            @click="saveCurrentAsPreset()"
+                            :disabled="savingPreset">
+                            <svg x-show="!savingPreset" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span x-show="!savingPreset" x-text="$store.global.t('saveAsPreset') || 'Save as Preset'">Save as Preset</span>
+                            <span x-show="savingPreset" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <select
+                            class="select select-sm bg-space-800 border-space-border text-white flex-1 font-mono text-xs"
+                            :disabled="presets.length === 0"
+                            :value="selectedPresetName"
+                            @change="onPresetSelect($event.target.value)"
+                            aria-label="Select preset">
+                            <option value="" disabled x-show="presets.length === 0">No presets available</option>
+                            <template x-for="preset in presets" :key="preset.name">
+                                <option :value="preset.name" x-text="preset.name" :selected="preset.name === selectedPresetName"></option>
+                            </template>
+                        </select>
+                        <button class="btn btn-sm btn-ghost text-red-400 hover:bg-red-500/10"
+                            @click="deleteSelectedPreset()"
+                            :disabled="!selectedPresetName || presets.length === 0 || deletingPreset"
+                            :title="$store.global.t('deletePreset') || 'Delete preset'">
+                            <span x-show="!deletingPreset">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </span>
+                            <span x-show="deletingPreset" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-gray-600 mt-2" x-text="$store.global.t('presetHint') || 'Select a preset to load it. Click \"Apply to Claude CLI\" to save changes.'">Select a preset to load it. Click "Apply to Claude CLI" to save changes.</p>
+                </div>
+
                 <!-- Base URL -->
                 <div class="card bg-space-900/30 border border-space-border/50 p-5">
                     <label class="label text-xs uppercase text-gray-500 font-semibold mb-2"
@@ -562,6 +608,72 @@
                     </div>
                     <form method="dialog" class="modal-backdrop">
                         <button>close</button>
+                    </form>
+                </dialog>
+
+                <!-- Unsaved Changes Confirmation Modal -->
+                <dialog id="unsaved_changes_modal" class="modal">
+                    <div class="modal-box bg-space-900 border-2 border-yellow-500/50">
+                        <h3 class="font-bold text-lg text-yellow-400 flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span x-text="$store.global.t('unsavedChangesTitle') || 'Unsaved Changes'">Unsaved Changes</span>
+                        </h3>
+                        <p class="py-4 text-gray-300">
+                            <span x-text="$store.global.t('unsavedChangesMessage') || 'Your current configuration doesn\'t match any saved preset.'">Your current configuration doesn't match any saved preset.</span>
+                            <br><br>
+                            <span class="text-yellow-400/80" x-text="'Load \"' + pendingPresetName + '\" and lose current changes?'"></span>
+                        </p>
+                        <div class="modal-action">
+                            <button class="btn btn-ghost text-gray-400" @click="cancelLoadPreset()"
+                                x-text="$store.global.t('cancel')">Cancel</button>
+                            <button class="btn bg-yellow-500 hover:bg-yellow-600 border-none text-black" @click="confirmLoadPreset()">
+                                <span x-text="$store.global.t('loadAnyway') || 'Load Anyway'">Load Anyway</span>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" class="modal-backdrop">
+                        <button @click="cancelLoadPreset()">close</button>
+                    </form>
+                </dialog>
+
+                <!-- Save Preset Modal -->
+                <dialog id="save_preset_modal" class="modal">
+                    <div class="modal-box bg-space-900 border-2 border-neon-cyan/50">
+                        <h3 class="font-bold text-lg text-neon-cyan flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            <span x-text="$store.global.t('savePresetTitle') || 'Save Preset'">Save Preset</span>
+                        </h3>
+                        <p class="py-2 text-gray-400 text-sm" x-text="$store.global.t('savePresetDesc') || 'Save the current configuration as a reusable preset.'">
+                            Save the current configuration as a reusable preset.
+                        </p>
+                        <div class="form-control mt-4">
+                            <label class="label">
+                                <span class="label-text text-gray-300" x-text="$store.global.t('presetName') || 'Preset Name'">Preset Name</span>
+                            </label>
+                            <input type="text" x-model="newPresetName"
+                                class="input input-sm input-bordered bg-space-800 border-space-border text-white w-full"
+                                :placeholder="$store.global.t('presetNamePlaceholder') || 'e.g., My Work Setup'"
+                                @keydown.enter="executeSavePreset(newPresetName)"
+                                x-init="$watch('$el.closest(\'dialog\').open', open => { if (open) { $nextTick(() => $el.focus()) } })"
+                                aria-label="Preset name">
+                        </div>
+                        <div class="modal-action">
+                            <button class="btn btn-ghost text-gray-400" @click="newPresetName = ''; document.getElementById('save_preset_modal').close()"
+                                x-text="$store.global.t('cancel')">Cancel</button>
+                            <button class="btn bg-neon-cyan hover:bg-cyan-600 border-none text-black"
+                                @click="executeSavePreset(newPresetName)"
+                                :disabled="!newPresetName.trim() || savingPreset"
+                                :class="{ 'loading': savingPreset }">
+                                <span x-show="!savingPreset" x-text="$store.global.t('savePreset') || 'Save Preset'">Save Preset</span>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" class="modal-backdrop">
+                        <button @click="newPresetName = ''">close</button>
                     </form>
                 </dialog>
             </div>
@@ -938,27 +1050,29 @@
                                     <span class="label-text text-gray-400 text-xs"
                                         x-text="$store.global.t('defaultCooldown')">Default Cooldown</span>
                                     <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
-                                        x-text="Math.round((serverConfig.defaultCooldownMs || 60000) / 1000) + 's'"></span>
+                                        x-text="Math.round((serverConfig.defaultCooldownMs || 10000) / 1000) + 's'"></span>
                                 </label>
                                 <div class="flex gap-3 items-center">
                                     <input type="range" min="1000" max="300000" step="1000"
                                         class="custom-range custom-range-cyan flex-1"
-                                        :value="serverConfig.defaultCooldownMs || 60000"
-                                        :style="`background-size: ${((serverConfig.defaultCooldownMs || 60000) - 1000) / 2990}% 100%`"
+                                        :value="serverConfig.defaultCooldownMs || 10000"
+                                        :style="`background-size: ${((serverConfig.defaultCooldownMs || 10000) - 1000) / 2990}% 100%`"
                                         @input="toggleDefaultCooldownMs($event.target.value)"
                                         aria-label="Default cooldown slider">
                                     <input type="number" min="1000" max="300000" step="1000"
                                         class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.defaultCooldownMs || 60000"
+                                        :value="serverConfig.defaultCooldownMs || 10000"
                                         @change="toggleDefaultCooldownMs($event.target.value)"
                                         aria-label="Default cooldown value">
                                 </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('defaultCooldownDesc')">Fallback cooldown when API doesn't provide a reset time.</p>
                             </div>
 
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs"
-                                        x-text="$store.global.t('maxWaitThreshold')">Max Wait (Sticky)</span>
+                                        x-text="$store.global.t('maxWaitThreshold')">Max Wait Before Error</span>
                                     <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
                                         x-text="((serverConfig.maxWaitBeforeErrorMs || 120000) >= 60000 ? Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 60000) + 'm' : Math.round((serverConfig.maxWaitBeforeErrorMs || 120000) / 1000) + 's')"></span>
                                 </label>
@@ -968,16 +1082,15 @@
                                         :value="serverConfig.maxWaitBeforeErrorMs || 120000"
                                         :style="`background-size: ${(serverConfig.maxWaitBeforeErrorMs || 120000) / 6000}% 100%`"
                                         @input="toggleMaxWaitBeforeErrorMs($event.target.value)"
-                                        aria-label="Max wait threshold slider">
+                                        aria-label="Max wait before error slider">
                                     <input type="number" min="0" max="600000" step="10000"
                                         class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
                                         :value="serverConfig.maxWaitBeforeErrorMs || 120000"
                                         @change="toggleMaxWaitBeforeErrorMs($event.target.value)"
-                                        aria-label="Max wait threshold value">
+                                        aria-label="Max wait before error value">
                                 </div>
                                 <p class="text-[9px] text-gray-600 mt-1 leading-tight"
-                                    x-text="$store.global.t('maxWaitDesc')">Maximum time to wait for a sticky account to
-                                    reset before switching.</p>
+                                    x-text="$store.global.t('maxWaitDesc')">If all accounts are rate-limited longer than this, error immediately.</p>
                             </div>
                         </div>
                     </div>

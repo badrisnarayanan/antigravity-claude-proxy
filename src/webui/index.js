@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from '../constants.js';
-import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath } from '../utils/claude-config.js';
+import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
@@ -480,6 +480,59 @@ export function mountWebUI(app, dirname, accountManager) {
             });
         } catch (error) {
             logger.error('[WebUI] Error restoring Claude config:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    // ==========================================
+    // Claude CLI Presets API
+    // ==========================================
+
+    /**
+     * GET /api/claude/presets - Get all saved presets
+     */
+    app.get('/api/claude/presets', async (req, res) => {
+        try {
+            const presets = await readPresets();
+            res.json({ status: 'ok', presets });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/claude/presets - Save a new preset
+     */
+    app.post('/api/claude/presets', async (req, res) => {
+        try {
+            const { name, config: presetConfig } = req.body;
+            if (!name || typeof name !== 'string' || !name.trim()) {
+                return res.status(400).json({ status: 'error', error: 'Preset name is required' });
+            }
+            if (!presetConfig || typeof presetConfig !== 'object') {
+                return res.status(400).json({ status: 'error', error: 'Config object is required' });
+            }
+
+            const presets = await savePreset(name.trim(), presetConfig);
+            res.json({ status: 'ok', presets, message: `Preset "${name}" saved` });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * DELETE /api/claude/presets/:name - Delete a preset
+     */
+    app.delete('/api/claude/presets/:name', async (req, res) => {
+        try {
+            const { name } = req.params;
+            if (!name) {
+                return res.status(400).json({ status: 'error', error: 'Preset name is required' });
+            }
+
+            const presets = await deletePreset(name);
+            res.json({ status: 'ok', presets, message: `Preset "${name}" deleted` });
+        } catch (error) {
             res.status(500).json({ status: 'error', error: error.message });
         }
     });

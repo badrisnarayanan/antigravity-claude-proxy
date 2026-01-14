@@ -12,6 +12,14 @@ window.Components.claudeConfig = () => ({
     restoring: false,
     gemini1mSuffix: false,
 
+    // Presets state
+    presets: [],
+    selectedPresetName: '',
+    savingPreset: false,
+    deletingPreset: false,
+    pendingPresetName: '', // For unsaved changes confirmation
+    newPresetName: '', // For save preset modal input
+
     // Model fields that may contain Gemini model names
     geminiModelFields: [
         'ANTHROPIC_MODEL',
@@ -25,12 +33,14 @@ window.Components.claudeConfig = () => ({
         // Only fetch config if this is the active sub-tab
         if (this.activeTab === 'claude') {
             this.fetchConfig();
+            this.fetchPresets();
         }
 
         // Watch local activeTab (from parent settings scope, skip initial trigger)
         this.$watch('activeTab', (tab, oldTab) => {
             if (tab === 'claude' && oldTab !== undefined) {
                 this.fetchConfig();
+                this.fetchPresets();
             }
         });
 
@@ -170,6 +180,240 @@ window.Components.claudeConfig = () => ({
             Alpine.store('global').showToast(Alpine.store('global').t('restoreConfigFailed') + ': ' + e.message, 'error');
         } finally {
             this.restoring = false;
+        }
+    },
+
+    // ==========================================
+    // Presets Management
+    // ==========================================
+
+    /**
+     * Fetch all saved presets from the server
+     */
+    async fetchPresets() {
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/claude/presets', {}, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (data.status === 'ok') {
+                this.presets = data.presets || [];
+                // Auto-select first preset if none selected
+                if (this.presets.length > 0 && !this.selectedPresetName) {
+                    this.selectedPresetName = this.presets[0].name;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch presets:', e);
+        }
+    },
+
+    /**
+     * Load the selected preset into the form (does not save to Claude CLI)
+     */
+    loadSelectedPreset() {
+        const preset = this.presets.find(p => p.name === this.selectedPresetName);
+        if (!preset) {
+            return;
+        }
+
+        // Merge preset config into current config.env
+        this.config.env = { ...this.config.env, ...preset.config };
+
+        // Update Gemini 1M toggle based on merged config (not just preset)
+        this.gemini1mSuffix = this.detectGemini1mSuffix();
+
+        Alpine.store('global').showToast(
+            Alpine.store('global').t('presetLoaded') || `Preset "${preset.name}" loaded. Click "Apply to Claude CLI" to save.`,
+            'success'
+        );
+    },
+
+    /**
+     * Check if current config matches any saved preset
+     * @returns {boolean} True if current config matches a preset
+     */
+    currentConfigMatchesPreset() {
+        const relevantKeys = [
+            'ANTHROPIC_BASE_URL',
+            'ANTHROPIC_AUTH_TOKEN',
+            'ANTHROPIC_MODEL',
+            'CLAUDE_CODE_SUBAGENT_MODEL',
+            'ANTHROPIC_DEFAULT_OPUS_MODEL',
+            'ANTHROPIC_DEFAULT_SONNET_MODEL',
+            'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+            'ENABLE_EXPERIMENTAL_MCP_CLI'
+        ];
+
+        for (const preset of this.presets) {
+            let matches = true;
+            for (const key of relevantKeys) {
+                const currentVal = this.config.env[key] || '';
+                const presetVal = preset.config[key] || '';
+                if (currentVal !== presetVal) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) return true;
+        }
+        return false;
+    },
+
+    /**
+     * Handle preset selection change - auto-load with unsaved changes warning
+     * @param {string} newPresetName - The newly selected preset name
+     */
+    async onPresetSelect(newPresetName) {
+        if (!newPresetName || newPresetName === this.selectedPresetName) return;
+
+        // Check if current config has unsaved changes (doesn't match any preset)
+        const hasUnsavedChanges = !this.currentConfigMatchesPreset();
+
+        if (hasUnsavedChanges) {
+            // Store pending preset and show confirmation modal
+            this.pendingPresetName = newPresetName;
+            document.getElementById('unsaved_changes_modal').showModal();
+            return;
+        }
+
+        this.selectedPresetName = newPresetName;
+        this.loadSelectedPreset();
+    },
+
+    /**
+     * Confirm loading preset despite unsaved changes
+     */
+    confirmLoadPreset() {
+        document.getElementById('unsaved_changes_modal').close();
+        this.selectedPresetName = this.pendingPresetName;
+        this.pendingPresetName = '';
+        this.loadSelectedPreset();
+    },
+
+    /**
+     * Cancel loading preset - revert dropdown selection
+     */
+    cancelLoadPreset() {
+        document.getElementById('unsaved_changes_modal').close();
+        // Revert the dropdown to current selection
+        const select = document.querySelector('[aria-label="Select preset"]');
+        if (select) select.value = this.selectedPresetName;
+        this.pendingPresetName = '';
+    },
+
+    /**
+     * Save the current config as a new preset
+     */
+    async saveCurrentAsPreset() {
+        // Clear the input and show the save preset modal
+        this.newPresetName = '';
+        document.getElementById('save_preset_modal').showModal();
+    },
+
+    /**
+     * Execute preset save after user enters name
+     */
+    async executeSavePreset(name) {
+        if (!name || !name.trim()) {
+            Alpine.store('global').showToast('Preset name is required', 'error');
+            return;
+        }
+
+        this.savingPreset = true;
+        const password = Alpine.store('global').webuiPassword;
+
+        try {
+            // Save only relevant env vars
+            const relevantKeys = [
+                'ANTHROPIC_BASE_URL',
+                'ANTHROPIC_AUTH_TOKEN',
+                'ANTHROPIC_MODEL',
+                'CLAUDE_CODE_SUBAGENT_MODEL',
+                'ANTHROPIC_DEFAULT_OPUS_MODEL',
+                'ANTHROPIC_DEFAULT_SONNET_MODEL',
+                'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+                'ENABLE_EXPERIMENTAL_MCP_CLI'
+            ];
+            const presetConfig = {};
+            relevantKeys.forEach(k => {
+                if (this.config.env[k]) {
+                    presetConfig[k] = this.config.env[k];
+                }
+            });
+
+            const { response, newPassword } = await window.utils.request('/api/claude/presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name.trim(), config: presetConfig })
+            }, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (data.status === 'ok') {
+                this.presets = data.presets || [];
+                this.selectedPresetName = name.trim();
+                this.newPresetName = ''; // Clear the input
+                Alpine.store('global').showToast(
+                    Alpine.store('global').t('presetSaved') || `Preset "${name}" saved`,
+                    'success'
+                );
+                document.getElementById('save_preset_modal').close();
+            } else {
+                throw new Error(data.error || 'Save failed');
+            }
+        } catch (e) {
+            Alpine.store('global').showToast('Failed to save preset: ' + e.message, 'error');
+        } finally {
+            this.savingPreset = false;
+        }
+    },
+
+    /**
+     * Delete the selected preset
+     */
+    async deleteSelectedPreset() {
+        if (!this.selectedPresetName) {
+            Alpine.store('global').showToast('No preset selected', 'warning');
+            return;
+        }
+
+        // Confirm deletion
+        if (!confirm(`Delete preset "${this.selectedPresetName}"?`)) {
+            return;
+        }
+
+        this.deletingPreset = true;
+        const password = Alpine.store('global').webuiPassword;
+
+        try {
+            const { response, newPassword } = await window.utils.request(
+                `/api/claude/presets/${encodeURIComponent(this.selectedPresetName)}`,
+                { method: 'DELETE' },
+                password
+            );
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (data.status === 'ok') {
+                this.presets = data.presets || [];
+                // Select first available preset or clear selection
+                this.selectedPresetName = this.presets.length > 0 ? this.presets[0].name : '';
+                Alpine.store('global').showToast(
+                    Alpine.store('global').t('presetDeleted') || 'Preset deleted',
+                    'success'
+                );
+            } else {
+                throw new Error(data.error || 'Delete failed');
+            }
+        } catch (e) {
+            Alpine.store('global').showToast('Failed to delete preset: ' + e.message, 'error');
+        } finally {
+            this.deletingPreset = false;
         }
     }
 });

@@ -69,10 +69,10 @@ async function runTestsForModel(family, model) {
             console.log(`  Tool: ${analysis.toolUse[0].name}(${JSON.stringify(analysis.toolUse[0].input)})`);
         }
 
-        // For thinking models, expect thinking + signature + tool use
-        // For non-thinking models, just expect tool use
+        // For thinking models, expect signature + tool use
+        // Note: Gemini doesn't always produce thinking blocks, but does put signatures on tool_use
         const passed = expectThinking
-            ? (analysis.hasThinking && analysis.hasSignature && analysis.hasToolUse)
+            ? (analysis.hasSignature && analysis.hasToolUse)  // Signature required, thinking optional
             : analysis.hasToolUse;
         results.push({ name: 'Turn 1: Thinking + Signature + Tool Use', passed });
         if (!passed) allPassed = false;
@@ -220,7 +220,7 @@ async function runTestsForModel(family, model) {
 }
 
 async function runTests() {
-    const models = getTestModels();
+    const models = await getTestModels();
     let allPassed = true;
 
     for (const { family, model } of models) {

@@ -26,6 +26,17 @@ What actually happens.
 - Operating System:
 - Node.js version:
 
+**Claude CLI Configuration**
+Please provide ONE of the following:
+- Screenshot of WebUI **Settings → Claude CLI** tab, OR
+- Contents of your Claude settings.json file:
+  - macOS/Linux: `~/.claude/settings.json`
+  - Windows: `%USERPROFILE%\.claude\settings.json`
+
+```json
+<!-- Paste your settings.json here -->
+```
+
 **Logs (if applicable)**
 
 

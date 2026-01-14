@@ -6,9 +6,11 @@
  */
 
 const { streamRequest } = require('./helpers/http-client.cjs');
-const { TEST_MODELS } = require('./helpers/test-models.cjs');
+const { getModels } = require('./helpers/test-models.cjs');
 
 async function testEmptyResponseRetry() {
+    const TEST_MODELS = await getModels();
+
     console.log('\n============================================================');
     console.log('EMPTY RESPONSE RETRY TEST');
     console.log('Tests retry mechanism for empty API responses');

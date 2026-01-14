@@ -142,7 +142,6 @@ function saveAccounts(accounts, settings = {}) {
                 modelRateLimits: acc.modelRateLimits || {}
             })),
             settings: {
-                cooldownDurationMs: 60000,
                 maxRetries: 5,
                 ...settings
             },

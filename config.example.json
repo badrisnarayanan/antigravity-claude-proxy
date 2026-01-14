@@ -11,6 +11,9 @@
     "Restart server after making changes"
   ],
 
+  "apiKey": "",
+  "_apiKey_comment": "Optional API key to protect /v1/* endpoints. Can also use API_KEY env var.",
+
   "webuiPassword": "",
   "_webuiPassword_comment": "Optional password to protect WebUI. Can also use WEBUI_PASSWORD env var.",
 

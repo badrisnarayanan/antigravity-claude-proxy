@@ -7,8 +7,8 @@
 import {
     ANTIGRAVITY_DB_PATH,
     TOKEN_REFRESH_INTERVAL_MS,
-    ANTIGRAVITY_ENDPOINT_FALLBACKS,
-    ANTIGRAVITY_HEADERS,
+    LOAD_CODE_ASSIST_ENDPOINTS,
+    LOAD_CODE_ASSIST_HEADERS,
     DEFAULT_PROJECT_ID
 } from '../constants.js';
 import { refreshAccessToken } from '../auth/oauth.js';
@@ -113,31 +113,39 @@ export async function getProjectForAccount(account, token, projectCache) {
  * @returns {Promise<string>} Project ID
  */
 export async function discoverProject(token) {
-    for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
+    let lastError = null;
+    let gotSuccessfulResponse = false;
+
+    for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
         try {
             const response = await fetch(`${endpoint}/v1internal:loadCodeAssist`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
-                    ...ANTIGRAVITY_HEADERS
+                    ...LOAD_CODE_ASSIST_HEADERS
                 },
                 body: JSON.stringify({
                     metadata: {
                         ideType: 'IDE_UNSPECIFIED',
                         platform: 'PLATFORM_UNSPECIFIED',
-                        pluginType: 'GEMINI'
+                        pluginType: 'GEMINI',
+                        duetProject: DEFAULT_PROJECT_ID
                     }
                 })
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                logger.warn(`[AccountManager] Project discovery failed at ${endpoint}: ${response.status} - ${errorText}`);
+                lastError = `${response.status} - ${errorText}`;
+                logger.debug(`[AccountManager] loadCodeAssist failed at ${endpoint}: ${lastError}`);
                 continue;
             }
 
             const data = await response.json();
+            gotSuccessfulResponse = true;
+
+            logger.debug(`[AccountManager] loadCodeAssist response from ${endpoint}:`, JSON.stringify(data));
 
             if (typeof data.cloudaicompanionProject === 'string') {
                 logger.success(`[AccountManager] Discovered project: ${data.cloudaicompanionProject}`);
@@ -147,13 +155,21 @@ export async function discoverProject(token) {
                 logger.success(`[AccountManager] Discovered project: ${data.cloudaicompanionProject.id}`);
                 return data.cloudaicompanionProject.id;
             }
+
+            // API returned success but no project - this is normal for Google One AI Pro accounts
+            // Silently fall back to default project (matches opencode-antigravity-auth behavior)
+            logger.debug(`[AccountManager] No project in response, using default: ${DEFAULT_PROJECT_ID}`);
+            return DEFAULT_PROJECT_ID;
         } catch (error) {
-            logger.warn(`[AccountManager] Project discovery failed at ${endpoint}:`, error.message);
+            lastError = error.message;
+            logger.debug(`[AccountManager] loadCodeAssist error at ${endpoint}:`, error.message);
         }
     }
 
-    logger.warn(`[AccountManager] Project discovery failed for all endpoints. Using default project: ${DEFAULT_PROJECT_ID}`);
-    logger.warn(`[AccountManager] If you see 404 errors, your account may not have Gemini Code Assist enabled.`);
+    // Only warn if all endpoints failed with errors (not just missing project)
+    if (!gotSuccessfulResponse) {
+        logger.warn(`[AccountManager] loadCodeAssist failed for all endpoints: ${lastError}`);
+    }
     return DEFAULT_PROJECT_ID;
 }
 

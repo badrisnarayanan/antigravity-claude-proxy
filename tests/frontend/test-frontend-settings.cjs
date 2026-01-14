@@ -313,6 +313,103 @@ const tests = [
             }
             return 'app.js loads with all required components';
         }
+    },
+
+    // ==================== PRESETS API TESTS ====================
+    {
+        name: 'Presets API GET returns presets array',
+        async run() {
+            const res = await request('/api/claude/presets');
+            if (res.status !== 200) {
+                throw new Error(`Expected 200, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (data.status !== 'ok') {
+                throw new Error(`Expected status ok, got ${data.status}`);
+            }
+            if (!Array.isArray(data.presets)) {
+                throw new Error('presets should be an array');
+            }
+            return `Presets API returns ${data.presets.length} preset(s)`;
+        }
+    },
+    {
+        name: 'Presets API POST creates new preset',
+        async run() {
+            const testPreset = {
+                name: '__test_preset__',
+                config: {
+                    ANTHROPIC_BASE_URL: 'http://localhost:8080',
+                    ANTHROPIC_MODEL: 'test-model'
+                }
+            };
+
+            // Create preset
+            const postRes = await request('/api/claude/presets', {
+                method: 'POST',
+                body: testPreset
+            });
+            if (postRes.status !== 200) {
+                throw new Error(`POST failed with status ${postRes.status}`);
+            }
+            const postData = JSON.parse(postRes.data);
+            if (postData.status !== 'ok') {
+                throw new Error(`POST returned error: ${postData.error}`);
+            }
+
+            // Verify it exists
+            const getRes = await request('/api/claude/presets');
+            const getData = JSON.parse(getRes.data);
+            const found = getData.presets.find(p => p.name === '__test_preset__');
+            if (!found) {
+                throw new Error('Created preset not found in list');
+            }
+
+            return 'Preset created and verified';
+        }
+    },
+    {
+        name: 'Presets API DELETE removes preset',
+        async run() {
+            // Delete the test preset created above
+            const deleteRes = await request('/api/claude/presets/__test_preset__', {
+                method: 'DELETE'
+            });
+            if (deleteRes.status !== 200) {
+                throw new Error(`DELETE failed with status ${deleteRes.status}`);
+            }
+
+            // Verify it's gone
+            const getRes = await request('/api/claude/presets');
+            const getData = JSON.parse(getRes.data);
+            const found = getData.presets.find(p => p.name === '__test_preset__');
+            if (found) {
+                throw new Error('Deleted preset still exists');
+            }
+
+            return 'Preset deleted and verified';
+        }
+    },
+    {
+        name: 'Settings view has presets UI elements',
+        async run() {
+            const res = await request('/views/settings.html');
+            const html = res.data;
+
+            const presetElements = [
+                'selectedPresetName',    // Preset dropdown binding
+                'saveCurrentAsPreset',   // Save button function
+                'deleteSelectedPreset',  // Delete button function
+                'save_preset_modal',     // Save modal
+                'configPresets'          // Translation key for section title
+            ];
+
+            const missing = presetElements.filter(el => !html.includes(el));
+            if (missing.length > 0) {
+                throw new Error(`Missing preset UI elements: ${missing.join(', ')}`);
+            }
+            return 'All preset UI elements present';
+        }
     }
 ];
 

@@ -5,6 +5,7 @@ import { logger } from './utils/logger.js';
 
 // Default config
 const DEFAULT_CONFIG = {
+    apiKey: '',
     webuiPassword: '',
     debug: false,
     logLevel: 'info',
@@ -12,7 +13,7 @@ const DEFAULT_CONFIG = {
     retryBaseMs: 1000,
     retryMaxMs: 30000,
     persistTokenCache: false,
-    defaultCooldownMs: 60000,  // 1 minute
+    defaultCooldownMs: 10000,  // 10 seconds
     maxWaitBeforeErrorMs: 120000, // 2 minutes
     modelMapping: {}
 };
@@ -54,6 +55,7 @@ function loadConfig() {
         }
 
         // Environment overrides
+        if (process.env.API_KEY) config.apiKey = process.env.API_KEY;
         if (process.env.WEBUI_PASSWORD) config.webuiPassword = process.env.WEBUI_PASSWORD;
         if (process.env.DEBUG === 'true') config.debug = true;
 

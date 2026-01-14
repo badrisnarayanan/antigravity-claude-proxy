@@ -71,6 +71,16 @@ export function convertGoogleToAnthropic(googleResponse, model) {
 
             anthropicContent.push(toolUseBlock);
             hasToolCalls = true;
+        } else if (part.inlineData) {
+            // Handle image content from Google format
+            anthropicContent.push({
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: part.inlineData.mimeType,
+                    data: part.inlineData.data
+                }
+            });
         }
     }
 

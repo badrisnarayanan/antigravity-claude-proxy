@@ -209,6 +209,39 @@ export async function* streamSSEResponse(response, originalModel) {
                                 partial_json: JSON.stringify(part.functionCall.args || {})
                             }
                         };
+                    } else if (part.inlineData) {
+                        // Handle image content from Google format
+                        if (currentBlockType === 'thinking' && currentThinkingSignature) {
+                            yield {
+                                type: 'content_block_delta',
+                                index: blockIndex,
+                                delta: { type: 'signature_delta', signature: currentThinkingSignature }
+                            };
+                            currentThinkingSignature = '';
+                        }
+                        if (currentBlockType !== null) {
+                            yield { type: 'content_block_stop', index: blockIndex };
+                            blockIndex++;
+                        }
+                        currentBlockType = 'image';
+
+                        // Emit image block as a complete block
+                        yield {
+                            type: 'content_block_start',
+                            index: blockIndex,
+                            content_block: {
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: part.inlineData.mimeType,
+                                    data: part.inlineData.data
+                                }
+                            }
+                        };
+
+                        yield { type: 'content_block_stop', index: blockIndex };
+                        blockIndex++;
+                        currentBlockType = null;
                     }
                 }
 

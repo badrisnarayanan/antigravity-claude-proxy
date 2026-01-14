@@ -110,16 +110,25 @@ export function resetAllRateLimits(accounts) {
  *
  * @param {Array} accounts - Array of account objects
  * @param {string} email - Email of the account to mark
- * @param {number|null} resetMs - Time in ms until rate limit resets
- * @param {Object} settings - Settings object with cooldownDurationMs
+ * @param {number|null} resetMs - Time in ms until rate limit resets (from API)
  * @param {string} modelId - Model ID to mark rate limit for
  * @returns {boolean} True if account was found and marked
  */
-export function markRateLimited(accounts, email, resetMs = null, settings = {}, modelId) {
+export function markRateLimited(accounts, email, resetMs = null, modelId) {
     const account = accounts.find(a => a.email === email);
     if (!account) return false;
 
-    const cooldownMs = resetMs || settings.cooldownDurationMs || DEFAULT_COOLDOWN_MS;
+    // Use configured cooldown as the maximum wait time
+    // If API returns a reset time, cap it at DEFAULT_COOLDOWN_MS
+    // If API doesn't return a reset time, use DEFAULT_COOLDOWN_MS
+    let cooldownMs;
+    if (resetMs && resetMs > 0) {
+        // API provided a reset time - cap it at configured maximum
+        cooldownMs = Math.min(resetMs, DEFAULT_COOLDOWN_MS);
+    } else {
+        // No reset time from API - use configured default
+        cooldownMs = DEFAULT_COOLDOWN_MS;
+    }
     const resetTime = Date.now() + cooldownMs;
 
     if (!account.modelRateLimits) {

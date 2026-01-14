@@ -9,16 +9,12 @@
  * 2. Gemini → Claude: Gemini thinking signatures should be dropped
  * 3. Both should still work without errors (thinking recovery kicks in)
  */
-const { streamRequest, nonStreamRequest, analyzeContent, commonTools } = require('./helpers/http-client.cjs');
-const { getModelConfig } = require('./helpers/test-models.cjs');
+const { streamRequest, analyzeContent, commonTools } = require('./helpers/http-client.cjs');
+const { getModelConfig, getModels } = require('./helpers/test-models.cjs');
 
 const tools = [commonTools.executeCommand];
 
-// Test models
-const CLAUDE_MODEL = 'claude-sonnet-4-5-thinking';
-const GEMINI_MODEL = 'gemini-3-flash';
-
-async function testClaudeToGemini() {
+async function testClaudeToGemini(CLAUDE_MODEL, GEMINI_MODEL) {
     console.log('='.repeat(60));
     console.log('TEST: Claude → Gemini Cross-Model Switch');
     console.log('Simulates starting with Claude, then switching to Gemini');
@@ -126,7 +122,7 @@ async function testClaudeToGemini() {
     }
 }
 
-async function testGeminiToClaude() {
+async function testGeminiToClaude(CLAUDE_MODEL, GEMINI_MODEL) {
     console.log('\n' + '='.repeat(60));
     console.log('TEST: Gemini → Claude Cross-Model Switch');
     console.log('Simulates starting with Gemini, then switching to Claude');
@@ -245,7 +241,7 @@ async function testGeminiToClaude() {
     }
 }
 
-async function testSameModelContinuation() {
+async function testSameModelContinuation(CLAUDE_MODEL) {
     console.log('\n' + '='.repeat(60));
     console.log('TEST: Same Model Continuation - Claude (Control Test)');
     console.log('Verifies same-model multi-turn still works');
@@ -350,7 +346,7 @@ async function testSameModelContinuation() {
     }
 }
 
-async function testSameModelContinuationGemini() {
+async function testSameModelContinuationGemini(GEMINI_MODEL) {
     console.log('\n' + '='.repeat(60));
     console.log('TEST: Same Model Continuation - Gemini (Control Test)');
     console.log('Verifies same-model multi-turn still works for Gemini');
@@ -461,6 +457,11 @@ async function testSameModelContinuationGemini() {
 }
 
 async function main() {
+    // Load models once from constants
+    const TEST_MODELS = await getModels();
+    const CLAUDE_MODEL = TEST_MODELS.claude;
+    const GEMINI_MODEL = TEST_MODELS.gemini;
+
     console.log('\n');
     console.log('╔' + '═'.repeat(58) + '╗');
     console.log('║' + '      CROSS-MODEL THINKING SIGNATURE TEST SUITE          '.padEnd(58) + '║');
@@ -471,19 +472,19 @@ async function main() {
     const results = [];
 
     // Test 1: Claude → Gemini
-    const claudeToGemini = await testClaudeToGemini();
+    const claudeToGemini = await testClaudeToGemini(CLAUDE_MODEL, GEMINI_MODEL);
     results.push({ name: 'Claude → Gemini', ...claudeToGemini });
 
     // Test 2: Gemini → Claude
-    const geminiToClaude = await testGeminiToClaude();
+    const geminiToClaude = await testGeminiToClaude(CLAUDE_MODEL, GEMINI_MODEL);
     results.push({ name: 'Gemini → Claude', ...geminiToClaude });
 
     // Test 3: Same model Claude (control)
-    const sameModelClaude = await testSameModelContinuation();
+    const sameModelClaude = await testSameModelContinuation(CLAUDE_MODEL);
     results.push({ name: 'Same Model (Claude → Claude)', ...sameModelClaude });
 
     // Test 4: Same model Gemini (control)
-    const sameModelGemini = await testSameModelContinuationGemini();
+    const sameModelGemini = await testSameModelContinuationGemini(GEMINI_MODEL);
     results.push({ name: 'Same Model (Gemini → Gemini)', ...sameModelGemini });
 
     // Summary

@@ -3,43 +3,30 @@
  *
  * Provides model configuration for parameterized testing across
  * multiple model families (Claude and Gemini).
+ *
+ * TEST_MODELS is imported from src/constants.js (single source of truth).
  */
 
-// Default test models for each family
-const TEST_MODELS = {
-    claude: 'claude-sonnet-4-5-thinking',
-    gemini: 'gemini-3-flash'
-};
+let TEST_MODELS;
 
-// Default thinking model for each family
-const THINKING_MODELS = {
-    claude: 'claude-sonnet-4-5-thinking',
-    gemini: 'gemini-3-flash'
-};
+// Dynamic import to bridge ESM -> CJS
+async function loadConstants() {
+    if (!TEST_MODELS) {
+        const constants = await import('../../src/constants.js');
+        TEST_MODELS = constants.TEST_MODELS;
+    }
+    return TEST_MODELS;
+}
 
 /**
  * Get models to test, optionally excluding certain families.
  * @param {string[]} excludeFamilies - Array of family names to exclude (e.g., ['gemini'])
- * @returns {Array<{family: string, model: string}>} Array of model configs to test
+ * @returns {Promise<Array<{family: string, model: string}>>} Array of model configs to test
  */
-function getTestModels(excludeFamilies = []) {
+async function getTestModels(excludeFamilies = []) {
+    const testModels = await loadConstants();
     const models = [];
-    for (const [family, model] of Object.entries(TEST_MODELS)) {
-        if (!excludeFamilies.includes(family)) {
-            models.push({ family, model });
-        }
-    }
-    return models;
-}
-
-/**
- * Get thinking models to test, optionally excluding certain families.
- * @param {string[]} excludeFamilies - Array of family names to exclude
- * @returns {Array<{family: string, model: string}>} Array of thinking model configs
- */
-function getThinkingModels(excludeFamilies = []) {
-    const models = [];
-    for (const [family, model] of Object.entries(THINKING_MODELS)) {
+    for (const [family, model] of Object.entries(testModels)) {
         if (!excludeFamilies.includes(family)) {
             models.push({ family, model });
         }
@@ -77,11 +64,17 @@ function getModelConfig(family) {
     };
 }
 
+/**
+ * Get TEST_MODELS directly (async).
+ * @returns {Promise<Object>} TEST_MODELS object
+ */
+async function getModels() {
+    return loadConstants();
+}
+
 module.exports = {
-    TEST_MODELS,
-    THINKING_MODELS,
     getTestModels,
-    getThinkingModels,
+    getModels,
     familySupportsThinking,
     getModelConfig
 };

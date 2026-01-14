@@ -89,6 +89,11 @@ export async function parseThinkingSSEResponse(response, originalModel) {
                         if (!part.text) continue;
                         flushThinking();
                         accumulatedText += part.text;
+                    } else if (part.inlineData) {
+                        // Handle image content
+                        flushThinking();
+                        flushText();
+                        finalParts.push(part);
                     }
                 }
             } catch (e) {
@@ -105,7 +110,7 @@ export async function parseThinkingSSEResponse(response, originalModel) {
         usageMetadata
     };
 
-    const partTypes = finalParts.map(p => p.thought ? 'thought' : (p.functionCall ? 'functionCall' : 'text'));
+    const partTypes = finalParts.map(p => p.thought ? 'thought' : (p.functionCall ? 'functionCall' : (p.inlineData ? 'inlineData' : 'text')));
     logger.debug('[CloudCode] Response received (SSE), part types:', partTypes);
     if (finalParts.some(p => p.thought)) {
         const thinkingPart = finalParts.find(p => p.thought);

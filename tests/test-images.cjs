@@ -159,7 +159,7 @@ async function runTestsForModel(family, model) {
 }
 
 async function runTests() {
-    const models = getTestModels();
+    const models = await getTestModels();
     let allPassed = true;
 
     for (const { family, model } of models) {

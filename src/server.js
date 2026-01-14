@@ -65,6 +65,37 @@ async function ensureInitialized() {
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
 
+// API Key authentication middleware for /v1/* endpoints
+app.use('/v1', (req, res, next) => {
+    // Skip validation if apiKey is not configured
+    if (!config.apiKey) {
+        return next();
+    }
+
+    const authHeader = req.headers['authorization'];
+    const xApiKey = req.headers['x-api-key'];
+
+    let providedKey = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        providedKey = authHeader.substring(7);
+    } else if (xApiKey) {
+        providedKey = xApiKey;
+    }
+
+    if (!providedKey || providedKey !== config.apiKey) {
+        logger.warn(`[API] Unauthorized request from ${req.ip}, invalid API key`);
+        return res.status(401).json({
+            type: 'error',
+            error: {
+                type: 'authentication_error',
+                message: 'Invalid or missing API key'
+            }
+        });
+    }
+
+    next();
+});
+
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
 
