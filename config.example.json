@@ -32,7 +32,9 @@
   "persistTokenCache": false,
 
   "requestTimeoutMs": 300000,
+
   "maxAccounts": 10,
+  "_maxAccounts_comment": "Maximum number of Google accounts allowed (1-100). Default: 10.",
 
   "_profiles": {
     "development": {

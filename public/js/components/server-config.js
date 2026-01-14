@@ -248,5 +248,11 @@ window.Components.serverConfig = () => ({
         const { MAX_WAIT_MIN, MAX_WAIT_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxWaitBeforeErrorMs', value, 'Max Wait Threshold',
             (v) => window.Validators.validateTimeout(v, MAX_WAIT_MIN, MAX_WAIT_MAX));
+    },
+
+    toggleMaxAccounts(value) {
+        const { MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('maxAccounts', value, 'Max Accounts',
+            (v) => window.Validators.validateRange(v, MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX, 'Max Accounts'));
     }
 });

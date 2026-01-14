@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = {
     persistTokenCache: false,
     defaultCooldownMs: 10000,  // 10 seconds
     maxWaitBeforeErrorMs: 120000, // 2 minutes
+    maxAccounts: 10, // Maximum number of accounts allowed
     modelMapping: {}
 };
 

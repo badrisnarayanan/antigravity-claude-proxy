@@ -67,7 +67,11 @@ window.AppConstants.VALIDATION = {
 
     // Max wait threshold (1 - 30 minutes)
     MAX_WAIT_MIN: 60000,
-    MAX_WAIT_MAX: 1800000
+    MAX_WAIT_MAX: 1800000,
+
+    // Max accounts range (1 - 100)
+    MAX_ACCOUNTS_MIN: 1,
+    MAX_ACCOUNTS_MAX: 100
 };
 
 /**

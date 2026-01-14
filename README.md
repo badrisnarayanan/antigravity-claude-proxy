@@ -338,6 +338,7 @@ While most users can use the default settings, you can tune the proxy behavior v
 - **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.
 - **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
+- **Max Accounts**: Set `maxAccounts` (1-100) to limit the number of Google accounts. Default: 10.
 
 Refer to `config.example.json` for a complete list of fields and documentation.
 

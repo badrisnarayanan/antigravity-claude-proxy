@@ -17,7 +17,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
@@ -77,6 +77,7 @@ async function removeAccount(email) {
 
 /**
  * Add new account to config
+ * @throws {Error} If MAX_ACCOUNTS limit is reached (for new accounts only)
  */
 async function addAccount(accountData) {
     const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
@@ -95,6 +96,10 @@ async function addAccount(accountData) {
         };
         logger.info(`[WebUI] Account ${accountData.email} updated`);
     } else {
+        // Check MAX_ACCOUNTS limit before adding new account
+        if (accounts.length >= MAX_ACCOUNTS) {
+            throw new Error(`Maximum of ${MAX_ACCOUNTS} accounts reached. Update maxAccounts in config to increase the limit.`);
+        }
         // Add new account
         accounts.push({
             ...accountData,
@@ -282,7 +287,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -307,6 +312,9 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
                 updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
+            }
+            if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
+                updates.maxAccounts = maxAccounts;
             }
 
             if (Object.keys(updates).length === 0) {

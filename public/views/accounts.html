@@ -39,8 +39,17 @@
                 </svg>
                 <span x-text="$store.global.t('reload')">Reload</span>
             </button>
+            <!-- Account Count Indicator -->
+            <div class="flex items-center h-6 px-2 rounded bg-space-800/80 border border-space-border/50"
+                 :class="{ 'border-yellow-500/50': $store.data.accounts.length >= $store.data.maxAccounts }">
+                <span class="text-[11px] font-mono"
+                      :class="$store.data.accounts.length >= $store.data.maxAccounts ? 'text-yellow-400' : 'text-gray-400'"
+                      x-text="$store.data.accounts.length + '/' + $store.data.maxAccounts"></span>
+            </div>
             <button class="btn bg-neon-purple hover:bg-purple-600 border-none text-white btn-xs gap-2 shadow-lg shadow-neon-purple/20 h-8"
-                onclick="document.getElementById('add_account_modal').showModal()">
+                :class="{ 'opacity-50 cursor-not-allowed': $store.data.accounts.length >= $store.data.maxAccounts }"
+                :disabled="$store.data.accounts.length >= $store.data.maxAccounts"
+                @click="$store.data.accounts.length < $store.data.maxAccounts && document.getElementById('add_account_modal').showModal()">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>

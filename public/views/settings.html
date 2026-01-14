@@ -932,6 +932,28 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- Max Accounts -->
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-cyan/50">
+                        <label class="label pt-0">
+                            <span class="label-text text-gray-400 text-xs">Max Accounts</span>
+                            <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                x-text="serverConfig.maxAccounts || 10"></span>
+                        </label>
+                        <div class="flex gap-3 items-center">
+                            <input type="range" min="1" max="100" class="custom-range custom-range-cyan flex-1"
+                                :value="serverConfig.maxAccounts || 10"
+                                :style="`background-size: ${((serverConfig.maxAccounts || 10) - 1) / 99 * 100}% 100%`"
+                                @input="toggleMaxAccounts($event.target.value)"
+                                aria-label="Max accounts slider">
+                            <input type="number" min="1" max="100"
+                                class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                :value="serverConfig.maxAccounts || 10"
+                                @change="toggleMaxAccounts($event.target.value)"
+                                aria-label="Max accounts value">
+                        </div>
+                        <span class="text-[11px] text-gray-500 mt-1">Maximum number of Google accounts allowed</span>
+                    </div>
                 </div>
 
                 <!-- ▼ Advanced Tuning (Fixed Logic) -->
