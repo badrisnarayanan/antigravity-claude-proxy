@@ -189,7 +189,7 @@ export function mountWebUI(app, dirname, accountManager) {
             "style-src 'self' 'unsafe-inline'",  // Tailwind and inline styles
             "img-src 'self' data:",
             "font-src 'self'",
-            "connect-src 'self'",
+            "connect-src 'self' cdn.jsdelivr.net",  // Allow CDN for source maps
             "frame-ancestors 'none'"
         ].join('; '));
 
