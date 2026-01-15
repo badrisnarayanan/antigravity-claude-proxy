@@ -34,15 +34,23 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             const hasInvalidToken = (acc.refreshToken && decryptedRefreshToken === null) ||
                                    (acc.apiKey && decryptedApiKey === null);
 
+            // Determine invalid state - preserve existing or set from decryption failure
+            const isInvalid = hasInvalidToken || acc.isInvalid || false;
+            let invalidReason = null;
+            if (hasInvalidToken) {
+                invalidReason = 'Token decryption failed - re-authentication required';
+            } else if (acc.invalidReason) {
+                invalidReason = acc.invalidReason;
+            }
+
             return {
                 ...acc,
                 refreshToken: decryptedRefreshToken,
                 apiKey: decryptedApiKey,
                 lastUsed: acc.lastUsed || null,
                 enabled: acc.enabled !== false,
-                // Mark as invalid if token decryption failed
-                isInvalid: hasInvalidToken,
-                invalidReason: hasInvalidToken ? 'Token decryption failed - re-authentication required' : null,
+                isInvalid,
+                invalidReason,
                 modelRateLimits: acc.modelRateLimits || {},
                 subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
                 quota: acc.quota || { models: {}, lastChecked: null }
