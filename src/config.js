@@ -57,7 +57,10 @@ function loadConfig() {
 
         // Environment overrides
         if (process.env.API_KEY) config.apiKey = process.env.API_KEY;
-        if (process.env.WEBUI_PASSWORD) config.webuiPassword = process.env.WEBUI_PASSWORD;
+        if (process.env.WEBUI_PASSWORD) {
+            const envPassword = process.env.WEBUI_PASSWORD;
+            config.webuiPassword = isHashed(envPassword) ? envPassword : hashPasswordSync(envPassword);
+        }
         if (process.env.DEBUG === 'true') config.debug = true;
 
     } catch (error) {
@@ -74,13 +77,16 @@ export function getPublicConfig() {
 
 export function saveConfig(updates) {
     try {
+        // Create shallow copy to avoid mutating caller's object
+        const processedUpdates = { ...updates };
+
         // Hash password if being updated and not already hashed
-        if (updates.webuiPassword && !isHashed(updates.webuiPassword)) {
-            updates.webuiPassword = hashPasswordSync(updates.webuiPassword);
+        if (processedUpdates.webuiPassword && !isHashed(processedUpdates.webuiPassword)) {
+            processedUpdates.webuiPassword = hashPasswordSync(processedUpdates.webuiPassword);
         }
 
         // Apply updates
-        config = { ...config, ...updates };
+        config = { ...config, ...processedUpdates };
 
         // Save to disk
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
