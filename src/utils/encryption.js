@@ -16,24 +16,50 @@ const AUTH_TAG_LENGTH = 16;
 const ENCRYPTED_PREFIX = 'enc:v1:';
 
 /**
- * Derive an encryption key from machine-specific data
- * This provides automatic encryption without requiring user input.
+ * Derive an encryption key from machine-specific data.
  *
- * @returns {Buffer} 32-byte encryption key
+ * THREAT MODEL AND LIMITATIONS:
+ * -----------------------------
+ * This function derives a 32-byte (KEY_LENGTH) encryption key using PBKDF2-SHA256
+ * with 100,000 iterations from the following NON-SECRET inputs:
+ *   - os.hostname()
+ *   - os.homedir()
+ *   - os.userInfo().username
+ *   - ACCOUNT_CONFIG_PATH (config file location)
+ *   - process.env.COMPUTERNAME or HOSTNAME
+ *   - A fixed salt: 'antigravity-proxy-v1'
+ *
+ * SECURITY IMPLICATIONS:
+ * - Any local user or process on the same machine can derive the identical key
+ *   by reading the same system values. This does NOT protect against local attackers.
+ * - Moving the config file to a different machine, changing the hostname, username,
+ *   or home directory will cause decryption to fail (tokens become unreadable).
+ * - The fixed salt is not secret; security relies on machine-specific entropy.
+ *
+ * WHAT THIS PROTECTS AGAINST:
+ * - Casual file copying: tokens copied to another machine won't decrypt
+ * - Accidental exposure: raw tokens not visible in config files
+ *
+ * WHAT THIS DOES NOT PROTECT AGAINST:
+ * - Determined local attackers with access to run code as the same user
+ * - Root/admin users on the same machine
+ * - Memory inspection of the running process
+ *
+ * This is an INTENTIONAL TRADE-OFF: automatic encryption without user-managed
+ * secrets (no master password required) at the cost of weaker local security.
+ * For stronger protection, consider OS keychain integration or user-provided secrets.
+ *
+ * @returns {Buffer} 32-byte (KEY_LENGTH) encryption key
  */
 function deriveKey() {
-    // Combine multiple machine-specific values
     const machineInfo = [
         os.hostname(),
         os.homedir(),
         os.userInfo().username,
         ACCOUNT_CONFIG_PATH,
-        // Add some entropy from the machine ID if available
         process.env.COMPUTERNAME || process.env.HOSTNAME || 'node'
     ].join(':');
 
-    // Derive a key using PBKDF2 with a fixed salt
-    // The salt is not secret since we're relying on machine-specific entropy
     const salt = 'antigravity-proxy-v1';
     return crypto.pbkdf2Sync(machineInfo, salt, 100000, KEY_LENGTH, 'sha256');
 }
