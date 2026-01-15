@@ -252,11 +252,12 @@ export async function exchangeCode(code, verifier) {
     const tokens = await response.json();
 
     if (!tokens.access_token) {
-        logger.error('[OAuth] No access token in response:', tokens);
+        logger.debug('[OAuth] Token response missing access_token field');
         throw new Error('No access token received');
     }
 
-    logger.info(`[OAuth] Token exchange successful, access_token length: ${tokens.access_token?.length}`);
+    logger.info('[OAuth] Token exchange successful');
+    logger.debug(`[OAuth] access_token length: ${tokens.access_token?.length}, refresh_token present: ${!!tokens.refresh_token}`);
 
     return {
         accessToken: tokens.access_token,
