@@ -62,6 +62,24 @@ export async function verifyPassword(password, hash) {
 
 /**
  * Hash password synchronously (for use in config loading)
+ *
+ * WARNING: This function uses bcrypt.hashSync which is BLOCKING and will block
+ * the Node.js event loop for the duration of the hash computation (with SALT_ROUNDS=12,
+ * this can take ~100-300ms depending on hardware).
+ *
+ * DO NOT use this function in:
+ * - Request handlers
+ * - Middleware
+ * - Any performance-sensitive or concurrent code paths
+ *
+ * This function should ONLY be used for one-off tasks like:
+ * - Config loading at startup
+ * - CLI tools
+ * - Scripts
+ *
+ * For request handlers and async code, use the async alternative:
+ *   await hashPassword(password)  // uses bcrypt.hash, non-blocking
+ *
  * @param {string} password - Plain text password
  * @returns {string} Bcrypt hash
  */
