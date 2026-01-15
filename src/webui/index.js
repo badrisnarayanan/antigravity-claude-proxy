@@ -152,6 +152,61 @@ function createAuthMiddleware() {
  * @param {AccountManager} accountManager - Account manager instance
  */
 export function mountWebUI(app, dirname, accountManager) {
+    // CSRF protection - validate origin on state-changing requests
+    app.use((req, res, next) => {
+        // Only check state-changing methods
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+            const origin = req.headers.origin;
+            const referer = req.headers.referer;
+
+            // Allow requests with no origin (curl, Postman, server-to-server)
+            if (!origin && !referer) {
+                return next();
+            }
+
+            // Validate origin is localhost
+            const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/;
+            const originValid = origin && localhostPattern.test(origin);
+            const refererValid = referer && localhostPattern.test(referer);
+
+            if (!originValid && !refererValid) {
+                return res.status(403).json({
+                    status: 'error',
+                    error: 'Invalid request origin'
+                });
+            }
+        }
+        next();
+    });
+
+    // Security headers middleware
+    app.use((req, res, next) => {
+        // Content Security Policy - restrict script and style sources
+        res.setHeader('Content-Security-Policy', [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net",  // Alpine.js and Chart.js from CDN
+            "style-src 'self' 'unsafe-inline'",  // Tailwind and inline styles
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "connect-src 'self'",
+            "frame-ancestors 'none'"
+        ].join('; '));
+
+        // Prevent MIME type sniffing
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+
+        // Prevent clickjacking
+        res.setHeader('X-Frame-Options', 'DENY');
+
+        // Enable XSS filter in older browsers
+        res.setHeader('X-XSS-Protection', '1; mode=block');
+
+        // Prevent referrer leakage
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+        next();
+    });
+
     // Apply auth middleware
     app.use(createAuthMiddleware());
 
