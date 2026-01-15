@@ -14,12 +14,13 @@ window.Validators = window.Validators || {};
  */
 window.Validators.validateRange = function(value, min, max, fieldName = 'Value') {
     const numValue = Number(value);
+    const t = Alpine.store('global').t;
 
     if (isNaN(numValue)) {
         return {
             isValid: false,
             value: min,
-            error: `${fieldName} must be a valid number`
+            error: t('mustBeValidNumber', { fieldName })
         };
     }
 
@@ -27,7 +28,7 @@ window.Validators.validateRange = function(value, min, max, fieldName = 'Value')
         return {
             isValid: false,
             value: min,
-            error: `${fieldName} must be at least ${min}`
+            error: t('mustBeAtLeast', { fieldName, min })
         };
     }
 
@@ -35,7 +36,7 @@ window.Validators.validateRange = function(value, min, max, fieldName = 'Value')
         return {
             isValid: false,
             value: max,
-            error: `${fieldName} must be at most ${max}`
+            error: t('mustBeAtMost', { fieldName, max })
         };
     }
 
@@ -64,12 +65,13 @@ window.Validators.validatePort = function(port) {
  */
 window.Validators.validateNotEmpty = function(value, fieldName = 'Field') {
     const trimmedValue = String(value || '').trim();
+    const t = Alpine.store('global').t;
 
     if (trimmedValue.length === 0) {
         return {
             isValid: false,
             value: trimmedValue,
-            error: `${fieldName} cannot be empty`
+            error: t('cannotBeEmpty', { fieldName })
         };
     }
 
@@ -106,7 +108,7 @@ window.Validators.validateBoolean = function(value) {
     return {
         isValid: false,
         value: false,
-        error: 'Value must be true or false'
+        error: Alpine.store('global').t('mustBeTrueOrFalse')
     };
 };
 

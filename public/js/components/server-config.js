@@ -88,15 +88,15 @@ window.Components.serverConfig = () => ({
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to change password');
+                throw new Error(data.error || store.t('failedToChangePassword'));
             }
 
             // Update stored password
             store.webuiPassword = newPassword;
-            store.showToast('Password changed successfully', 'success');
+            store.showToast(store.t('passwordChangedSuccess'), 'success');
             this.hidePasswordDialog();
         } catch (e) {
-            store.showToast('Failed to change password: ' + e.message, 'error');
+            store.showToast(store.t('failedToChangePassword') + ': ' + e.message, 'error');
         }
     },
 
@@ -119,16 +119,16 @@ window.Components.serverConfig = () => ({
 
             const data = await response.json();
             if (data.status === 'ok') {
-                const status = enabled ? 'enabled' : 'disabled';
-                store.showToast(`Debug mode ${status}`, 'success');
+                const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
+                store.showToast(store.t('debugModeToggled', { status }), 'success');
                 await this.fetchServerConfig(); // Confirm server state
             } else {
-                throw new Error(data.error || 'Failed to update debug mode');
+                throw new Error(data.error || store.t('failedToUpdateDebugMode'));
             }
         } catch (e) {
             // Rollback on error
             this.serverConfig.debug = previousValue;
-            store.showToast('Failed to update debug mode: ' + e.message, 'error');
+            store.showToast(store.t('failedToUpdateDebugMode') + ': ' + e.message, 'error');
         }
     },
 
@@ -151,16 +151,16 @@ window.Components.serverConfig = () => ({
 
             const data = await response.json();
             if (data.status === 'ok') {
-                const status = enabled ? 'enabled' : 'disabled';
-                store.showToast(`Token cache ${status}`, 'success');
+                const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
+                store.showToast(store.t('tokenCacheToggled', { status }), 'success');
                 await this.fetchServerConfig(); // Confirm server state
             } else {
-                throw new Error(data.error || 'Failed to update token cache');
+                throw new Error(data.error || store.t('failedToUpdateTokenCache'));
             }
         } catch (e) {
             // Rollback on error
             this.serverConfig.persistTokenCache = previousValue;
-            store.showToast('Failed to update token cache: ' + e.message, 'error');
+            store.showToast(store.t('failedToUpdateTokenCache') + ': ' + e.message, 'error');
         }
     },
 
@@ -206,15 +206,15 @@ window.Components.serverConfig = () => ({
 
                 const data = await response.json();
                 if (data.status === 'ok') {
-                    store.showToast(`${displayName} updated to ${value}`, 'success');
+                    store.showToast(store.t('fieldUpdated', { displayName, value }), 'success');
                     await this.fetchServerConfig(); // Confirm server state
                 } else {
-                    throw new Error(data.error || `Failed to update ${displayName}`);
+                    throw new Error(data.error || store.t('failedToUpdateField', { displayName }));
                 }
             } catch (e) {
                 // Rollback on error
                 this.serverConfig[fieldName] = previousValue;
-                store.showToast(`Failed to update ${displayName}: ` + e.message, 'error');
+                store.showToast(store.t('failedToUpdateField', { displayName }) + ': ' + e.message, 'error');
             }
         }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE);
     },

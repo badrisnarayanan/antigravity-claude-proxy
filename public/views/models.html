@@ -213,7 +213,7 @@
                                 <!-- Account Status Indicators -->
                                 <div class="flex flex-wrap gap-1 justify-start max-w-[200px]" x-data="{ maxVisible: 12 }">
                                     <template x-if="!row.quotaInfo || row.quotaInfo.length === 0">
-                                        <div class="text-[10px] text-gray-600 italic">No data</div>
+                                        <div class="text-[10px] text-gray-600 italic" x-text="$store.global.t('noData')">No data</div>
                                     </template>
                                     <template x-if="row.quotaInfo && row.quotaInfo.length > 0">
                                         <div class="flex flex-wrap gap-1 justify-start">

@@ -13,18 +13,19 @@ window.ErrorHandler = window.ErrorHandler || {};
  * @param {Function} options.onError - Custom error handler callback
  * @returns {Promise<any>} Result of the function or undefined on error
  */
-window.ErrorHandler.safeAsync = async function(fn, errorMessage = 'Operation failed', options = {}) {
+window.ErrorHandler.safeAsync = async function(fn, errorMessage = null, options = {}) {
     const { rethrow = false, onError = null } = options;
     const store = Alpine.store('global');
+    const defaultErrorMessage = errorMessage || store.t('operationFailed');
 
     try {
         return await fn();
     } catch (error) {
         // Log error for debugging
-        console.error(`[ErrorHandler] ${errorMessage}:`, error);
+        console.error(`[ErrorHandler] ${defaultErrorMessage}:`, error);
 
         // Show toast notification
-        const fullMessage = `${errorMessage}: ${error.message || 'Unknown error'}`;
+        const fullMessage = `${defaultErrorMessage}: ${error.message || store.t('unknownError')}`;
         store.showToast(fullMessage, 'error');
 
         // Call custom error handler if provided
@@ -51,11 +52,11 @@ window.ErrorHandler.safeAsync = async function(fn, errorMessage = 'Operation fai
  * @param {string} errorMessage - Error message prefix
  * @returns {Function} Wrapped method
  */
-window.ErrorHandler.wrapMethod = function(method, errorMessage = 'Operation failed') {
+window.ErrorHandler.wrapMethod = function(method, errorMessage = null) {
     return async function(...args) {
         return window.ErrorHandler.safeAsync(
             () => method.apply(this, args),
-            errorMessage
+            errorMessage || Alpine.store('global').t('operationFailed')
         );
     };
 };

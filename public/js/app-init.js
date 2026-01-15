@@ -115,8 +115,11 @@ document.addEventListener('alpine:init', () => {
 
                     const messageHandler = (event) => {
                         if (event.data?.type === 'oauth-success') {
-                            const action = reAuthEmail ? 're-authenticated' : 'added';
-                            Alpine.store('global').showToast(`Account ${event.data.email} ${action} successfully`, 'success');
+                            const store = Alpine.store('global');
+                            const successMsg = reAuthEmail
+                                ? store.t('accountReauthSuccess')
+                                : store.t('accountAddedSuccess');
+                            store.showToast(successMsg, 'success');
                             Alpine.store('data').fetchData();
 
                             const modal = document.getElementById('add_account_modal');
@@ -127,10 +130,10 @@ document.addEventListener('alpine:init', () => {
                     window.addEventListener('message', messageHandler);
                     setTimeout(() => window.removeEventListener('message', messageHandler), 300000);
                 } else {
-                    Alpine.store('global').showToast(data.error || 'Failed to get auth URL', 'error');
+                    Alpine.store('global').showToast(data.error || Alpine.store('global').t('failedToGetAuthUrl'), 'error');
                 }
             } catch (e) {
-                Alpine.store('global').showToast('Failed to start OAuth flow: ' + e.message, 'error');
+                Alpine.store('global').showToast(Alpine.store('global').t('failedToStartOAuth') + ': ' + e.message, 'error');
             }
         }
     }));

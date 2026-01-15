@@ -57,8 +57,8 @@
                     <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16">Tier</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32">Quota</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('quota')">Quota</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24" x-text="$store.global.t('health')">Health</th>
                     <th class="py-3 pr-6 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('operations')">Operations</th>
                 </tr>
@@ -265,7 +265,7 @@
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button x-text="$store.global.t('close')">close</button>
         </form>
     </dialog>
 
@@ -323,7 +323,7 @@
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button x-text="$store.global.t('close')">close</button>
         </form>
     </dialog>
 </div>
