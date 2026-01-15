@@ -23,6 +23,14 @@ import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
 import { verifyPassword } from '../utils/password.js';
+import { createRateLimiter } from '../utils/rate-limiter.js';
+
+// Rate limiter for password-related endpoints (5 attempts per 15 minutes)
+const passwordRateLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    maxAttempts: 5,
+    message: 'Too many password attempts, please try again later'
+});
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -341,8 +349,9 @@ export function mountWebUI(app, dirname, accountManager) {
 
     /**
      * POST /api/config/password - Change WebUI password
+     * Rate limited to prevent brute force attacks
      */
-    app.post('/api/config/password', async (req, res) => {
+    app.post('/api/config/password', passwordRateLimiter, async (req, res) => {
         try {
             const { oldPassword, newPassword } = req.body;
 
