@@ -21,7 +21,7 @@ window.utils = {
                 // For simplicity in this functional utility, we might need a callback or state access
                 // But generally utils shouldn't probably depend on global state directly if possible
                 // let's stick to the current logic but wrapped
-                localStorage.setItem('antigravity_webui_password', password);
+                sessionStorage.setItem('antigravity_webui_password', password);
                 options.headers['x-webui-password'] = password;
                 response = await fetch(url, options);
                 return { response, newPassword: password };
