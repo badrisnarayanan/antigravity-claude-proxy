@@ -18,6 +18,21 @@ import { logger } from '../utils/logger.js';
 import { onboardUser, getDefaultTierId } from '../account-manager/onboarding.js';
 
 /**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} str - String to escape
+ * @returns {string} HTML-escaped string
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+/**
  * Generate PKCE code verifier and challenge
  */
 function generatePKCE() {
@@ -139,7 +154,7 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
                     <head><meta charset="UTF-8"><title>Authentication Failed</title></head>
                     <body style="font-family: system-ui; padding: 40px; text-align: center;">
                         <h1 style="color: #dc3545;">❌ Authentication Failed</h1>
-                        <p>Error: ${error}</p>
+                        <p>Error: ${escapeHtml(error)}</p>
                         <p>You can close this window.</p>
                     </body>
                     </html>
