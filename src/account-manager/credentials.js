@@ -186,10 +186,19 @@ export async function discoverProject(token) {
             tierSource = 'allowedTiers';
         }
 
-        tierId = tierId || 'FREE';
+        tierId = tierId || 'free-tier';
         logger.info(`[AccountManager] Onboarding user with tier: ${tierId} (source: ${tierSource})`);
 
-        const onboardedProject = await onboardUser(token, tierId);
+        // Check if this is a free tier (raw API values contain 'free')
+        const isFree = tierId.toLowerCase().includes('free');
+
+        // For non-free tiers, pass DEFAULT_PROJECT_ID as the GCP project
+        // The API requires a project for paid tier onboarding
+        const onboardedProject = await onboardUser(
+            token,
+            tierId,
+            isFree ? null : DEFAULT_PROJECT_ID
+        );
         if (onboardedProject) {
             logger.success(`[AccountManager] Successfully onboarded, project: ${onboardedProject}`);
             return onboardedProject;

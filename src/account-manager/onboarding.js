@@ -37,8 +37,8 @@ export function getDefaultTierId(allowedTiers) {
  * Onboard a user to get a managed project
  *
  * @param {string} token - OAuth access token
- * @param {string} tierId - Tier ID (e.g., 'FREE', 'PRO', 'ULTRA')
- * @param {string} [projectId] - Optional GCP project ID (required for non-FREE tiers)
+ * @param {string} tierId - Tier ID (raw API value, e.g., 'free-tier', 'standard-tier', 'g1-pro-tier')
+ * @param {string} [projectId] - Optional GCP project ID (required for non-free tiers)
  * @param {number} [maxAttempts=10] - Maximum polling attempts
  * @param {number} [delayMs=5000] - Delay between polling attempts
  * @returns {Promise<string|null>} Managed project ID or null if failed
@@ -59,10 +59,15 @@ export async function onboardUser(token, tierId, projectId = null, maxAttempts =
         metadata
     };
 
-    // Non-FREE tiers require a cloudaicompanionProject
-    if (tierId !== 'FREE' && projectId) {
+    // Check if this is a free tier (handles raw API values like 'free-tier')
+    const isFree = tierId.toLowerCase().includes('free');
+
+    // Non-free tiers require a cloudaicompanionProject
+    if (!isFree && projectId) {
         requestBody.cloudaicompanionProject = projectId;
     }
+
+    logger.debug(`[Onboarding] Starting onboard with tierId: ${tierId}, projectId: ${projectId}, isFree: ${isFree}`);
 
     for (const endpoint of ONBOARD_USER_ENDPOINTS) {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -79,7 +84,7 @@ export async function onboardUser(token, tierId, projectId = null, maxAttempts =
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    logger.debug(`[Onboarding] onboardUser failed at ${endpoint}: ${response.status} - ${errorText}`);
+                    logger.warn(`[Onboarding] onboardUser failed at ${endpoint}: ${response.status} - ${errorText}`);
                     break; // Try next endpoint
                 }
 
@@ -101,11 +106,12 @@ export async function onboardUser(token, tierId, projectId = null, maxAttempts =
                     await sleep(delayMs);
                 }
             } catch (error) {
-                logger.debug(`[Onboarding] onboardUser error at ${endpoint}:`, error.message);
+                logger.warn(`[Onboarding] onboardUser error at ${endpoint}:`, error.message);
                 break; // Try next endpoint
             }
         }
     }
 
+    logger.warn(`[Onboarding] All onboarding attempts failed for tierId: ${tierId}`);
     return null;
 }
