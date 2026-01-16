@@ -5,6 +5,7 @@
  */
 
 import { ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { config } from '../config.js';
 import { loadAccounts, loadDefaultAccount, saveAccounts } from './storage.js';
 import {
     isAllRateLimited as checkAllRateLimited,
@@ -27,7 +28,8 @@ import {
     pickNext as selectNext,
     getCurrentStickyAccount as getSticky,
     shouldWaitForCurrentAccount as shouldWait,
-    pickStickyAccount as selectSticky
+    pickStickyAccount as selectSticky,
+    getEffectiveThreshold
 } from './selection.js';
 import { logger } from '../utils/logger.js';
 
@@ -144,7 +146,7 @@ export class AccountManager {
      * @returns {Object|null} The next available account or null if none available
      */
     pickNext(modelId = null) {
-        const { account, newIndex } = selectNext(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
+        const { account, newIndex } = selectNext(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId, config);
         this.#currentIndex = newIndex;
         return account;
     }
@@ -156,7 +158,7 @@ export class AccountManager {
      * @returns {Object|null} The current account or null if unavailable/rate-limited
      */
     getCurrentStickyAccount(modelId = null) {
-        const { account, newIndex } = getSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
+        const { account, newIndex } = getSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId, config);
         this.#currentIndex = newIndex;
         return account;
     }
@@ -176,13 +178,24 @@ export class AccountManager {
      * Prefers the current account for cache continuity, only switches when:
      * - Current account is rate-limited for > 2 minutes
      * - Current account is invalid
+     * - Current account is below quota threshold
      * @param {string} [modelId] - Optional model ID
      * @returns {{account: Object|null, waitMs: number}} Account to use and optional wait time
      */
     pickStickyAccount(modelId = null) {
-        const { account, waitMs, newIndex } = selectSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
+        const { account, waitMs, newIndex } = selectSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId, config);
         this.#currentIndex = newIndex;
         return { account, waitMs };
+    }
+
+    /**
+     * Get the effective quota threshold for an account and model.
+     * @param {Object} account - Account object
+     * @param {string} modelId - Model ID
+     * @returns {number} Effective threshold (0-1)
+     */
+    getEffectiveThreshold(account, modelId) {
+        return getEffectiveThreshold(account, modelId, config);
     }
 
     /**
@@ -304,7 +317,10 @@ export class AccountManager {
                 modelRateLimits: a.modelRateLimits || {},
                 isInvalid: a.isInvalid || false,
                 invalidReason: a.invalidReason || null,
-                lastUsed: a.lastUsed
+                lastUsed: a.lastUsed,
+                // Include quota threshold settings
+                quotaThreshold: a.quotaThreshold,
+                modelQuotaThresholds: a.modelQuotaThresholds || {}
             }))
         };
     }

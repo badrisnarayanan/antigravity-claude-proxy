@@ -15,7 +15,8 @@ const DEFAULT_CONFIG = {
     persistTokenCache: false,
     defaultCooldownMs: 10000,  // 10 seconds
     maxWaitBeforeErrorMs: 120000, // 2 minutes
-    modelMapping: {}
+    modelMapping: {},
+    quotaThreshold: 0  // Global quota threshold (0-1). Skip accounts when remainingFraction < threshold
 };
 
 // Config locations

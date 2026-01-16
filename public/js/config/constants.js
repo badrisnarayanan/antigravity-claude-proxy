@@ -67,7 +67,12 @@ window.AppConstants.VALIDATION = {
 
     // Max wait threshold (1 - 30 minutes)
     MAX_WAIT_MIN: 60000,
-    MAX_WAIT_MAX: 1800000
+    MAX_WAIT_MAX: 1800000,
+
+    // Quota threshold range (0% - 99%)
+    QUOTA_THRESHOLD_MIN: 0,
+    QUOTA_THRESHOLD_MAX: 0.99,
+    QUOTA_THRESHOLD_STEP: 0.01
 };
 
 /**

@@ -248,5 +248,59 @@ window.Components.serverConfig = () => ({
         const { MAX_WAIT_MIN, MAX_WAIT_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxWaitBeforeErrorMs', value, 'Max Wait Threshold',
             (v) => window.Validators.validateTimeout(v, MAX_WAIT_MIN, MAX_WAIT_MAX));
+    },
+
+    // Quota threshold - convert from percentage (0-99) to fraction (0-0.99)
+    toggleQuotaThreshold(value) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0 || numValue > 99) {
+            return;
+        }
+        // Convert percentage to fraction
+        const fractionValue = numValue / 100;
+        this.saveConfigFieldDirect('quotaThreshold', fractionValue, 'Quota Threshold');
+    },
+
+    // Direct save without validation transform (for pre-validated values)
+    async saveConfigFieldDirect(fieldName, value, displayName) {
+        const store = Alpine.store('global');
+
+        // Clear existing timer for this field
+        if (this.debounceTimers[fieldName]) {
+            clearTimeout(this.debounceTimers[fieldName]);
+        }
+
+        // Optimistic update
+        const previousValue = this.serverConfig[fieldName];
+        this.serverConfig[fieldName] = value;
+
+        // Set new timer
+        this.debounceTimers[fieldName] = setTimeout(async () => {
+            try {
+                const payload = {};
+                payload[fieldName] = value;
+
+                const { response, newPassword } = await window.utils.request('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }, store.webuiPassword);
+
+                if (newPassword) store.webuiPassword = newPassword;
+
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    const displayValue = fieldName === 'quotaThreshold' ? Math.round(value * 100) + '%' : value;
+                    store.showToast(store.t('fieldUpdated', { displayName, value: displayValue }), 'success');
+                    await this.fetchServerConfig(); // Confirm server state
+                } else {
+                    throw new Error(data.error || store.t('failedToUpdateField', { displayName }));
+                }
+            } catch (e) {
+                // Rollback on error
+                this.serverConfig[fieldName] = previousValue;
+                store.showToast(store.t('failedToUpdateField', { displayName }) + ': ' + e.message, 'error');
+            }
+        }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE);
     }
 });

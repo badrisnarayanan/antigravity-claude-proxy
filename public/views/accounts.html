@@ -173,6 +173,17 @@
                                     x-text="$store.global.t('fix')">
                                     FIX
                                 </button>
+                                <!-- Settings Button (threshold) -->
+                                <button class="p-2 rounded hover:bg-white/10 text-gray-500 hover:text-neon-yellow transition-colors"
+                                    @click="openThresholdModal(acc)"
+                                    :title="$store.global.t('thresholdSettings') || 'Threshold Settings'">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
                                 <button class="p-2 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
                                     @click="refreshAccount(acc.email)"
                                     :disabled="refreshing"
@@ -324,6 +335,156 @@
         </div>
         <form method="dialog" class="modal-backdrop">
             <button x-text="$store.global.t('close')">close</button>
+        </form>
+    </dialog>
+
+    <!-- Threshold Settings Modal -->
+    <dialog id="threshold_modal" class="modal backdrop-blur-sm">
+        <div class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6">
+            <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
+                <svg class="w-6 h-6 text-neon-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>Account Settings</span>
+            </h3>
+            <p class="text-sm text-gray-500 font-mono mb-6" x-text="thresholdDialog.email"></p>
+
+            <div class="space-y-4">
+                <!-- Info Alert -->
+                <div class="bg-space-800/50 border border-space-border/30 rounded-lg p-3">
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        Set a minimum quota level for this account. When the account's quota falls below this threshold,
+                        the proxy will switch to another account with more quota remaining.
+                    </p>
+                </div>
+
+                <!-- Threshold Input -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text text-gray-400">Minimum Quota</span>
+                        <span class="label-text-alt font-mono text-neon-yellow"
+                              x-text="thresholdDialog.quotaThreshold !== null ? thresholdDialog.quotaThreshold + '%' : 'Default'"></span>
+                    </label>
+                    <div class="flex gap-3 items-center">
+                        <input type="range" min="0" max="99" step="1"
+                            class="custom-range custom-range-yellow flex-1"
+                            :value="thresholdDialog.quotaThreshold || 0"
+                            :style="`background-size: ${thresholdDialog.quotaThreshold || 0}% 100%`"
+                            @input="thresholdDialog.quotaThreshold = parseInt($event.target.value)"
+                            aria-label="Minimum quota threshold slider">
+                        <div class="flex items-center gap-1">
+                            <input type="number" min="0" max="99" step="1"
+                                class="input input-sm input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                :value="thresholdDialog.quotaThreshold ?? ''"
+                                placeholder="-"
+                                @input="thresholdDialog.quotaThreshold = $event.target.value === '' ? null : parseInt($event.target.value)"
+                                aria-label="Minimum quota threshold value">
+                            <span class="text-gray-500 text-xs">%</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-600 mt-1">
+                        Leave empty to use the global threshold from Settings.
+                    </p>
+                </div>
+
+                <!-- Clear Button -->
+                <button class="btn btn-sm btn-ghost text-gray-500 hover:text-gray-300 w-full"
+                        @click="clearAccountThreshold()"
+                        x-show="thresholdDialog.quotaThreshold !== null">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Reset to Default</span>
+                </button>
+
+                <!-- Per-Model Thresholds -->
+                <div class="pt-4 border-t border-space-border/30">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs text-gray-400 font-semibold">Per-Model Overrides</span>
+                        <button class="btn btn-xs btn-ghost text-gray-500 hover:text-neon-yellow gap-1"
+                                @click="addModelThreshold()">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+
+                    <!-- Model threshold list -->
+                    <div class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        <template x-for="(threshold, modelId) in thresholdDialog.modelQuotaThresholds" :key="modelId">
+                            <div class="flex items-center gap-2 bg-space-800/50 rounded px-2 py-1.5">
+                                <span class="text-xs text-gray-300 flex-1 truncate font-mono" x-text="modelId"></span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" min="0" max="99" step="1"
+                                        class="input input-xs input-bordered w-14 bg-space-900 border-space-border text-white font-mono text-center"
+                                        :value="threshold"
+                                        @input="updateModelThreshold(modelId, $event.target.value)"
+                                        aria-label="Model threshold">
+                                    <span class="text-gray-500 text-[10px]">%</span>
+                                </div>
+                                <button class="btn btn-xs btn-ghost text-gray-500 hover:text-red-400 px-1"
+                                        @click="removeModelThreshold(modelId)">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </template>
+
+                        <template x-if="Object.keys(thresholdDialog.modelQuotaThresholds).length === 0">
+                            <p class="text-[10px] text-gray-600 text-center py-2">
+                                No per-model overrides configured.
+                            </p>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Add Model Dialog (inline) -->
+                <div x-show="thresholdDialog.addingModel" class="pt-3 border-t border-space-border/30" x-cloak>
+                    <div class="flex gap-2">
+                        <select class="select select-sm select-bordered flex-1 bg-space-800 border-space-border text-white text-xs"
+                                x-model="thresholdDialog.newModelId">
+                            <option value="">Select model...</option>
+                            <template x-for="model in getAvailableModelsForThreshold()" :key="model">
+                                <option :value="model" x-text="model"></option>
+                            </template>
+                        </select>
+                        <input type="number" min="0" max="99" step="1"
+                            class="input input-sm input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                            x-model="thresholdDialog.newModelThreshold"
+                            placeholder="10">
+                        <span class="text-gray-500 text-xs self-center">%</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn btn-xs btn-ghost text-gray-500 flex-1"
+                                @click="thresholdDialog.addingModel = false">
+                            Cancel
+                        </button>
+                        <button class="btn btn-xs bg-neon-yellow text-black flex-1"
+                                @click="confirmAddModelThreshold()"
+                                :disabled="!thresholdDialog.newModelId">
+                            Add Override
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-ghost hover:bg-white/10">Cancel</button>
+                </form>
+                <button class="btn bg-neon-yellow hover:bg-yellow-600 border-none text-black font-semibold"
+                        @click="saveAccountThreshold()"
+                        :disabled="thresholdDialog.saving"
+                        :class="{ 'loading': thresholdDialog.saving }">
+                    <span>Save</span>
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
         </form>
     </dialog>
 </div>

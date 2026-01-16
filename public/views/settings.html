@@ -1095,6 +1095,38 @@
                                     x-text="$store.global.t('maxWaitDesc')">If all accounts are rate-limited longer than this, error immediately.</p>
                             </div>
                         </div>
+
+                        <!-- Quota Threshold Settings -->
+                        <div class="space-y-4 pt-2 border-t border-space-border/10">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Quota Protection</span>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs">Minimum Quota Level</span>
+                                    <span class="label-text-alt font-mono text-neon-yellow text-xs font-semibold"
+                                        x-text="(serverConfig.quotaThreshold || 0) > 0 ? Math.round((serverConfig.quotaThreshold || 0) * 100) + '%' : 'Off'"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="0" max="99" step="1"
+                                        class="custom-range custom-range-yellow flex-1"
+                                        :value="Math.round((serverConfig.quotaThreshold || 0) * 100)"
+                                        :style="`background-size: ${(serverConfig.quotaThreshold || 0) * 100}% 100%`"
+                                        @input="toggleQuotaThreshold($event.target.value)"
+                                        aria-label="Minimum quota level slider">
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" min="0" max="99" step="1"
+                                            class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                            :value="Math.round((serverConfig.quotaThreshold || 0) * 100)"
+                                            @change="toggleQuotaThreshold($event.target.value)"
+                                            aria-label="Minimum quota level value">
+                                        <span class="text-gray-500 text-xs">%</span>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight">Switch to another account when quota drops below this level. Set to 0% to disable.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

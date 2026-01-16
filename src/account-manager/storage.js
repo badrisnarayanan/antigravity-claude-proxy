@@ -34,7 +34,10 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             modelRateLimits: acc.modelRateLimits || {},
             // New fields for subscription and quota tracking
             subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
-            quota: acc.quota || { models: {}, lastChecked: null }
+            quota: acc.quota || { models: {}, lastChecked: null },
+            // Quota threshold settings (per-account and per-model overrides)
+            quotaThreshold: acc.quotaThreshold,  // undefined means use global
+            modelQuotaThresholds: acc.modelQuotaThresholds || {}
         }));
 
         const settings = config.settings || {};
@@ -123,7 +126,10 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 lastUsed: acc.lastUsed,
                 // Persist subscription and quota data
                 subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
-                quota: acc.quota || { models: {}, lastChecked: null }
+                quota: acc.quota || { models: {}, lastChecked: null },
+                // Persist quota threshold settings
+                quotaThreshold: acc.quotaThreshold,  // undefined omitted from JSON
+                modelQuotaThresholds: Object.keys(acc.modelQuotaThresholds || {}).length > 0 ? acc.modelQuotaThresholds : undefined
             })),
             settings: settings,
             activeIndex: activeIndex

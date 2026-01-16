@@ -182,6 +182,125 @@ window.Components.accountManager = () => ({
         document.getElementById('quota_modal').showModal();
     },
 
+    // Threshold settings
+    thresholdDialog: {
+        email: '',
+        quotaThreshold: null,  // null means use global
+        modelQuotaThresholds: {},
+        saving: false,
+        addingModel: false,
+        newModelId: '',
+        newModelThreshold: 10
+    },
+
+    openThresholdModal(account) {
+        this.thresholdDialog = {
+            email: account.email,
+            // Convert from fraction (0-1) to percentage (0-99) for display
+            quotaThreshold: account.quotaThreshold !== undefined ? Math.round(account.quotaThreshold * 100) : null,
+            modelQuotaThresholds: Object.fromEntries(
+                Object.entries(account.modelQuotaThresholds || {}).map(([k, v]) => [k, Math.round(v * 100)])
+            ),
+            saving: false,
+            addingModel: false,
+            newModelId: '',
+            newModelThreshold: 10
+        };
+        document.getElementById('threshold_modal').showModal();
+    },
+
+    async saveAccountThreshold() {
+        const store = Alpine.store('global');
+        this.thresholdDialog.saving = true;
+
+        try {
+            // Convert percentage back to fraction
+            const quotaThreshold = this.thresholdDialog.quotaThreshold !== null && this.thresholdDialog.quotaThreshold !== ''
+                ? parseFloat(this.thresholdDialog.quotaThreshold) / 100
+                : null;
+
+            // Convert model thresholds from percentage to fraction
+            const modelQuotaThresholds = {};
+            for (const [modelId, pct] of Object.entries(this.thresholdDialog.modelQuotaThresholds)) {
+                modelQuotaThresholds[modelId] = parseFloat(pct) / 100;
+            }
+
+            const { response, newPassword } = await window.utils.request(
+                `/api/accounts/${encodeURIComponent(this.thresholdDialog.email)}`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quotaThreshold, modelQuotaThresholds })
+                },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast('Settings saved', 'success');
+                Alpine.store('data').fetchData();
+                document.getElementById('threshold_modal').close();
+            } else {
+                throw new Error(data.error || 'Failed to save settings');
+            }
+        } catch (e) {
+            store.showToast('Failed to save settings: ' + e.message, 'error');
+        } finally {
+            this.thresholdDialog.saving = false;
+        }
+    },
+
+    clearAccountThreshold() {
+        this.thresholdDialog.quotaThreshold = null;
+    },
+
+    // Per-model threshold methods
+    addModelThreshold() {
+        this.thresholdDialog.addingModel = true;
+        this.thresholdDialog.newModelId = '';
+        this.thresholdDialog.newModelThreshold = 10;
+    },
+
+    updateModelThreshold(modelId, value) {
+        const numValue = parseInt(value);
+        if (!isNaN(numValue) && numValue >= 0 && numValue <= 99) {
+            this.thresholdDialog.modelQuotaThresholds[modelId] = numValue;
+        }
+    },
+
+    removeModelThreshold(modelId) {
+        delete this.thresholdDialog.modelQuotaThresholds[modelId];
+    },
+
+    confirmAddModelThreshold() {
+        const modelId = this.thresholdDialog.newModelId;
+        const threshold = parseInt(this.thresholdDialog.newModelThreshold) || 10;
+
+        if (modelId && threshold >= 0 && threshold <= 99) {
+            this.thresholdDialog.modelQuotaThresholds[modelId] = threshold;
+            this.thresholdDialog.addingModel = false;
+            this.thresholdDialog.newModelId = '';
+            this.thresholdDialog.newModelThreshold = 10;
+        }
+    },
+
+    getAvailableModelsForThreshold() {
+        // Get models from data store, exclude already configured ones
+        const allModels = Alpine.store('data').models || [];
+        const configured = Object.keys(this.thresholdDialog.modelQuotaThresholds);
+        return allModels.filter(m => !configured.includes(m));
+    },
+
+    getEffectiveThreshold(account) {
+        // Return display string for effective threshold
+        if (account.quotaThreshold !== undefined) {
+            return Math.round(account.quotaThreshold * 100) + '%';
+        }
+        // If no per-account threshold, show that it uses global
+        return 'Global';
+    },
+
     /**
      * Get main model quota for display
      * Prioritizes flagship models (Opus > Sonnet > Flash)
