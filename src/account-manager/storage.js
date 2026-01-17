@@ -34,7 +34,9 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             modelRateLimits: acc.modelRateLimits || {},
             // New fields for subscription and quota tracking
             subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
-            quota: acc.quota || { models: {}, lastChecked: null }
+            quota: acc.quota || { models: {}, lastChecked: null },
+            // Health tracking for account × model combinations
+            health: acc.health || {}
         }));
 
         const settings = config.settings || {};
@@ -123,7 +125,9 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 lastUsed: acc.lastUsed,
                 // Persist subscription and quota data
                 subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
-                quota: acc.quota || { models: {}, lastChecked: null }
+                quota: acc.quota || { models: {}, lastChecked: null },
+                // Persist health tracking data
+                health: acc.health || {}
             })),
             settings: settings,
             activeIndex: activeIndex

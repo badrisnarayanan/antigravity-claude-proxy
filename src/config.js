@@ -15,7 +15,18 @@ const DEFAULT_CONFIG = {
     persistTokenCache: false,
     defaultCooldownMs: 10000,  // 10 seconds
     maxWaitBeforeErrorMs: 120000, // 2 minutes
-    modelMapping: {}
+    modelMapping: {},
+    // Health Management Settings
+    health: {
+        autoDisable: true,
+        autoDisableThreshold: 5,     // consecutive failures
+        healthThresholdWarn: 70,     // % health score
+        healthThresholdCritical: 50, // % health score
+        autoRecovery: true,
+        autoRecoveryHours: 24,
+        eventRetentionDays: 7,
+        eventMaxCount: 10000
+    }
 };
 
 // Config locations

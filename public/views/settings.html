@@ -47,6 +47,16 @@
                     </svg>
                     <span x-text="$store.global.t('tabModels')">Models</span>
                 </button>
+                <button @click="activeTab = 'health'"
+                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+                    :class="activeTab === 'health' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span x-text="$store.global.t('tabHealth') || 'Health'">Health</span>
+                </button>
                 <button @click="activeTab = 'server'"
                     class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
                     :class="activeTab === 'server' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
@@ -846,7 +856,144 @@
                 </div>
             </div>
 
-            <!-- Tab 4: Server Configuration -->
+            <!-- Tab 4: Health Management -->
+            <div x-show="activeTab === 'health'" x-data="window.Components.serverConfig()"
+                class="space-y-6 max-w-3xl animate-fade-in">
+
+                <!-- Auto Disable Settings -->
+                <div class="view-card border-neon-green/20 bg-neon-green/5">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-neon-green/10 flex items-center justify-center text-neon-green">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white mb-0.5" x-text="$store.global.t('tabHealth')">Auto-Disable System</h4>
+                            <p class="text-xs text-gray-500" x-text="$store.global.t('healthAutoDisableDesc')">Automatically disable failing account-model pairs</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="form-control">
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <span class="text-sm font-medium text-gray-300" x-text="$store.global.t('healthAutoDisable')">Enable Auto-Disable</span>
+                                <input type="checkbox" class="toggle toggle-success toggle-sm"
+                                    :checked="healthConfig.autoDisable"
+                                    @change="updateHealthConfig({ autoDisable: $el.checked })"
+                                    aria-label="Enable Auto-Disable toggle">
+                            </label>
+                            <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthAutoDisableDesc')">
+                                When enabled, models will be automatically disabled for an account after consecutive failures.
+                            </p>
+                        </div>
+
+                        <div class="h-px bg-space-border/30 my-4"></div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthThreshold')">Failure Threshold</span>
+                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="healthConfig.autoDisableThreshold"></span>
+                                </label>
+                                <input type="range" min="1" max="20" class="range range-xs range-success"
+                                    :value="healthConfig.autoDisableThreshold"
+                                    @change="setHealthThreshold($el.value)"
+                                    title="Set failure threshold"
+                                    aria-label="Failure threshold slider">
+                                <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthThresholdDesc')">Consecutive failures before disabling</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthAutoRecovery')">Auto-Recovery (Hours)</span>
+                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="healthConfig.autoRecoveryHours + 'h'"></span>
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" class="checkbox checkbox-xs checkbox-success"
+                                        :checked="healthConfig.autoRecovery"
+                                        @change="updateHealthConfig({ autoRecovery: $el.checked })"
+                                        title="Enable or disable auto-recovery"
+                                        aria-label="Enable auto-recovery">
+                                    <input type="range" min="1" max="72" class="range range-xs range-success flex-1"
+                                        :disabled="!healthConfig.autoRecovery"
+                                        :value="healthConfig.autoRecoveryHours"
+                                        @change="setRecoveryHours($el.value)"
+                                        title="Adjust auto-recovery hours"
+                                        aria-label="Auto-recovery hours">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthAutoRecoveryDesc')">Time before re-enabling a disabled model</p>
+                            </div>
+                        </div>
+
+                        <div class="h-px bg-space-border/30 my-4"></div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthWarnThreshold')">Warning Threshold (%)</span>
+                                    <span class="label-text-alt font-mono text-yellow-500 text-xs font-bold" x-text="healthConfig.healthThresholdWarn + '%'"></span>
+                                </label>
+                                <input type="range" min="1" max="100" class="range range-xs range-warning"
+                                    :value="healthConfig.healthThresholdWarn"
+                                    @change="setWarnThreshold($el.value)"
+                                    title="Set health warning threshold"
+                                    aria-label="Warning threshold">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthCriticalThreshold')">Critical Threshold (%)</span>
+                                    <span class="label-text-alt font-mono text-red-500 text-xs font-bold" x-text="healthConfig.healthThresholdCritical + '%'"></span>
+                                </label>
+                                <input type="range" min="1" max="100" class="range range-xs range-error"
+                                    :value="healthConfig.healthThresholdCritical"
+                                    @change="setCriticalThreshold($el.value)"
+                                    title="Set health critical threshold"
+                                    aria-label="Critical threshold">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Retention -->
+                <div class="view-card border-space-border/50">
+                    <h4 class="text-sm font-bold text-gray-200 mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span x-text="$store.global.t('healthDataRetention')">Data Retention</span>
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-control">
+                            <label class="label pt-0">
+                                <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthMaxEvents')">Max Events (Log)</span>
+                                <span class="label-text-alt font-mono text-xs font-bold" x-text="healthConfig.eventMaxCount"></span>
+                            </label>
+                            <input type="range" min="1000" max="50000" step="1000" class="range range-xs range-secondary"
+                                :value="healthConfig.eventMaxCount"
+                                @change="setMaxEvents($el.value)"
+                                title="Set maximum events count"
+                                aria-label="Max events count slider">
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label pt-0">
+                                <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthEventRetention')">Event Retention (Days)</span>
+                                <span class="label-text-alt font-mono text-xs font-bold" x-text="healthConfig.eventRetentionDays + 'd'"></span>
+                            </label>
+                            <input type="range" min="1" max="30" class="range range-xs range-secondary"
+                                :value="healthConfig.eventRetentionDays"
+                                @change="setRetentionDays($el.value)"
+                                title="Set event retention days"
+                                aria-label="Event retention days slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: Server Configuration -->
             <div x-show="activeTab === 'server'" x-data="window.Components.serverConfig()"
                 class="space-y-6 max-w-2xl animate-fade-in pb-10">
                 <!-- 🔐 Security Section -->
@@ -868,7 +1015,7 @@
                                     Authentication for accessing this dashboard</p>
                             </div>
                         </div>
-                        <button
+                        <button type="button"
                             class="btn btn-sm border-neon-yellow/30 bg-transparent text-neon-yellow hover:bg-neon-yellow hover:text-black transition-all gap-2"
                             @click="showPasswordDialog()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
@@ -1156,9 +1303,9 @@
                         </div>
 
                         <div class="flex justify-end gap-2 mt-6">
-                            <button class="btn btn-sm btn-ghost text-gray-400" @click="hidePasswordDialog()"
+                            <button type="button" class="btn btn-sm btn-ghost text-gray-400" @click="hidePasswordDialog()"
                                 x-text="$store.global.t('cancel')">Cancel</button>
-                            <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white"
+                            <button type="button" class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white"
                                 @click="changePassword()" x-text="$store.global.t('changePassword')">
                                 Change Password
                             </button>

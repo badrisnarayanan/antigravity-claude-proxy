@@ -20,6 +20,7 @@ import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
 import { streamSSEResponse } from './sse-streamer.js';
 import { getFallbackModel } from '../fallback-config.js';
 import crypto from 'crypto';
+import eventManager from '../modules/event-manager.js';
 
 /**
  * Send a streaming request to Cloud Code with multi-account support
@@ -61,6 +62,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         const fallbackModel = getFallbackModel(model);
                         if (fallbackModel) {
                             logger.warn(`[CloudCode] All accounts exhausted for ${model} (${formatDuration(minWaitMs)} wait). Attempting fallback to ${fallbackModel} (streaming)`);
+                            eventManager.recordFallback(model, fallbackModel, 'All accounts exhausted', { waitMs: minWaitMs, streaming: true });
                             const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
                             yield* sendMessageStream(fallbackRequest, accountManager, false);
                             return;
@@ -134,6 +136,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 // Long-term quota exhaustion (> 10s) - switch to next account
                                 logger.info(`[CloudCode] Quota exhausted for ${account.email} (${formatDuration(resetMs)}), switching account...`);
                                 accountManager.markRateLimited(account.email, resetMs, model);
+                                eventManager.recordRateLimit(account.email, model, { resetMs, statusCode: 429, streaming: true });
                                 throw new Error(`QUOTA_EXHAUSTED: ${errorText}`);
                             } else {
                                 // Short-term rate limit (<= 10s) - wait and retry once
@@ -154,6 +157,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                         // Stream the retry response
                                         yield* streamSSEResponse(retryResponse, anthropicRequest.model);
                                         logger.debug('[CloudCode] Stream completed after retry');
+                                        // Record successful health after retry
+                                        accountManager.recordHealth(account.email, model, true);
                                         return;
                                     }
 
@@ -162,10 +167,12 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                     const retryResetMs = parseResetTime(retryResponse, retryErrorText);
                                     logger.warn(`[CloudCode] Retry also failed, marking and switching...`);
                                     accountManager.markRateLimited(account.email, retryResetMs || waitMs, model);
+                                    eventManager.recordRateLimit(account.email, model, { resetMs: retryResetMs || waitMs, statusCode: 429, afterRetry: true, streaming: true });
                                     throw new Error(`RATE_LIMITED_AFTER_RETRY: ${retryErrorText}`);
                                 } else {
                                     // Already retried once, mark and switch
                                     accountManager.markRateLimited(account.email, waitMs, model);
+                                    eventManager.recordRateLimit(account.email, model, { resetMs: waitMs, statusCode: 429, streaming: true });
                                     throw new Error(`RATE_LIMITED: ${errorText}`);
                                 }
                             }
@@ -189,6 +196,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         try {
                             yield* streamSSEResponse(currentResponse, anthropicRequest.model);
                             logger.debug('[CloudCode] Stream completed');
+                            // Record successful health
+                            accountManager.recordHealth(account.email, model, true);
                             return;
                         } catch (streamError) {
                             // Only retry on EmptyResponseError
@@ -276,29 +285,36 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
         } catch (error) {
             if (isRateLimitError(error)) {
-                // Rate limited - already marked, continue to next account
+                // Rate limited - already marked, record health failure and continue to next account
+                accountManager.recordHealth(account.email, model, false, { message: 'Rate limited', code: 429 });
                 logger.info(`[CloudCode] Account ${account.email} rate-limited, trying next...`);
                 continue;
             }
             if (isAuthError(error)) {
-                // Auth invalid - already marked, continue to next account
+                // Auth invalid - already marked, record health failure and continue to next account
+                accountManager.recordHealth(account.email, model, false, { message: 'Auth error', code: 401 });
+                eventManager.recordAuthFailure(account.email, model, { error: error.message, streaming: true });
                 logger.warn(`[CloudCode] Account ${account.email} has invalid credentials, trying next...`);
                 continue;
             }
             // Handle 5xx errors
             if (error.message.includes('API error 5') || error.message.includes('500') || error.message.includes('503')) {
+                accountManager.recordHealth(account.email, model, false, { message: 'Server error', code: 500 });
                 logger.warn(`[CloudCode] Account ${account.email} failed with 5xx stream error, trying next...`);
                 accountManager.pickNext(model);
                 continue;
             }
 
             if (isNetworkError(error)) {
+                accountManager.recordHealth(account.email, model, false, { message: 'Network error', code: 'NETWORK' });
                 logger.warn(`[CloudCode] Network error for ${account.email} (stream), trying next account... (${error.message})`);
                 await sleep(1000);
                 accountManager.pickNext(model);
                 continue;
             }
 
+            // Record health failure for other errors
+            accountManager.recordHealth(account.email, model, false, error);
             throw error;
         }
     }
@@ -308,6 +324,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
         const fallbackModel = getFallbackModel(model);
         if (fallbackModel) {
             logger.warn(`[CloudCode] All retries exhausted for ${model}. Attempting fallback to ${fallbackModel} (streaming)`);
+            eventManager.recordFallback(model, fallbackModel, 'All retries exhausted', { streaming: true });
             const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
             yield* sendMessageStream(fallbackRequest, accountManager, false);
             return;

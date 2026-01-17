@@ -9,6 +9,7 @@ import { MAX_WAIT_BEFORE_ERROR_MS } from '../constants.js';
 import { formatDuration } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { clearExpiredLimits, getAvailableAccounts } from './rate-limits.js';
+import { isModelUsable as isModelHealthy } from './health.js';
 
 /**
  * Check if an account is usable for a specific model
@@ -21,6 +22,11 @@ function isAccountUsable(account, modelId) {
 
     // WebUI: Skip disabled accounts
     if (account.enabled === false) return false;
+
+    // Health check: Skip disabled account×model combinations
+    if (modelId && !isModelHealthy(account, modelId)) {
+        return false;
+    }
 
     if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {
         const limit = account.modelRateLimits[modelId];

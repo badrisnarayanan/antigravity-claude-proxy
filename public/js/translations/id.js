@@ -84,6 +84,7 @@ window.translations.id = {
     tabInterface: "Tampilan",
     tabClaude: "Claude CLI",
     tabModels: "Model",
+    tabHealth: "Kesehatan",
     tabServer: "Server",
 
     // Dashboard
@@ -326,6 +327,20 @@ window.translations.id = {
     resetsIn: "Reset dalam {time}",
     noQuotaData: "Data kuota belum tersedia untuk akun ini.",
 
+    // Health Management
+    healthAutoDisable: "Aktifkan Penonaktifan Otomatis",
+    healthAutoDisableDesc: "Secara otomatis menonaktifkan model untuk akun setelah kegagalan berturut-turut.",
+    healthThreshold: "Ambang Kegagalan",
+    healthThresholdDesc: "Kegagalan berturut-turut sebelum dinonaktifkan",
+    healthAutoRecovery: "Pemulihan Otomatis",
+    healthAutoRecoveryDesc: "Jam sebelum mengaktifkan kembali model yang dinonaktifkan",
+    healthWarnThreshold: "Ambang Peringatan (%)",
+    healthCriticalThreshold: "Ambang Kritis (%)",
+    healthDataRetention: "Retensi Data",
+    healthMaxEvents: "Maks. Peristiwa (Log)",
+    healthEventRetention: "Retensi Peristiwa (Hari)",
+    healthAnalyticsFetching: "MENGAMBIL ANALITIK KESEHATAN...",
+    healthProTip: "Manajemen kesehatan memungkinkan Anda untuk mengaktifkan atau menonaktifkan model tertentu secara individu untuk akun ini. Jika model dinonaktifkan secara otomatis karena kegagalan berulang, Anda dapat mereset metriknya di sini.",
     // Completed TODOs
     pageTitle: "Antigravity Console",
     live: "Live",

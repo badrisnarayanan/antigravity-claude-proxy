@@ -67,6 +67,7 @@ window.translations.tr = {
     tabInterface: "Arayüz",
     tabClaude: "Claude CLI",
     tabModels: "Modeller",
+    tabHealth: "Sağlık",
     tabServer: "Sunucu Ayarları",
     // Dashboard
     linkedAccounts: "Bağlı Hesaplar",
@@ -267,6 +268,20 @@ window.translations.tr = {
     quotaDistribution: "Kota Dağılımı",
     resetsIn: "{time} içinde sıfırlanır",
     noQuotaData: "Bu hesap için henüz kota verisi yok.",
+    // Health Management
+    healthAutoDisable: "Otomatik Devre Dışı Bırakmayı Etkinleştir",
+    healthAutoDisableDesc: "Ardışık hatalardan sonra bir hesap için modelleri otomatik olarak devre dışı bırak.",
+    healthThreshold: "Hata Eşiği",
+    healthThresholdDesc: "Devre dışı bırakmadan önceki ardışık hata sayısı",
+    healthAutoRecovery: "Otomatik Kurtarma",
+    healthAutoRecoveryDesc: "Devre dışı bırakılan bir modelin yeniden etkinleştirilmesinden önceki saat sayısı",
+    healthWarnThreshold: "Uyarı Eşiği (%)",
+    healthCriticalThreshold: "Kritik Eşik (%)",
+    healthDataRetention: "Veri Saklama",
+    healthMaxEvents: "Maks. Etkinlik (Günlük)",
+    healthEventRetention: "Etkinlik Saklama (Gün)",
+    healthAnalyticsFetching: "SAĞLIK ANALİZLERİ GETİRİLİYOR...",
+    healthProTip: "Sağlık yönetimi, bu hesap için belirli modelleri bireysel olarak etkinleştirmenize veya devre dışı bırakmanıza olanak tanır. Bir model tekrarlanan hatalar nedeniyle otomatik olarak devre dışı bırakılırsa, metriklerini buradan sıfırlayabilirsiniz.",
 
     // TODO: Missing translations - Hardcoded strings from HTML
     // pageTitle: "Antigravity Console",

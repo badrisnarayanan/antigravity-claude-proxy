@@ -13,6 +13,9 @@ window.Components.accountManager = () => ({
     reloading: false,
     selectedAccountEmail: '',
     selectedAccountLimits: {},
+    selectedAccountHealth: {}, // New: Health data
+    activeModalTab: 'quota',   // New: 'quota' | 'health'
+    healthLoading: false,
 
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
@@ -25,6 +28,26 @@ window.Components.accountManager = () => ({
             return acc.email.toLowerCase().includes(query) ||
                    (acc.projectId && acc.projectId.toLowerCase().includes(query)) ||
                    (acc.source && acc.source.toLowerCase().includes(query));
+        });
+    },
+
+    init() {
+        // Listen for external requests to open account details
+        window.addEventListener('open-account-details', (e) => {
+            const { email, tab } = e.detail;
+            const accounts = Alpine.store('data').accounts || [];
+            const account = accounts.find(a => a.email === email);
+
+            if (account) {
+                this.searchQuery = email; // Optional: filter list too
+                this.selectedAccountEmail = account.email;
+                this.selectedAccountLimits = account.limits || {};
+                this.selectedAccountHealth = {};
+                this.activeModalTab = tab || 'quota';
+
+                document.getElementById('quota_modal').showModal();
+                this.fetchAccountHealth(account.email);
+            }
         });
     },
 
@@ -46,83 +69,36 @@ window.Components.accountManager = () => ({
             const store = Alpine.store('global');
             store.showToast(store.t('refreshingAccount', { email }), 'info');
 
-            const { response, newPassword } = await window.utils.request(
-                `/api/accounts/${encodeURIComponent(email)}/refresh`,
-                { method: 'POST' },
-                store.webuiPassword
-            );
-            if (newPassword) store.webuiPassword = newPassword;
-
-            const data = await response.json();
-            if (data.status === 'ok') {
+            const result = await window.AccountActions.refreshAccount(email);
+            if (result.success) {
                 store.showToast(store.t('refreshedAccount', { email }), 'success');
-                Alpine.store('data').fetchData();
             } else {
-                throw new Error(data.error || store.t('refreshFailed'));
+                throw new Error(result.error);
             }
         }, this, 'refreshing', { errorMessage: 'Failed to refresh account' });
     },
 
     async toggleAccount(email, enabled) {
         const store = Alpine.store('global');
-        const password = store.webuiPassword;
+        const result = await window.AccountActions.toggleAccount(email, enabled);
 
-        // Optimistic update: immediately update UI
-        const dataStore = Alpine.store('data');
-        const account = dataStore.accounts.find(a => a.email === email);
-        if (account) {
-            account.enabled = enabled;
-        }
-
-        try {
-            const { response, newPassword } = await window.utils.request(`/api/accounts/${encodeURIComponent(email)}/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled })
-            }, password);
-            if (newPassword) store.webuiPassword = newPassword;
-
-            const data = await response.json();
-            if (data.status === 'ok') {
-                const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
-                store.showToast(store.t('accountToggled', { email, status }), 'success');
-                // Refresh to confirm server state
-                await dataStore.fetchData();
-            } else {
-                store.showToast(data.error || store.t('toggleFailed'), 'error');
-                // Rollback optimistic update on error
-                if (account) {
-                    account.enabled = !enabled;
-                }
-                await dataStore.fetchData();
-            }
-        } catch (e) {
-            store.showToast(store.t('toggleFailed') + ': ' + e.message, 'error');
-            // Rollback optimistic update on error
-            if (account) {
-                account.enabled = !enabled;
-            }
-            await dataStore.fetchData();
+        if (result.success) {
+            const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
+            store.showToast(store.t('accountToggled', { email, status }), 'success');
+        } else {
+            store.showToast(result.error, 'error');
         }
     },
 
     async fixAccount(email) {
         const store = Alpine.store('global');
         store.showToast(store.t('reauthenticating', { email }), 'info');
-        const password = store.webuiPassword;
-        try {
-            const urlPath = `/api/auth/url?email=${encodeURIComponent(email)}`;
-            const { response, newPassword } = await window.utils.request(urlPath, {}, password);
-            if (newPassword) store.webuiPassword = newPassword;
 
-            const data = await response.json();
-            if (data.status === 'ok') {
-                window.open(data.url, 'google_oauth', 'width=600,height=700,scrollbars=yes');
-            } else {
-                store.showToast(data.error || store.t('authUrlFailed'), 'error');
-            }
-        } catch (e) {
-            store.showToast(store.t('authUrlFailed') + ': ' + e.message, 'error');
+        const result = await window.AccountActions.getFixAccountUrl(email);
+        if (result.success) {
+            window.open(result.url, 'google_oauth', 'width=600,height=700,scrollbars=yes');
+        } else {
+            store.showToast(result.error, 'error');
         }
     },
 
@@ -135,22 +111,14 @@ window.Components.accountManager = () => ({
         const email = this.deleteTarget;
         return await window.ErrorHandler.withLoading(async () => {
             const store = Alpine.store('global');
+            const result = await window.AccountActions.deleteAccount(email);
 
-            const { response, newPassword } = await window.utils.request(
-                `/api/accounts/${encodeURIComponent(email)}`,
-                { method: 'DELETE' },
-                store.webuiPassword
-            );
-            if (newPassword) store.webuiPassword = newPassword;
-
-            const data = await response.json();
-            if (data.status === 'ok') {
+            if (result.success) {
                 store.showToast(store.t('deletedAccount', { email }), 'success');
-                Alpine.store('data').fetchData();
                 document.getElementById('delete_account_modal').close();
                 this.deleteTarget = '';
             } else {
-                throw new Error(data.error || store.t('deleteFailed'));
+                throw new Error(result.error);
             }
         }, this, 'deleting', { errorMessage: 'Failed to delete account' });
     },
@@ -158,28 +126,78 @@ window.Components.accountManager = () => ({
     async reloadAccounts() {
         return await window.ErrorHandler.withLoading(async () => {
             const store = Alpine.store('global');
+            const result = await window.AccountActions.reloadAccounts();
 
-            const { response, newPassword } = await window.utils.request(
-                '/api/accounts/reload',
-                { method: 'POST' },
-                store.webuiPassword
-            );
-            if (newPassword) store.webuiPassword = newPassword;
-
-            const data = await response.json();
-            if (data.status === 'ok') {
+            if (result.success) {
                 store.showToast(store.t('accountsReloaded'), 'success');
-                Alpine.store('data').fetchData();
             } else {
-                throw new Error(data.error || store.t('reloadFailed'));
+                throw new Error(result.error);
             }
         }, this, 'reloading', { errorMessage: 'Failed to reload accounts' });
     },
 
-    openQuotaModal(account) {
+    async openQuotaModal(account) {
         this.selectedAccountEmail = account.email;
         this.selectedAccountLimits = account.limits || {};
+        this.selectedAccountHealth = {}; // Reset
+        this.activeModalTab = 'quota';
+
         document.getElementById('quota_modal').showModal();
+
+        // Fetch health data in background
+        this.fetchAccountHealth(account.email);
+    },
+
+    async fetchAccountHealth(email) {
+        this.healthLoading = true;
+        try {
+            const response = await fetch(`/api/accounts/${encodeURIComponent(email)}/health`);
+            if (response.ok) {
+                const data = await response.json();
+                this.selectedAccountHealth = data.health || {};
+            }
+        } catch (e) {
+            console.error('Failed to fetch health:', e);
+        } finally {
+            this.healthLoading = false;
+        }
+    },
+
+    async toggleModelHealth(modelId, enabled) {
+        const email = this.selectedAccountEmail;
+        // Optimistic update
+        if (this.selectedAccountHealth[modelId]) {
+            this.selectedAccountHealth[modelId].manualDisabled = !enabled;
+            this.selectedAccountHealth[modelId].disabled = !enabled; // UI logic usually checks generic 'disabled'
+        }
+
+        const result = await window.AccountActions.toggleModelHealth(email, modelId, enabled);
+        if (result.success) {
+            // Update with server data
+            if (result.data && result.data.health) {
+                this.selectedAccountHealth = result.data.health;
+            } else {
+                // Refresh full health if partial update not available
+                this.fetchAccountHealth(email);
+            }
+        } else {
+            Alpine.store('global').showToast(result.error, 'error');
+            this.fetchAccountHealth(email); // Revert
+        }
+    },
+
+    async resetModelHealth(modelId = null) {
+        if (!confirm('Reset health metrics for this model? This will clear failure counts and enable the model.')) return;
+
+        const email = this.selectedAccountEmail;
+        const result = await window.AccountActions.resetHealth(email, modelId);
+
+        if (result.success) {
+            Alpine.store('global').showToast('Health metrics reset', 'success');
+            this.fetchAccountHealth(email);
+        } else {
+            Alpine.store('global').showToast(result.error, 'error');
+        }
     },
 
     /**
@@ -190,7 +208,7 @@ window.Components.accountManager = () => ({
      */
     getMainModelQuota(account) {
         const limits = account.limits || {};
-        
+
         const getQuotaVal = (id) => {
              const l = limits[id];
              if (!l) return -1;
@@ -200,11 +218,11 @@ window.Components.accountManager = () => ({
         };
 
         const validIds = Object.keys(limits).filter(id => getQuotaVal(id) >= 0);
-        
+
         if (validIds.length === 0) return { percent: null, model: '-' };
 
         const DEAD_THRESHOLD = 0.01;
-        
+
         const MODEL_TIERS = [
             { pattern: /\bopus\b/, aliveScore: 100, deadScore: 60 },
             { pattern: /\bsonnet\b/, aliveScore: 90, deadScore: 55 },
@@ -220,14 +238,14 @@ window.Components.accountManager = () => ({
             const lower = id.toLowerCase();
             const val = getQuotaVal(id);
             const isAlive = val > DEAD_THRESHOLD;
-            
+
             for (const tier of MODEL_TIERS) {
                 if (tier.pattern.test(lower)) {
                     if (tier.extraCheck && !tier.extraCheck(lower)) continue;
                     return isAlive ? tier.aliveScore : tier.deadScore;
                 }
             }
-            
+
             return isAlive ? 5 : 0;
         };
 
@@ -236,10 +254,36 @@ window.Components.accountManager = () => ({
 
         const bestModel = validIds[0];
         const val = getQuotaVal(bestModel);
-        
+
         return {
             percent: Math.round(val * 100),
             model: bestModel
         };
+    },
+
+    /**
+     * Get health score color class
+     */
+    getHealthColor(score) {
+        if (score >= 90) return 'text-neon-green';
+        if (score >= 70) return 'text-yellow-500';
+        return 'text-red-500';
+    },
+
+    /**
+     * Get relative time string
+     */
+    timeAgo(isoString) {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.round(diffMs / 60000);
+
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.round(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${Math.round(diffHours / 24)}d ago`;
     }
 });

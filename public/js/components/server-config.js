@@ -6,6 +6,7 @@ window.Components = window.Components || {};
 
 window.Components.serverConfig = () => ({
     serverConfig: {},
+    healthConfig: {}, // Health Management Config
     loading: false,
     advancedExpanded: false,
     debounceTimers: {}, // Store debounce timers for each config field
@@ -15,11 +16,17 @@ window.Components.serverConfig = () => ({
         if (this.activeTab === 'server') {
             this.fetchServerConfig();
         }
+        if (this.activeTab === 'health') {
+            this.fetchHealthConfig();
+        }
 
         // Watch local activeTab (from parent settings scope, skip initial trigger)
         this.$watch('activeTab', (tab, oldTab) => {
             if (tab === 'server' && oldTab !== undefined) {
                 this.fetchServerConfig();
+            }
+            if (tab === 'health' && oldTab !== undefined) {
+                this.fetchHealthConfig();
             }
         });
     },
@@ -38,7 +45,78 @@ window.Components.serverConfig = () => ({
         }
     },
 
+    async fetchHealthConfig() {
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/health/config', {}, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
 
+            if (!response.ok) throw new Error('Failed to fetch health config');
+            const data = await response.json();
+            this.healthConfig = data.config || {};
+        } catch (e) {
+            console.error('Failed to fetch health config:', e);
+        }
+    },
+
+    async updateHealthConfig(updates, optimistic = true) {
+        const store = Alpine.store('global');
+        const password = store.webuiPassword;
+
+        // Check if we should debounce this update (for numeric ranges)
+        const numericFields = ['autoDisableThreshold', 'autoRecoveryHours', 'healthThresholdWarn', 'healthThresholdCritical', 'eventMaxCount', 'eventRetentionDays'];
+        const firstField = Object.keys(updates)[0];
+
+        if (numericFields.includes(firstField)) {
+            // Clear existing debounce timer for health config
+            if (this.debounceTimers['health_config']) {
+                clearTimeout(this.debounceTimers['health_config']);
+            }
+
+            // Optimistic update for UI responsiveness
+            if (optimistic) {
+                this.healthConfig = { ...this.healthConfig, ...updates };
+            }
+
+            this.debounceTimers['health_config'] = setTimeout(async () => {
+                await this.executeHealthConfigUpdate(updates, store, password);
+            }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE || 500);
+            return;
+        }
+
+        // Immediate update for toggles
+        if (optimistic) {
+            this.healthConfig = { ...this.healthConfig, ...updates };
+        }
+        await this.executeHealthConfigUpdate(updates, store, password);
+    },
+
+    async executeHealthConfigUpdate(updates, store, password) {
+        try {
+            const { response, newPassword } = await window.utils.request('/api/health/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            }, password);
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                // Only show toast for explicit toggles, not sliders to avoid spam
+                const isToggle = typeof Object.values(updates)[0] === 'boolean';
+                if (isToggle) {
+                    store.showToast('Health configuration updated', 'success');
+                }
+                this.healthConfig = data.config;
+            } else {
+                throw new Error(data.error || 'Update failed');
+            }
+        } catch (e) {
+            store.showToast('Failed to update health config: ' + e.message, 'error');
+            this.fetchHealthConfig(); // Rollback to server state
+        }
+    },
 
     // Password management
     passwordDialog: {
@@ -248,5 +326,42 @@ window.Components.serverConfig = () => ({
         const { MAX_WAIT_MIN, MAX_WAIT_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxWaitBeforeErrorMs', value, 'Max Wait Threshold',
             (v) => window.Validators.validateTimeout(v, MAX_WAIT_MIN, MAX_WAIT_MAX));
+    },
+
+    // Health Management Setters with Validation
+    setHealthThreshold(value) {
+        const { HEALTH_THRESHOLD_MIN, HEALTH_THRESHOLD_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, HEALTH_THRESHOLD_MIN, HEALTH_THRESHOLD_MAX, 'Failure Threshold');
+        if (validation.isValid) this.updateHealthConfig({ autoDisableThreshold: validation.value });
+    },
+
+    setRecoveryHours(value) {
+        const { RECOVERY_HOURS_MIN, RECOVERY_HOURS_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, RECOVERY_HOURS_MIN, RECOVERY_HOURS_MAX, 'Recovery Hours');
+        if (validation.isValid) this.updateHealthConfig({ autoRecoveryHours: validation.value });
+    },
+
+    setWarnThreshold(value) {
+        const { HEALTH_SCORE_MIN, HEALTH_SCORE_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, HEALTH_SCORE_MIN, HEALTH_SCORE_MAX, 'Warning Threshold');
+        if (validation.isValid) this.updateHealthConfig({ healthThresholdWarn: validation.value });
+    },
+
+    setCriticalThreshold(value) {
+        const { HEALTH_SCORE_MIN, HEALTH_SCORE_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, HEALTH_SCORE_MIN, HEALTH_SCORE_MAX, 'Critical Threshold');
+        if (validation.isValid) this.updateHealthConfig({ healthThresholdCritical: validation.value });
+    },
+
+    setMaxEvents(value) {
+        const { MAX_EVENTS_MIN, MAX_EVENTS_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, MAX_EVENTS_MIN, MAX_EVENTS_MAX, 'Max Events');
+        if (validation.isValid) this.updateHealthConfig({ eventMaxCount: validation.value });
+    },
+
+    setRetentionDays(value) {
+        const { RETENTION_DAYS_MIN, RETENTION_DAYS_MAX } = window.AppConstants.VALIDATION;
+        const validation = window.Validators.validateRange(value, RETENTION_DAYS_MIN, RETENTION_DAYS_MAX, 'Retention Days');
+        if (validation.isValid) this.updateHealthConfig({ eventRetentionDays: validation.value });
     }
 });

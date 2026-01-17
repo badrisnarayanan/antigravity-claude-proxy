@@ -197,3 +197,72 @@ window.AccountActions.reloadAccounts = async function() {
 window.AccountActions.canDelete = function(account) {
     return account && account.source !== 'database';
 };
+
+/**
+ * 切换模型启用/禁用状态（健康管理）
+ * @param {string} email - 账号邮箱
+ * @param {string} modelId - 模型ID
+ * @param {boolean} enabled - 目标状态
+ * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+ */
+window.AccountActions.toggleModelHealth = async function(email, modelId, enabled) {
+    const store = Alpine.store('global');
+    try {
+        const { response, newPassword } = await window.utils.request(
+            `/api/accounts/${encodeURIComponent(email)}/models/${encodeURIComponent(modelId)}/toggle`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled })
+            },
+            store.webuiPassword
+        );
+
+        if (newPassword) store.webuiPassword = newPassword;
+
+        const data = await response.json();
+        if (data.status !== 'ok') {
+            return { success: false, error: data.error };
+        }
+
+        // Trigger data refresh to update UI
+        await Alpine.store('data').fetchData();
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * 重置账号健康状态
+ * @param {string} email - 账号邮箱
+ * @param {string|null} modelId - 模型ID (可选，null表示重置所有)
+ * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+ */
+window.AccountActions.resetHealth = async function(email, modelId = null) {
+    const store = Alpine.store('global');
+    try {
+        const { response, newPassword } = await window.utils.request(
+            `/api/accounts/${encodeURIComponent(email)}/health/reset`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId })
+            },
+            store.webuiPassword
+        );
+
+        if (newPassword) store.webuiPassword = newPassword;
+
+        const data = await response.json();
+        if (data.status !== 'ok') {
+            return { success: false, error: data.error };
+        }
+
+        // Trigger data refresh to update UI
+        await Alpine.store('data').fetchData();
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};

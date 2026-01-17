@@ -269,61 +269,192 @@
         </form>
     </dialog>
 
-    <!-- Quota Distribution Modal -->
+    <!-- Account Details Modal (Quota & Health) -->
     <dialog id="quota_modal" class="modal backdrop-blur-sm">
-        <div class="modal-box max-w-2xl w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6">
-            <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
-                <svg class="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span x-text="$store.global.t('quotaDistribution')">Quota Distribution</span>
-            </h3>
-            <p class="text-sm text-gray-500 font-mono mb-6" x-text="selectedAccountEmail"></p>
+        <div class="modal-box max-w-2xl w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-0 flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-6 pb-4 border-b border-white/5 bg-space-950/50">
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="font-bold text-xl text-white flex items-center gap-2">
+                        <svg class="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span x-text="$store.global.t('accountDetails') || 'Account Details'">Account Details</span>
+                    </h3>
+                    <form method="dialog">
+                        <button class="btn btn-sm btn-circle btn-ghost hover:bg-white/10 text-gray-500">✕</button>
+                    </form>
+                </div>
+                <p class="text-xs text-gray-500 font-mono select-all" x-text="selectedAccountEmail"></p>
+            </div>
 
-            <div class="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
-                <template x-for="(limit, modelId) in selectedAccountLimits" :key="modelId">
-                    <div class="p-3 bg-space-800/50 border border-space-border/30 rounded-lg">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-semibold text-gray-200" x-text="modelId"></span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-mono"
-                                      :class="limit.remainingFraction > 0.5 ? 'text-neon-green' : (limit.remainingFraction > 0.2 ? 'text-yellow-500' : 'text-red-500')"
-                                      x-text="Math.round(limit.remainingFraction * 100) + '%'"></span>
+            <!-- Tab Navigation -->
+            <div class="flex px-6 border-b border-white/5 bg-space-950/30">
+                <button type="button" @click="activeModalTab = 'quota'"
+                        class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 -mb-px"
+                        :class="activeModalTab === 'quota' ? 'text-neon-cyan border-neon-cyan bg-white/5' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-white/[0.02]'">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                        </svg>
+                        <span x-text="$store.global.t('quota')">Quota</span>
+                    </div>
+                </button>
+                <button type="button" @click="activeModalTab = 'health'"
+                        class="px-5 py-3 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 -mb-px"
+                        :class="activeModalTab === 'health' ? 'text-neon-green border-neon-green bg-white/5' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-white/[0.02]'">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span x-text="$store.global.t('health')">Health Status</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Modal Content Area -->
+            <div class="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar bg-space-900">
+
+                <!-- Tab 1: Quota Distribution -->
+                <div x-show="activeModalTab === 'quota'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 translate-x-4"
+                     x-transition:enter-end="opacity-100 translate-x-0">
+                    <div class="grid grid-cols-1 gap-4">
+                        <template x-for="(limit, modelId) in selectedAccountLimits" :key="modelId">
+                            <div class="p-3 bg-white/[0.03] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-semibold text-gray-200" x-text="modelId"></span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-mono"
+                                              :class="limit.remainingFraction > 0.5 ? 'text-neon-green' : (limit.remainingFraction > 0.2 ? 'text-yellow-500' : 'text-red-500')"
+                                              x-text="Math.round(limit.remainingFraction * 100) + '%'"></span>
+                                    </div>
+                                </div>
+
+                                <div class="w-full bg-gray-800/50 rounded-full h-2 mb-2 overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-700"
+                                         :class="limit.remainingFraction > 0.5 ? 'bg-neon-green/80' : (limit.remainingFraction > 0.2 ? 'bg-yellow-500/80' : 'bg-red-500/80')"
+                                         :style="`width: ${limit.remainingFraction * 100}%` ">
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider" x-text="$store.data.getModelFamily(modelId)"></span>
+                                    <template x-if="limit.resetTime">
+                                        <span class="text-[10px] text-yellow-500/60 font-mono italic"
+                                              x-text="$store.global.t('resetsIn', { time: window.utils.formatTimeUntil(limit.resetTime) })"></span>
+                                    </template>
+                                </div>
                             </div>
+                        </template>
+
+                        <template x-if="Object.keys(selectedAccountLimits).length === 0">
+                            <div class="text-center py-12 bg-white/[0.02] border border-dashed border-white/5 rounded-xl">
+                                <svg class="w-12 h-12 text-gray-700 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p class="text-sm text-gray-500" x-text="$store.global.t('noQuotaData')">No quota data available for this account yet.</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Health Management -->
+                <div x-show="activeModalTab === 'health'"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-x-4"
+                     x-transition:enter-end="opacity-100 translate-x-0"
+                     style="display: none;">
+
+                    <!-- Loading State -->
+                    <div x-show="healthLoading" class="flex flex-col items-center justify-center py-16 gap-3">
+                        <span class="loading loading-spinner loading-lg text-neon-green"></span>
+                        <span class="text-xs font-mono text-gray-500 animate-pulse">FETCHING HEALTH ANALYTICS...</span>
+                    </div>
+
+                    <!-- Health Content -->
+                    <div x-show="!healthLoading" class="space-y-4">
+                        <div class="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-4">
+                            <p class="text-[11px] text-blue-300/80 leading-relaxed">
+                                <span class="font-bold text-blue-400">Health Management:</span> Individually toggle models for this account. If a model is auto-disabled due to failures, you can reset it here.
+                            </p>
                         </div>
 
-                        <div class="w-full bg-gray-700 rounded-full h-2.5 mb-2 overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-500"
-                                 :class="limit.remainingFraction > 0.5 ? 'bg-neon-green' : (limit.remainingFraction > 0.2 ? 'bg-yellow-500' : 'bg-red-500')"
-                                 :style="`width: ${limit.remainingFraction * 100}%`">
-                            </div>
-                        </div>
+                        <div class="space-y-2">
+                            <template x-for="(h, modelId) in selectedAccountHealth" :key="modelId">
+                                <div class="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-lg hover:bg-white/[0.05] transition-all group">
+                                    <!-- Model Info -->
+                                    <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-bold text-gray-200 truncate" x-text="modelId"></span>
+                                            <span class="px-1.5 py-0.5 rounded-[2px] text-[9px] font-bold uppercase tracking-wider border"
+                                                  :class="getHealthColor(h.healthScore).replace('text-', 'bg-').replace('500', '500/10') + ' ' + getHealthColor(h.healthScore) + ' ' + getHealthColor(h.healthScore).replace('text-', 'border-').replace('500', '500/20')"
+                                                  x-text="Math.round(h.healthScore) + '%'"></span>
+                                        </div>
+                                        <div class="flex items-center gap-3 text-[10px] text-gray-500 font-mono">
+                                            <span>Success: <span class="text-neon-green" x-text="h.successCount"></span></span>
+                                            <span>Fail: <span class="text-red-400" x-text="h.failCount"></span></span>
+                                            <template x-if="h.consecutiveFailures > 0">
+                                                <span class="text-orange-400 font-bold">Streak: <span x-text="h.consecutiveFailures"></span></span>
+                                            </template>
+                                        </div>
+                                        <template x-if="h.lastError">
+                                            <div class="text-[9px] text-red-400/70 truncate mt-1 italic" :title="h.lastError.message">
+                                                Last Error: <span x-text="h.lastError.message"></span>
+                                            </div>
+                                        </template>
+                                    </div>
 
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] text-gray-500 uppercase font-bold" x-text="$store.data.getModelFamily(modelId)"></span>
-                            <template x-if="limit.resetTime">
-                                <span class="text-[10px] text-yellow-500/80 font-mono italic"
-                                      x-text="$store.global.t('resetsIn', { time: window.utils.formatTimeUntil(limit.resetTime) })"></span>
+                                    <!-- Actions -->
+                                    <div class="flex items-center gap-4 ml-4">
+                                        <!-- Reset Button -->
+                                        <button type="button"
+                                                @click="resetModelHealth(modelId)"
+                                                class="p-1.5 rounded bg-gray-800 border border-white/5 text-gray-400 hover:text-white hover:border-white/20 transition-all"
+                                                title="Reset Health Metrics">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Toggle Switch -->
+                                        <div class="flex flex-col items-center gap-1">
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" class="sr-only peer"
+                                                    :checked="!h.disabled && !h.manualDisabled"
+                                                    @change="toggleModelHealth(modelId, $el.checked)">
+                                                <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-500 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-green"></div>
+                                            </label>
+                                            <span class="text-[8px] font-bold uppercase tracking-tighter" :class="(!h.disabled && !h.manualDisabled) ? 'text-neon-green' : 'text-red-500'" x-text="(!h.disabled && !h.manualDisabled) ? 'ON' : 'OFF'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="Object.keys(selectedAccountHealth).length === 0">
+                                <div class="text-center py-12 text-gray-600 italic">
+                                    No health telemetry recorded for this account.
+                                </div>
                             </template>
                         </div>
                     </div>
-                </template>
-
-                <template x-if="Object.keys(selectedAccountLimits).length === 0">
-                    <div class="text-center py-8 text-gray-500" x-text="$store.global.t('noQuotaData')">
-                        No quota data available for this account yet.
-                    </div>
-                </template>
+                </div>
             </div>
 
-            <div class="modal-action">
+            <!-- Modal Footer -->
+            <div class="p-4 px-6 border-t border-white/5 flex justify-between items-center bg-space-950/50">
+                <div class="text-[10px] text-gray-500 font-mono italic">
+                    * Data refreshes automatically
+                </div>
                 <form method="dialog">
-                    <button class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
+                    <button type="button" class="btn btn-sm px-6 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-xs font-bold uppercase tracking-widest transition-all" @click="document.getElementById('quota_modal').close()">Close</button>
                 </form>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button x-text="$store.global.t('close')">close</button>
+            <button type="button" @click="document.getElementById('quota_modal').close()">close</button>
         </form>
     </dialog>
 </div>

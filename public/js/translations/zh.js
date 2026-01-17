@@ -67,6 +67,7 @@ window.translations.zh = {
     tabInterface: "界面设置",
     tabClaude: "Claude CLI",
     tabModels: "模型管理",
+    tabHealth: "健康管理",
     tabServer: "服务器设置",
     // Dashboard
     linkedAccounts: "已关联账号",
@@ -287,6 +288,20 @@ window.translations.zh = {
     resetsIn: "{time} 后重置",
     noQuotaData: "暂无此账号的配额数据。",
 
+    // 健康管理
+    healthAutoDisable: "启用自动禁用",
+    healthAutoDisableDesc: "当账号对特定模型的连续请求失败达到阈值时，自动暂时禁用该组合。",
+    healthThreshold: "失败阈值",
+    healthThresholdDesc: "触发自动禁用所需的连续失败次数",
+    healthAutoRecovery: "自动恢复",
+    healthAutoRecoveryDesc: "禁用组合在多少小时后自动尝试重新启用",
+    healthWarnThreshold: "警告阈值 (%)",
+    healthCriticalThreshold: "严重阈值 (%)",
+    healthDataRetention: "数据保留策略",
+    healthMaxEvents: "最大事件条数",
+    healthEventRetention: "事件保留天数",
+    healthAnalyticsFetching: "正在获取健康分析数据...",
+    healthProTip: "健康管理允许您为每个账号单独启用或禁用特定模型。如果某个模型因连续失败被系统自动禁用，您可以在此重置其指标并重新开启。",
     // TODO: Missing translations - Hardcoded strings from HTML
     // pageTitle: "Antigravity Console",
     // live: "Live",

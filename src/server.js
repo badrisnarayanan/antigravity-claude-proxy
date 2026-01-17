@@ -21,6 +21,9 @@ import { clearThinkingSignatureCache } from './format/signature-cache.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
+import eventManager from './modules/event-manager.js';
+import requestTracer from './modules/request-tracer.js';
+import issueDetector from './modules/issue-detector.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -99,6 +102,15 @@ app.use('/v1', (req, res, next) => {
 
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
+
+// Initialize event manager for structured event tracking
+eventManager.initialize();
+
+// Initialize request tracer for request lifecycle tracking
+requestTracer.initialize();
+
+// Initialize issue detector for problem pattern detection
+issueDetector.initialize();
 
 // Mount WebUI (optional web interface for account management)
 mountWebUI(app, __dirname, accountManager);
@@ -696,6 +708,10 @@ app.post('/v1/messages', async (req, res) => {
 
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
 
+        // Start request tracing
+        const requestId = requestTracer.generateRequestId();
+        requestTracer.startTrace(requestId, request.model, !!stream);
+
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
         if (logger.isDebugEnabled) {
             logger.debug('[API] Message structure:');
@@ -717,12 +733,27 @@ app.post('/v1/messages', async (req, res) => {
             // Flush headers immediately to start the stream
             res.flushHeaders();
 
+            // Track if client disconnected
+            let clientDisconnected = false;
+            res.on('close', () => {
+                clientDisconnected = true;
+            });
+
             try {
                 // Use the streaming generator with account manager
                 for await (const event of sendMessageStream(request, accountManager, FALLBACK_ENABLED)) {
+                    // Stop sending if client disconnected
+                    if (clientDisconnected) {
+                        logger.debug(`[API] Client disconnected during stream for ${requestId}`);
+                        break;
+                    }
                     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     // Flush after each event for real-time streaming
                     if (res.flush) res.flush();
+                }
+                // End trace with success (only if not disconnected)
+                if (!clientDisconnected) {
+                    requestTracer.endTrace(requestId, requestTracer.TraceStatus.SUCCESS);
                 }
                 res.end();
 
@@ -731,21 +762,45 @@ app.post('/v1/messages', async (req, res) => {
 
                 const { errorType, errorMessage } = parseError(streamError);
 
-                res.write(`event: error\ndata: ${JSON.stringify({
-                    type: 'error',
-                    error: { type: errorType, message: errorMessage }
-                })}\n\n`);
+                if (!clientDisconnected) {
+                    res.write(`event: error\ndata: ${JSON.stringify({
+                        type: 'error',
+                        error: { type: errorType, message: errorMessage }
+                    })}\n\n`);
+                }
                 res.end();
+                // Throw to be caught by finally block
+                throw streamError;
+
+            } finally {
+                // Always ensure trace is ended
+                const trace = requestTracer.getTrace(requestId);
+                if (trace && trace.status === requestTracer.TraceStatus.PENDING) {
+                    if (clientDisconnected) {
+                        requestTracer.endTrace(requestId, requestTracer.TraceStatus.FAILED, { error: 'Client disconnected' });
+                    } else {
+                        // Trace not ended yet - this means we had an error
+                        requestTracer.endTrace(requestId, requestTracer.TraceStatus.FAILED, { error: 'Stream interrupted' });
+                    }
+                }
             }
 
         } else {
             // Handle non-streaming response
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            // End trace with success
+            requestTracer.endTrace(requestId, requestTracer.TraceStatus.SUCCESS);
             res.json(response);
         }
 
     } catch (error) {
         logger.error('[API] Error:', error);
+
+        // End trace with failure (if we have a requestId in scope - only for non-streaming errors before response)
+        // Note: requestId may not be defined if error occurs before tracing starts
+        if (typeof requestId !== 'undefined') {
+            requestTracer.endTrace(requestId, requestTracer.TraceStatus.FAILED, { error: error.message });
+        }
 
         let { errorType, statusCode, errorMessage } = parseError(error);
 

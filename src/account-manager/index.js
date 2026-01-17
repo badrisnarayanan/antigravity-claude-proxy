@@ -29,6 +29,18 @@ import {
     shouldWaitForCurrentAccount as shouldWait,
     pickStickyAccount as selectSticky
 } from './selection.js';
+import {
+    recordResult as recordHealthResult,
+    isModelUsable as checkModelUsable,
+    toggleModel as toggleModelHealth,
+    resetHealth as resetModelHealth,
+    getAccountHealth as getAccHealth,
+    getModelHealth as getModHealth,
+    buildHealthMatrix as buildMatrix,
+    getHealthConfig as getHConfig,
+    setHealthConfig as setHConfig,
+    getHealthSummary as getHSummary
+} from './health.js';
 import { logger } from '../utils/logger.js';
 
 export class AccountManager {
@@ -324,6 +336,119 @@ export class AccountManager {
      */
     getAllAccounts() {
         return this.#accounts;
+    }
+
+    // ==================== Health Management ====================
+
+    /**
+     * Record the result of a request for health tracking
+     * @param {string} email - Account email
+     * @param {string} modelId - Model ID
+     * @param {boolean} success - Whether the request was successful
+     * @param {Object|null} error - Error object if failed
+     * @returns {Object|null} Updated health object
+     */
+    recordHealth(email, modelId, success, error = null) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account) return null;
+        const result = recordHealthResult(account, modelId, success, error);
+        this.saveToDisk();
+        return result;
+    }
+
+    /**
+     * Check if a model is usable for an account (not disabled by health)
+     * @param {string} email - Account email
+     * @param {string} modelId - Model ID
+     * @returns {boolean} True if model is usable
+     */
+    isModelHealthy(email, modelId) {
+        const account = this.#accounts.find(a => a.email === email);
+        return checkModelUsable(account, modelId);
+    }
+
+    /**
+     * Toggle manual enable/disable for an account × model combination
+     * @param {string} email - Account email
+     * @param {string} modelId - Model ID
+     * @param {boolean} enabled - Whether to enable or disable
+     * @returns {Object|null} Updated health object
+     */
+    toggleModelHealth(email, modelId, enabled) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account) return null;
+        const result = toggleModelHealth(account, modelId, enabled);
+        this.saveToDisk();
+        return result;
+    }
+
+    /**
+     * Reset health tracking for an account
+     * @param {string} email - Account email
+     * @param {string|null} modelId - Model ID (or null to reset all)
+     * @returns {boolean} True if reset was successful
+     */
+    resetHealth(email, modelId = null) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account) return false;
+        const result = resetModelHealth(account, modelId);
+        this.saveToDisk();
+        return result;
+    }
+
+    /**
+     * Get health data for an account
+     * @param {string} email - Account email
+     * @returns {Object} Health data for all models
+     */
+    getAccountHealth(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        return getAccHealth(account);
+    }
+
+    /**
+     * Get health data for a specific account × model combination
+     * @param {string} email - Account email
+     * @param {string} modelId - Model ID
+     * @returns {Object|null} Health data or null if not tracked
+     */
+    getModelHealth(email, modelId) {
+        const account = this.#accounts.find(a => a.email === email);
+        return getModHealth(account, modelId);
+    }
+
+    /**
+     * Build health matrix data for all accounts
+     * @param {Array} modelIds - Array of model IDs to include
+     * @returns {Object} Matrix data
+     */
+    buildHealthMatrix(modelIds) {
+        return buildMatrix(this.#accounts, modelIds);
+    }
+
+    /**
+     * Get health configuration
+     * @returns {Object} Health configuration
+     */
+    getHealthConfig() {
+        return getHConfig();
+    }
+
+    /**
+     * Update health configuration
+     * @param {Object} newConfig - New configuration values
+     * @returns {Object} Updated configuration
+     */
+    setHealthConfig(newConfig) {
+        return setHConfig(newConfig);
+    }
+
+    /**
+     * Get health summary statistics
+     * @returns {Object} Summary statistics
+     */
+    getHealthSummary() {
+        return getHSummary(this.#accounts);
     }
 }
 

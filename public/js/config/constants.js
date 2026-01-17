@@ -67,7 +67,23 @@ window.AppConstants.VALIDATION = {
 
     // Max wait threshold (1 - 30 minutes)
     MAX_WAIT_MIN: 60000,
-    MAX_WAIT_MAX: 1800000
+    MAX_WAIT_MAX: 1800000,
+
+    // Health Management validation ranges
+    HEALTH_THRESHOLD_MIN: 1,
+    HEALTH_THRESHOLD_MAX: 50,
+
+    RECOVERY_HOURS_MIN: 1,
+    RECOVERY_HOURS_MAX: 168, // 1 week
+
+    HEALTH_SCORE_MIN: 0,
+    HEALTH_SCORE_MAX: 100,
+
+    RETENTION_DAYS_MIN: 1,
+    RETENTION_DAYS_MAX: 90,
+
+    MAX_EVENTS_MIN: 100,
+    MAX_EVENTS_MAX: 100000
 };
 
 /**

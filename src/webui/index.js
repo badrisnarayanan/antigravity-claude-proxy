@@ -22,6 +22,9 @@ import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeCon
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
+import eventManager from '../modules/event-manager.js';
+import requestTracer from '../modules/request-tracer.js';
+import issueDetector from '../modules/issue-detector.js';
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -692,6 +695,141 @@ export function mountWebUI(app, dirname, accountManager) {
      * OAuth callbacks are now handled by the temporary server on port 51121
      * (same as CLI) to match Google OAuth Console's authorized redirect URIs
      */
+
+    // ==========================================
+    // Health Management API
+    // ==========================================
+
+    /**
+     * GET /api/health/matrix - Get account × model health matrix
+     */
+    app.get('/api/health/matrix', (req, res) => {
+        try {
+            // Get list of model IDs from query, or use common models
+            const modelIds = req.query.models
+                ? req.query.models.split(',')
+                : ['claude-opus-4-5-thinking', 'claude-sonnet-4-5-thinking', 'gemini-3-flash', 'gemini-3-pro-low', 'gemini-3-pro-high'];
+
+            const matrix = accountManager.buildHealthMatrix(modelIds);
+            res.json({ status: 'ok', matrix });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/accounts/:email/health - Get health data for an account
+     */
+    app.get('/api/accounts/:email/health', (req, res) => {
+        try {
+            const { email } = req.params;
+            const health = accountManager.getAccountHealth(email);
+            res.json({ status: 'ok', email, health });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/accounts/:email/models/:modelId/toggle - Toggle model enable/disable for account
+     */
+    app.post('/api/accounts/:email/models/:modelId/toggle', (req, res) => {
+        try {
+            const { email, modelId } = req.params;
+            const { enabled } = req.body;
+
+            if (typeof enabled !== 'boolean') {
+                return res.status(400).json({ status: 'error', error: 'enabled must be a boolean' });
+            }
+
+            const result = accountManager.toggleModelHealth(email, modelId, enabled);
+            if (result) {
+                // Record the health change event
+                eventManager.recordHealthChange(email, modelId, enabled ? 'enabled' : 'disabled');
+                res.json({ status: 'ok', email, modelId, health: result });
+            } else {
+                res.status(404).json({ status: 'error', error: 'Account not found' });
+            }
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/accounts/:email/health/reset - Reset health tracking for an account
+     */
+    app.post('/api/accounts/:email/health/reset', (req, res) => {
+        try {
+            const { email } = req.params;
+            const { modelId } = req.body; // Optional: reset specific model or all
+
+            const success = accountManager.resetHealth(email, modelId || null);
+            if (success) {
+                res.json({
+                    status: 'ok',
+                    message: modelId
+                        ? `Health reset for ${email} on ${modelId}`
+                        : `All health data reset for ${email}`
+                });
+            } else {
+                res.status(404).json({ status: 'error', error: 'Account not found' });
+            }
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/health/config - Get health management configuration
+     */
+    app.get('/api/health/config', (req, res) => {
+        try {
+            const healthConfig = accountManager.getHealthConfig();
+            res.json({ status: 'ok', config: healthConfig });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/health/config - Update health management configuration
+     */
+    app.post('/api/health/config', (req, res) => {
+        try {
+            const updates = req.body;
+            const newConfig = accountManager.setHealthConfig(updates);
+            res.json({ status: 'ok', config: newConfig });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/health/summary - Get health summary statistics
+     */
+    app.get('/api/health/summary', (req, res) => {
+        try {
+            const summary = accountManager.getHealthSummary();
+            res.json({ status: 'ok', summary });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    // ==========================================
+    // Event Management API (mounted from event-manager)
+    // ==========================================
+    eventManager.setupRoutes(app);
+
+    // ==========================================
+    // Request Tracing API (mounted from request-tracer)
+    // ==========================================
+    requestTracer.setupRoutes(app);
+
+    // ==========================================
+    // Issue Detection API (mounted from issue-detector)
+    // ==========================================
+    issueDetector.setupRoutes(app);
 
     logger.info('[WebUI] Mounted at /');
 }

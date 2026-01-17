@@ -478,7 +478,95 @@
                     x-text="displayMode === 'family' ? $store.global.t('selectFamilies') : $store.global.t('selectModels')">
                 </div>
             </div>
+            </div>
         </div>
     </div>
+
+    <!-- Health Matrix -->
+    <div class="view-card mt-6" x-data="healthMatrix">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-neon-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="text-sm font-bold text-white tracking-wide uppercase">Health Matrix</h3>
+                <span class="text-[10px] text-gray-500 font-mono" x-show="!loading && matrix.length > 0" x-text="'(' + matrix.length + ' accounts)'"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button @click="loadMatrix()" class="text-gray-500 hover:text-white transition-colors" :class="{'animate-spin': loading}" title="Refresh">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+                <button @click="expanded = !expanded" class="text-gray-500 hover:text-white transition-colors">
+                    <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': !expanded}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div x-show="expanded" x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 transform -translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div x-show="loading && matrix.length === 0" class="flex justify-center py-8">
+                <span class="loading loading-spinner loading-sm text-neon-green"></span>
+            </div>
+
+            <div x-show="!loading || matrix.length > 0" class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-xs font-mono border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="p-3 text-left text-gray-500 font-bold border-b border-space-border/50 sticky left-0 bg-space-900 z-10">Account</th>
+                            <template x-for="model in commonModels" :key="model">
+                                <th class="p-2 text-center text-gray-500 font-bold border-b border-space-border/50 whitespace-nowrap min-w-[100px]">
+                                    <span x-text="model.replace('claude-', 'C-').replace('gemini-', 'G-').replace('-thinking', '')"></span>
+                                </th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="row in matrix" :key="row.account">
+                            <tr class="border-b border-space-border/10 hover:bg-white/5 transition-colors group">
+                                <td class="p-3 text-gray-400 font-medium truncate max-w-[180px] sticky left-0 bg-space-900 group-hover:bg-space-800 transition-colors z-10 border-r border-space-border/30"
+                                    x-text="row.account"
+                                    :title="row.account"></td>
+                                <template x-for="cell in row.models" :key="cell.modelId">
+                                    <td class="p-1.5 text-center">
+                                        <div @click="viewDetails(row.account)"
+                                             class="w-full h-8 rounded flex items-center justify-center cursor-pointer border transition-all hover:scale-105 hover:shadow-lg relative group/cell"
+                                             :class="getHealthClass(cell)">
+                                            <span class="font-bold" x-text="formatScore(cell.healthScore)"></span>
+
+                                            <!-- Tooltip -->
+                                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/cell:block z-50 w-48 p-2 bg-space-900 border border-space-border rounded shadow-xl text-left pointer-events-none">
+                                                <div class="font-bold text-white mb-1" x-text="cell.modelId"></div>
+                                                <div class="text-[10px] space-y-0.5">
+                                                    <div class="flex justify-between"><span class="text-gray-500">Score:</span> <span class="text-white" x-text="cell.healthScore + '%'"></span></div>
+                                                    <div class="flex justify-between"><span class="text-gray-500">Success:</span> <span class="text-neon-green" x-text="cell.successCount"></span></div>
+                                                    <div class="flex justify-between"><span class="text-gray-500">Failures:</span> <span class="text-red-400" x-text="cell.failCount"></span></div>
+                                                    <div x-show="cell.disabled" class="text-red-500 font-bold mt-1">DISABLED</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </template>
+                            </tr>
+                        </template>
+                        <tr x-show="matrix.length === 0">
+                            <td :colspan="commonModels.length + 1" class="p-8 text-center text-gray-500">
+                                No health data available yet
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     </div> <!-- End of x-show="!$store.data.loading" -->
 </div>

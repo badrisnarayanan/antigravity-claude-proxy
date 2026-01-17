@@ -67,6 +67,7 @@ window.translations.en = {
     tabInterface: "Interface",
     tabClaude: "Claude CLI",
     tabModels: "Models",
+    tabHealth: "Health",
     tabServer: "Server Settings",
     // Dashboard
     linkedAccounts: "Linked Accounts",
@@ -286,6 +287,20 @@ window.translations.en = {
     quotaDistribution: "Quota Distribution",
     resetsIn: "Resets in {time}",
     noQuotaData: "No quota data available for this account yet.",
+    // Health Management
+    healthAutoDisable: "Enable Auto-Disable",
+    healthAutoDisableDesc: "Automatically disable models for an account after consecutive failures.",
+    healthThreshold: "Failure Threshold",
+    healthThresholdDesc: "Consecutive failures before disabling",
+    healthAutoRecovery: "Auto-Recovery",
+    healthAutoRecoveryDesc: "Hours before re-enabling a disabled model",
+    healthWarnThreshold: "Warning Threshold (%)",
+    healthCriticalThreshold: "Critical Threshold (%)",
+    healthDataRetention: "Data Retention",
+    healthMaxEvents: "Max Events (Log)",
+    healthEventRetention: "Event Retention (Days)",
+    healthAnalyticsFetching: "FETCHING HEALTH ANALYTICS...",
+    healthProTip: "Health management allows you to individually enable or disable specific models for this account. If a model is auto-disabled due to repeated failures, you can reset its metrics here.",
     // UI Elements
     pageTitle: "Antigravity Console",
     live: "Live",
