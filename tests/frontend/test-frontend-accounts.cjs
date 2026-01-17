@@ -129,6 +129,79 @@ const tests = [
         }
     },
     {
+        name: 'Accounts view has addAccountModal component',
+        async run() {
+            const res = await request('/views/accounts.html');
+            if (!res.data.includes('addAccountModal')) {
+                throw new Error('addAccountModal component not found');
+            }
+            return 'addAccountModal component present';
+        }
+    },
+    {
+        name: 'Accounts view has manual auth UI elements',
+        async run() {
+            const res = await request('/views/accounts.html');
+            const elements = ['initManualAuth', 'completeManualAuth', 'callbackInput'];
+            const missing = elements.filter(el => !res.data.includes(el));
+            if (missing.length > 0) {
+                throw new Error(`Missing manual auth elements: ${missing.join(', ')}`);
+            }
+            return 'All manual auth UI elements present';
+        }
+    },
+    {
+        name: 'Auth URL API endpoint works',
+        async run() {
+            const res = await request('/api/auth/url');
+            if (res.status !== 200) {
+                throw new Error(`Expected 200, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (data.status !== 'ok') {
+                throw new Error(`API returned status: ${data.status}`);
+            }
+            if (!data.url || !data.state) {
+                throw new Error('Missing url or state in response');
+            }
+            return `Auth URL generated with state: ${data.state.substring(0, 8)}...`;
+        }
+    },
+    {
+        name: 'Auth complete API validates required fields',
+        async run() {
+            const res = await request('/api/auth/complete', {
+                method: 'POST',
+                body: {}
+            });
+            if (res.status !== 400) {
+                throw new Error(`Expected 400 for missing fields, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (!data.error || !data.error.includes('Missing')) {
+                throw new Error('Expected error about missing fields');
+            }
+            return 'API validates required fields';
+        }
+    },
+    {
+        name: 'Auth complete API rejects invalid state',
+        async run() {
+            const res = await request('/api/auth/complete', {
+                method: 'POST',
+                body: { callbackInput: 'fake-code', state: 'invalid-state' }
+            });
+            if (res.status !== 400) {
+                throw new Error(`Expected 400 for invalid state, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (!data.error || !data.error.includes('not found')) {
+                throw new Error('Expected error about flow not found');
+            }
+            return 'API rejects invalid state';
+        }
+    },
+    {
         name: 'Account toggle API works',
         async run() {
             // First get an account

@@ -6,6 +6,7 @@
 import app from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
+import { config } from './config.js';
 import path from 'path';
 import os from 'os';
 
@@ -87,7 +88,7 @@ ${border}    ${align4(`Storage: ${CONFIG_DIR}`)}${border}
 ║                                                              ║
 ║  Usage with Claude Code:                                     ║
 ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${border}
-║    export ANTHROPIC_API_KEY=dummy                            ║
+${border}    ${align4(`export ANTHROPIC_API_KEY=${config.apiKey || 'dummy'}`)}${border}
 ║    claude                                                    ║
 ║                                                              ║
 ║  Add Google accounts:                                        ║
