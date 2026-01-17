@@ -71,19 +71,19 @@ window.AppConstants.VALIDATION = {
 
     // Health Management validation ranges
     HEALTH_THRESHOLD_MIN: 1,
-    HEALTH_THRESHOLD_MAX: 50,
+    HEALTH_THRESHOLD_MAX: 20, // Changed: max consecutive failures
 
     RECOVERY_HOURS_MIN: 1,
-    RECOVERY_HOURS_MAX: 168, // 1 week
+    RECOVERY_HOURS_MAX: 72, // 3 days max, matches slider
 
-    HEALTH_SCORE_MIN: 0,
+    HEALTH_SCORE_MIN: 1,
     HEALTH_SCORE_MAX: 100,
 
     RETENTION_DAYS_MIN: 1,
-    RETENTION_DAYS_MAX: 90,
+    RETENTION_DAYS_MAX: 30, // Matches slider max
 
-    MAX_EVENTS_MIN: 100,
-    MAX_EVENTS_MAX: 100000
+    MAX_EVENTS_MIN: 1000,  // Matches slider and backend validation
+    MAX_EVENTS_MAX: 50000  // Matches slider max
 };
 
 /**

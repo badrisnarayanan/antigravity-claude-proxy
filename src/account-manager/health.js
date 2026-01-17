@@ -21,7 +21,11 @@ const DEFAULT_CONFIG = {
     // Enable automatic disabling
     autoDisableEnabled: true,
     // Auto-recovery time in ms (24 hours)
-    autoRecoveryMs: 24 * 60 * 60 * 1000
+    autoRecoveryMs: 24 * 60 * 60 * 1000,
+    // Event retention: max number of events to keep
+    eventMaxCount: 10000,
+    // Event retention: max age in days
+    eventRetentionDays: 7
 };
 
 // Initialize config from main config.js or defaults
@@ -388,6 +392,22 @@ function validateHealthConfig(config) {
     if (config.autoDisableEnabled !== undefined) {
         if (typeof config.autoDisableEnabled !== 'boolean') {
             errors.push('autoDisableEnabled must be a boolean');
+        }
+    }
+
+    // Validate eventMaxCount (must be positive integer, 1000-50000)
+    if (config.eventMaxCount !== undefined) {
+        const val = config.eventMaxCount;
+        if (!Number.isInteger(val) || val < 1000 || val > 50000) {
+            errors.push('eventMaxCount must be an integer between 1000 and 50000');
+        }
+    }
+
+    // Validate eventRetentionDays (must be positive integer, 1-30)
+    if (config.eventRetentionDays !== undefined) {
+        const val = config.eventRetentionDays;
+        if (!Number.isInteger(val) || val < 1 || val > 30) {
+            errors.push('eventRetentionDays must be an integer between 1 and 30');
         }
     }
 

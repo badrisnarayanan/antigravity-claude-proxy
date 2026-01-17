@@ -879,8 +879,8 @@
                             <label class="flex items-center justify-between cursor-pointer">
                                 <span class="text-sm font-medium text-gray-300" x-text="$store.global.t('healthAutoDisable')">Enable Auto-Disable</span>
                                 <input type="checkbox" class="toggle toggle-success toggle-sm"
-                                    :checked="healthConfig.autoDisable"
-                                    @change="updateHealthConfig({ autoDisable: $el.checked })"
+                                    :checked="healthConfig.autoDisableEnabled"
+                                    @change="updateHealthConfig({ autoDisableEnabled: $el.checked })"
                                     aria-label="Enable Auto-Disable toggle">
                             </label>
                             <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthAutoDisableDesc')">
@@ -894,11 +894,11 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthThreshold')">Failure Threshold</span>
-                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="healthConfig.autoDisableThreshold"></span>
+                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="healthConfig.consecutiveFailureThreshold"></span>
                                 </label>
                                 <input type="range" min="1" max="20" class="range range-xs range-success"
-                                    :value="healthConfig.autoDisableThreshold"
-                                    @change="setHealthThreshold($el.value)"
+                                    :value="healthConfig.consecutiveFailureThreshold"
+                                    @change="setFailureThreshold($el.value)"
                                     title="Set failure threshold"
                                     aria-label="Failure threshold slider">
                                 <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthThresholdDesc')">Consecutive failures before disabling</p>
@@ -907,21 +907,13 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthAutoRecovery')">Auto-Recovery (Hours)</span>
-                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="healthConfig.autoRecoveryHours + 'h'"></span>
+                                    <span class="label-text-alt font-mono text-neon-green text-xs font-bold" x-text="getRecoveryHours() + 'h'"></span>
                                 </label>
-                                <div class="flex items-center gap-3">
-                                    <input type="checkbox" class="checkbox checkbox-xs checkbox-success"
-                                        :checked="healthConfig.autoRecovery"
-                                        @change="updateHealthConfig({ autoRecovery: $el.checked })"
-                                        title="Enable or disable auto-recovery"
-                                        aria-label="Enable auto-recovery">
-                                    <input type="range" min="1" max="72" class="range range-xs range-success flex-1"
-                                        :disabled="!healthConfig.autoRecovery"
-                                        :value="healthConfig.autoRecoveryHours"
-                                        @change="setRecoveryHours($el.value)"
-                                        title="Adjust auto-recovery hours"
-                                        aria-label="Auto-recovery hours">
-                                </div>
+                                <input type="range" min="1" max="72" class="range range-xs range-success"
+                                    :value="getRecoveryHours()"
+                                    @change="setRecoveryHours($el.value)"
+                                    title="Adjust auto-recovery hours"
+                                    aria-label="Auto-recovery hours">
                                 <p class="text-[10px] text-gray-500 mt-1" x-text="$store.global.t('healthAutoRecoveryDesc')">Time before re-enabling a disabled model</p>
                             </div>
                         </div>
@@ -932,10 +924,10 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthWarnThreshold')">Warning Threshold (%)</span>
-                                    <span class="label-text-alt font-mono text-yellow-500 text-xs font-bold" x-text="healthConfig.healthThresholdWarn + '%'"></span>
+                                    <span class="label-text-alt font-mono text-yellow-500 text-xs font-bold" x-text="healthConfig.warningThreshold + '%'"></span>
                                 </label>
                                 <input type="range" min="1" max="100" class="range range-xs range-warning"
-                                    :value="healthConfig.healthThresholdWarn"
+                                    :value="healthConfig.warningThreshold"
                                     @change="setWarnThreshold($el.value)"
                                     title="Set health warning threshold"
                                     aria-label="Warning threshold">
@@ -944,10 +936,10 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs" x-text="$store.global.t('healthCriticalThreshold')">Critical Threshold (%)</span>
-                                    <span class="label-text-alt font-mono text-red-500 text-xs font-bold" x-text="healthConfig.healthThresholdCritical + '%'"></span>
+                                    <span class="label-text-alt font-mono text-red-500 text-xs font-bold" x-text="healthConfig.criticalThreshold + '%'"></span>
                                 </label>
                                 <input type="range" min="1" max="100" class="range range-xs range-error"
-                                    :value="healthConfig.healthThresholdCritical"
+                                    :value="healthConfig.criticalThreshold"
                                     @change="setCriticalThreshold($el.value)"
                                     title="Set health critical threshold"
                                     aria-label="Critical threshold">

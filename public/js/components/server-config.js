@@ -59,12 +59,23 @@ window.Components.serverConfig = () => ({
         }
     },
 
+    /**
+     * Get recovery hours from autoRecoveryMs for UI display
+     * Backend stores milliseconds, UI displays hours
+     */
+    getRecoveryHours() {
+        const ms = this.healthConfig.autoRecoveryMs;
+        if (!ms) return 24; // Default 24 hours
+        return Math.round(ms / (60 * 60 * 1000));
+    },
+
     async updateHealthConfig(updates, optimistic = true) {
         const store = Alpine.store('global');
         const password = store.webuiPassword;
 
         // Check if we should debounce this update (for numeric ranges)
-        const numericFields = ['autoDisableThreshold', 'autoRecoveryHours', 'healthThresholdWarn', 'healthThresholdCritical', 'eventMaxCount', 'eventRetentionDays'];
+        // Use backend field names: consecutiveFailureThreshold, autoRecoveryMs, warningThreshold, criticalThreshold
+        const numericFields = ['consecutiveFailureThreshold', 'autoRecoveryMs', 'warningThreshold', 'criticalThreshold', 'eventMaxCount', 'eventRetentionDays'];
         const firstField = Object.keys(updates)[0];
 
         if (numericFields.includes(firstField)) {
@@ -329,28 +340,31 @@ window.Components.serverConfig = () => ({
     },
 
     // Health Management Setters with Validation
-    setHealthThreshold(value) {
+    // Field names match backend: consecutiveFailureThreshold, autoRecoveryMs, warningThreshold, criticalThreshold
+
+    setFailureThreshold(value) {
         const { HEALTH_THRESHOLD_MIN, HEALTH_THRESHOLD_MAX } = window.AppConstants.VALIDATION;
         const validation = window.Validators.validateRange(value, HEALTH_THRESHOLD_MIN, HEALTH_THRESHOLD_MAX, 'Failure Threshold');
-        if (validation.isValid) this.updateHealthConfig({ autoDisableThreshold: validation.value });
+        if (validation.isValid) this.updateHealthConfig({ consecutiveFailureThreshold: validation.value });
     },
 
     setRecoveryHours(value) {
         const { RECOVERY_HOURS_MIN, RECOVERY_HOURS_MAX } = window.AppConstants.VALIDATION;
         const validation = window.Validators.validateRange(value, RECOVERY_HOURS_MIN, RECOVERY_HOURS_MAX, 'Recovery Hours');
-        if (validation.isValid) this.updateHealthConfig({ autoRecoveryHours: validation.value });
+        // Convert hours to milliseconds for backend
+        if (validation.isValid) this.updateHealthConfig({ autoRecoveryMs: validation.value * 60 * 60 * 1000 });
     },
 
     setWarnThreshold(value) {
         const { HEALTH_SCORE_MIN, HEALTH_SCORE_MAX } = window.AppConstants.VALIDATION;
         const validation = window.Validators.validateRange(value, HEALTH_SCORE_MIN, HEALTH_SCORE_MAX, 'Warning Threshold');
-        if (validation.isValid) this.updateHealthConfig({ healthThresholdWarn: validation.value });
+        if (validation.isValid) this.updateHealthConfig({ warningThreshold: validation.value });
     },
 
     setCriticalThreshold(value) {
         const { HEALTH_SCORE_MIN, HEALTH_SCORE_MAX } = window.AppConstants.VALIDATION;
         const validation = window.Validators.validateRange(value, HEALTH_SCORE_MIN, HEALTH_SCORE_MAX, 'Critical Threshold');
-        if (validation.isValid) this.updateHealthConfig({ healthThresholdCritical: validation.value });
+        if (validation.isValid) this.updateHealthConfig({ criticalThreshold: validation.value });
     },
 
     setMaxEvents(value) {
