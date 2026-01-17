@@ -7,6 +7,7 @@ document.addEventListener('alpine:init', () => {
         logLimit: 2000,
         showExhausted: true,
         showHiddenModels: false, // New field
+        showConfigWarning: false, // Show Claude config warning on dashboard (default off to not disrupt existing users)
         compact: false,
         port: 8080, // Display only
 
@@ -39,6 +40,7 @@ document.addEventListener('alpine:init', () => {
                 logLimit: this.logLimit,
                 showExhausted: this.showExhausted,
                 showHiddenModels: this.showHiddenModels,
+                showConfigWarning: this.showConfigWarning,
                 compact: this.compact
             };
             localStorage.setItem('antigravity_settings', JSON.stringify(toSave));

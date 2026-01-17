@@ -45,6 +45,8 @@ window.translations.id = {
     showExhaustedDesc: "Tampilkan model meskipun kuotanya sudah 0%.",
     compactMode: "Mode Ringkas",
     compactModeDesc: "Tampilan tabel lebih padat untuk informasi lebih banyak.",
+    showConfigWarning: "Tampilkan Peringatan Konfigurasi",
+    showConfigWarningDesc: "Tampilkan peringatan di Dashboard saat konfigurasi Claude CLI tidak sesuai preset.",
     saveChanges: "Simpan Perubahan",
 
     // Logs
@@ -128,6 +130,12 @@ window.translations.id = {
     presetLoaded: "Preset dimuat. Klik \"Simpan ke Claude CLI\" untuk menyimpan.",
     presetSaved: "Preset tersimpan",
     presetDeleted: "Preset terhapus",
+    presetNotApplied: "Preset belum diterapkan",
+    presetNotAppliedDesc: "Klik tombol di bawah untuk menerapkan preset ke Claude CLI.",
+    applyNow: "Terapkan Sekarang",
+    claudeConfigNotApplied: "Claude CLI belum dikonfigurasi",
+    claudeConfigNotAppliedDesc: "Terapkan preset untuk menggunakan proxy dengan Claude Code.",
+    configureNow: "Konfigurasi",
     unsavedChangesTitle: "Ada Perubahan Belum Disimpan",
     unsavedChangesMessage: "Konfigurasi saat ini tidak cocok dengan preset tersimpan. Jika beralih, perubahan akan hilang.",
     loadAnyway: "Tetap Muat",

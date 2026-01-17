@@ -6,6 +6,7 @@ window.Components = window.Components || {};
 
 window.Components.claudeConfig = () => ({
     config: { env: {} },
+    localConfig: { env: {} }, // Original config from local file (for comparison)
     configPath: '', // Dynamic path from backend
     models: [],
     loading: false,
@@ -112,6 +113,9 @@ window.Components.claudeConfig = () => ({
             this.configPath = data.path || '~/.claude/settings.json'; // Save dynamic path
             if (!this.config.env) this.config.env = {};
 
+            // Save a deep copy of the original local config for comparison
+            this.localConfig = JSON.parse(JSON.stringify(this.config));
+
             // Default MCP CLI to true if not set
             if (this.config.env.ENABLE_EXPERIMENTAL_MCP_CLI === undefined) {
                 this.config.env.ENABLE_EXPERIMENTAL_MCP_CLI = 'true';
@@ -146,6 +150,10 @@ window.Components.claudeConfig = () => ({
             if (newPassword) Alpine.store('global').webuiPassword = newPassword;
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            // Update localConfig to match the saved config
+            this.localConfig = JSON.parse(JSON.stringify(this.config));
+
             Alpine.store('global').showToast(Alpine.store('global').t('claudeConfigSaved'), 'success');
         } catch (e) {
             Alpine.store('global').showToast(Alpine.store('global').t('saveConfigFailed') + ': ' + e.message, 'error');
@@ -260,6 +268,49 @@ window.Components.claudeConfig = () => ({
             if (matches) return true;
         }
         return false;
+    },
+
+    /**
+     * Check if local config matches the currently selected preset
+     * Used to determine if "Apply" action is needed
+     * @returns {boolean} True if local config matches selected preset
+     */
+    localConfigMatchesSelectedPreset() {
+        const preset = this.presets.find(p => p.name === this.selectedPresetName);
+        if (!preset) return true; // No preset selected, nothing to apply
+
+        const relevantKeys = [
+            'ANTHROPIC_BASE_URL',
+            'ANTHROPIC_AUTH_TOKEN',
+            'ANTHROPIC_MODEL',
+            'CLAUDE_CODE_SUBAGENT_MODEL',
+            'ANTHROPIC_DEFAULT_OPUS_MODEL',
+            'ANTHROPIC_DEFAULT_SONNET_MODEL',
+            'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+            'ENABLE_EXPERIMENTAL_MCP_CLI'
+        ];
+
+        for (const key of relevantKeys) {
+            const localVal = this.localConfig.env?.[key] || '';
+            const presetVal = preset.config[key] || '';
+            if (localVal !== presetVal) {
+                return false;
+            }
+        }
+        return true;
+    },
+
+    /**
+     * Check if the selected preset needs to be applied to Claude CLI
+     * @returns {boolean} True if apply action is needed
+     */
+    needsApply() {
+        // No presets available
+        if (!this.presets || this.presets.length === 0) return false;
+        // No preset selected
+        if (!this.selectedPresetName) return false;
+        // Check if local config differs from selected preset
+        return !this.localConfigMatchesSelectedPreset();
     },
 
     /**
