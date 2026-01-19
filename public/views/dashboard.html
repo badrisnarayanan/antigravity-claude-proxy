@@ -20,7 +20,7 @@
                 <span class="absolute w-1.5 h-1.5 bg-neon-green rounded-full animate-ping opacity-75"></span>
                 <span class="relative w-1.5 h-1.5 bg-neon-green rounded-full"></span>
             </div>
-            <span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Live</span>
+            <span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider" x-text="$store.global.t('live')">Live</span>
             <span class="text-gray-700">•</span>
             <span class="text-[10px] font-mono text-gray-400 tabular-nums"
                   x-text="new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})">
@@ -78,17 +78,17 @@
             <div class="flex items-center gap-1 mt-2 text-[10px] font-mono flex-wrap" x-show="stats.subscription">
                 <template x-if="stats.subscription?.ultra > 0">
                     <span class="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
-                        <span x-text="stats.subscription.ultra"></span> Ultra
+                        <span x-text="stats.subscription.ultra"></span> <span x-text="$store.global.t('tierUltra')">Ultra</span>
                     </span>
                 </template>
                 <template x-if="stats.subscription?.pro > 0">
                     <span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                        <span x-text="stats.subscription.pro"></span> Pro
+                        <span x-text="stats.subscription.pro"></span> <span x-text="$store.global.t('tierPro')">Pro</span>
                     </span>
                 </template>
                 <template x-if="stats.subscription?.free > 0">
                     <span class="px-1.5 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/30">
-                        <span x-text="stats.subscription.free"></span> Free
+                        <span x-text="stats.subscription.free"></span> <span x-text="$store.global.t('tierFree')">Free</span>
                     </span>
                 </template>
             </div>

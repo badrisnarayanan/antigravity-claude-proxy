@@ -287,7 +287,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -315,6 +315,16 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
                 updates.maxAccounts = maxAccounts;
+            }
+            // Account selection strategy validation
+            if (accountSelection && typeof accountSelection === 'object') {
+                const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+                if (accountSelection.strategy && validStrategies.includes(accountSelection.strategy)) {
+                    updates.accountSelection = {
+                        ...(config.accountSelection || {}),
+                        strategy: accountSelection.strategy
+                    };
+                }
             }
 
             if (Object.keys(updates).length === 0) {
@@ -666,10 +676,11 @@ export function mountWebUI(app, dirname, accountManager) {
                         const accountData = await completeOAuthFlow(code, verifier);
 
                         // Add or update the account
+                        // Note: Don't set projectId here - it will be discovered and stored
+                        // in the refresh token via getProjectForAccount() on first use
                         await addAccount({
                             email: accountData.email,
                             refreshToken: accountData.refreshToken,
-                            projectId: accountData.projectId,
                             source: 'oauth'
                         });
 

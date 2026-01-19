@@ -26,7 +26,7 @@ window.ModelConfigUtils.updateModelConfig = async function(modelId, configUpdate
         }
 
         if (!response.ok) {
-            throw new Error('Failed to update model config');
+            throw new Error(store.t('failedToUpdateModelConfig'));
         }
 
         // Optimistic update of local state
@@ -38,5 +38,5 @@ window.ModelConfigUtils.updateModelConfig = async function(modelId, configUpdate
 
         // Recompute quota rows to reflect changes
         dataStore.computeQuotaRows();
-    }, 'Failed to update model config');
+    }, Alpine.store('global').t('failedToUpdateModelConfig'));
 };

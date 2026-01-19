@@ -318,7 +318,7 @@ window.Components.claudeConfig = () => ({
      */
     async executeSavePreset(name) {
         if (!name || !name.trim()) {
-            Alpine.store('global').showToast('Preset name is required', 'error');
+            Alpine.store('global').showToast(Alpine.store('global').t('presetNameRequired'), 'error');
             return;
         }
 
@@ -363,10 +363,10 @@ window.Components.claudeConfig = () => ({
                 );
                 document.getElementById('save_preset_modal').close();
             } else {
-                throw new Error(data.error || 'Save failed');
+                throw new Error(data.error || Alpine.store('global').t('saveFailed'));
             }
         } catch (e) {
-            Alpine.store('global').showToast('Failed to save preset: ' + e.message, 'error');
+            Alpine.store('global').showToast(Alpine.store('global').t('failedToSavePreset') + ': ' + e.message, 'error');
         } finally {
             this.savingPreset = false;
         }
@@ -377,12 +377,13 @@ window.Components.claudeConfig = () => ({
      */
     async deleteSelectedPreset() {
         if (!this.selectedPresetName) {
-            Alpine.store('global').showToast('No preset selected', 'warning');
+            Alpine.store('global').showToast(Alpine.store('global').t('noPresetSelected'), 'warning');
             return;
         }
 
         // Confirm deletion
-        if (!confirm(`Delete preset "${this.selectedPresetName}"?`)) {
+        const confirmMsg = Alpine.store('global').t('deletePresetConfirm', { name: this.selectedPresetName });
+        if (!confirm(confirmMsg)) {
             return;
         }
 
@@ -408,10 +409,10 @@ window.Components.claudeConfig = () => ({
                     'success'
                 );
             } else {
-                throw new Error(data.error || 'Delete failed');
+                throw new Error(data.error || Alpine.store('global').t('deleteFailed'));
             }
         } catch (e) {
-            Alpine.store('global').showToast('Failed to delete preset: ' + e.message, 'error');
+            Alpine.store('global').showToast(Alpine.store('global').t('failedToDeletePreset') + ': ' + e.message, 'error');
         } finally {
             this.deletingPreset = false;
         }

@@ -17,6 +17,11 @@ npm install
 # Start server (runs on port 8080)
 npm start
 
+# Start with specific account selection strategy
+npm start -- --strategy=sticky      # Cache-optimized (stays on same account)
+npm start -- --strategy=round-robin # Load-balanced (rotates every request)
+npm start -- --strategy=hybrid      # Smart distribution (default)
+
 # Start with model fallback enabled (falls back to alternate model when quota exhausted)
 npm start -- --fallback
 
@@ -50,6 +55,9 @@ npm run test:images        # Image processing
 npm run test:caching       # Prompt caching
 npm run test:crossmodel    # Cross-model thinking signatures
 npm run test:oauth         # OAuth no-browser mode
+
+# Run strategy unit tests (no server required)
+node tests/test-strategies.cjs
 ```
 
 ## Architecture
@@ -83,9 +91,18 @@ src/
 ├── account-manager/            # Multi-account pool management
 │   ├── index.js                # AccountManager class facade
 │   ├── storage.js              # Config file I/O and persistence
-│   ├── selection.js            # Account picking (round-robin, sticky)
 │   ├── rate-limits.js          # Rate limit tracking and state
-│   └── credentials.js          # OAuth token and project handling
+│   ├── credentials.js          # OAuth token and project handling
+│   └── strategies/             # Account selection strategies
+│       ├── index.js            # Strategy factory (createStrategy)
+│       ├── base-strategy.js    # Abstract base class
+│       ├── sticky-strategy.js  # Cache-optimized sticky selection
+│       ├── round-robin-strategy.js  # Load-balanced rotation
+│       ├── hybrid-strategy.js  # Smart multi-signal distribution
+│       └── trackers/           # State trackers for hybrid strategy
+│           ├── index.js        # Re-exports trackers
+│           ├── health-tracker.js    # Account health scores
+│           └── token-bucket-tracker.js  # Client-side rate limiting
 │
 ├── auth/                       # Authentication
 │   ├── oauth.js                # Google OAuth with PKCE
@@ -111,7 +128,7 @@ src/
 │   └── signature-cache.js      # Signature cache (tool_use + thinking signatures)
 │
 └── utils/                      # Utilities
-    ├── helpers.js              # formatDuration, sleep
+    ├── helpers.js              # formatDuration, sleep, isNetworkError
     ├── logger.js               # Structured logging
     └── native-module-helper.js # Auto-rebuild for native modules
 ```
@@ -137,7 +154,6 @@ public/
 │   │   ├── account-manager.js  # Account list & OAuth handling
 │   │   ├── logs-viewer.js      # Live log streaming
 │   │   ├── claude-config.js    # CLI settings editor
-│   │   ├── model-manager.js    # Model configuration UI
 │   │   ├── server-config.js    # Server settings UI
 │   │   └── dashboard/          # Dashboard sub-modules
 │   │       ├── stats.js        # Account statistics calculation
@@ -162,7 +178,8 @@ public/
 - **src/webui/index.js**: WebUI backend handling API routes (`/api/*`) for config, accounts, and logs
 - **src/cloudcode/**: Cloud Code API client with retry/failover logic, streaming and non-streaming support
   - `model-api.js`: Model listing, quota retrieval (`getModelQuotas()`), and subscription tier detection (`getSubscriptionTier()`)
-- **src/account-manager/**: Multi-account pool with sticky selection, rate limit handling, and automatic cooldown
+- **src/account-manager/**: Multi-account pool with configurable selection strategies, rate limit handling, and automatic cooldown
+  - Strategies: `sticky` (cache-optimized), `round-robin` (load-balanced), `hybrid` (smart distribution)
 - **src/auth/**: Authentication including Google OAuth, token extraction, database access, and auto-rebuild of native modules
 - **src/format/**: Format conversion between Anthropic and Google Generative AI formats
 - **src/constants.js**: API endpoints, model mappings, fallback config, OAuth config, and all configuration values
@@ -171,11 +188,35 @@ public/
 - **src/errors.js**: Custom error classes (`RateLimitError`, `AuthError`, `ApiError`, etc.)
 
 **Multi-Account Load Balancing:**
-- Sticky account selection for prompt caching (stays on same account across turns)
+- Configurable selection strategy via `--strategy` flag or WebUI
+- Three strategies available:
+  - **Sticky** (`--strategy=sticky`): Best for prompt caching, stays on same account
+  - **Round-Robin** (`--strategy=round-robin`): Maximum throughput, rotates every request
+  - **Hybrid** (`--strategy=hybrid`, default): Smart selection using health + tokens + LRU
 - Model-specific rate limiting via `account.modelRateLimits[modelId]`
 - Automatic switch only when rate-limited for > 2 minutes on the current model
 - Session ID derived from first user message hash for cache continuity
 - Account state persisted to `~/.config/antigravity-proxy/accounts.json`
+
+**Account Selection Strategies:**
+
+1. **Sticky Strategy** (best for caching):
+   - Stays on current account until rate-limited or unavailable
+   - Waits up to 2 minutes for short rate limits before switching
+   - Maintains prompt cache continuity across requests
+
+2. **Round-Robin Strategy** (best for throughput):
+   - Rotates to next account on every request
+   - Skips rate-limited/disabled accounts
+   - Maximizes concurrent request distribution
+
+3. **Hybrid Strategy** (default, smart distribution):
+   - Uses health scores, token buckets, and LRU for selection
+   - Scoring formula: `score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (LRU × 0.1)`
+   - Health scores: Track success/failure patterns with passive recovery
+   - Token buckets: Client-side rate limiting (50 tokens, 6 per minute regeneration)
+   - LRU freshness: Prefer accounts that have rested longer
+   - Configuration in `src/config.js` under `accountSelection`
 
 **Account Data Model:**
 Each account object in `accounts.json` contains:

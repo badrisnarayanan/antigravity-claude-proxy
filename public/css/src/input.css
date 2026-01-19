@@ -115,8 +115,6 @@
   animation: fadeIn 0.4s ease-out forwards;
 }
 
-/* Note: .glass-panel has been deprecated. Use .view-card instead for consistency. */
-
 .nav-item.active {
   background: linear-gradient(
     90deg,

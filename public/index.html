@@ -139,7 +139,7 @@
             <div class="w-64 flex flex-col h-full pt-6 pb-4 flex-shrink-0">
                 <!-- Mobile Menu Header -->
                 <div class="flex items-center justify-between px-4 mb-6 lg:hidden">
-                    <span class="text-sm font-bold text-white">Menu</span>
+                    <span class="text-sm font-bold text-white" x-text="$store.global.t('menu')">Menu</span>
                     <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -215,7 +215,7 @@
                     <div class="flex justify-between">
                         <span x-text="'V ' + $store.global.version">V 1.0.0</span>
                         <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank" rel="noopener noreferrer"
-                            class="hover:text-neon-purple transition-colors">GitHub</a>
+                            class="hover:text-neon-purple transition-colors" x-text="$store.global.t('github')">GitHub</a>
                     </div>
                 </div>
             </div>
@@ -353,6 +353,12 @@
     <script src="js/utils/account-actions.js"></script>
     <script src="js/utils/validators.js"></script>
     <script src="js/utils/model-config.js"></script>
+    <!-- Translation files (must load before store.js) -->
+    <script src="js/translations/en.js"></script>
+    <script src="js/translations/zh.js"></script>
+    <script src="js/translations/tr.js"></script>
+    <script src="js/translations/id.js"></script>
+    <script src="js/translations/pt.js"></script>
     <!-- 2. Alpine Stores (register alpine:init listeners) -->
     <script src="js/store.js"></script>
     <script src="js/data-store.js"></script>
@@ -368,7 +374,6 @@
     <script src="js/components/claude-config.js"></script>
     <script src="js/components/logs-viewer.js"></script>
     <script src="js/components/server-config.js"></script>
-    <script src="js/components/model-manager.js"></script>
     <!-- 4. App (registers Alpine components from window.Components) -->
     <script src="app.js"></script>
 </body>

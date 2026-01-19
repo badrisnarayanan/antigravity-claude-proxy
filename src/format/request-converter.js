@@ -16,6 +16,7 @@ import {
     reorderAssistantContent,
     filterUnsignedThinkingBlocks,
     hasGeminiHistory,
+    hasUnsignedThinkingBlocks,
     needsThinkingRecovery,
     closeToolLoopForThinking
 } from './thinking-utils.js';
@@ -87,16 +88,16 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         processedMessages = closeToolLoopForThinking(messages, 'gemini');
     }
 
-    // For Claude: apply recovery only for cross-model (Gemini→Claude) switch
-    // Detected by checking if history has Gemini-style tool_use with thoughtSignature
-    if (isClaudeModel && isThinking && hasGeminiHistory(messages) && needsThinkingRecovery(messages)) {
-        logger.debug('[RequestConverter] Applying thinking recovery for Claude (cross-model from Gemini)');
+    // For Claude: apply recovery for cross-model (Gemini→Claude) or unsigned thinking blocks
+    // Unsigned thinking blocks occur when Claude Code strips signatures it doesn't understand
+    const needsClaudeRecovery = hasGeminiHistory(messages) || hasUnsignedThinkingBlocks(messages);
+    if (isClaudeModel && isThinking && needsClaudeRecovery && needsThinkingRecovery(messages)) {
+        logger.debug('[RequestConverter] Applying thinking recovery for Claude');
         processedMessages = closeToolLoopForThinking(messages, 'claude');
     }
 
     // Convert messages to contents, then filter unsigned thinking blocks
-    for (let i = 0; i < processedMessages.length; i++) {
-        const msg = processedMessages[i];
+    for (const msg of processedMessages) {
         let msgContent = msg.content;
 
         // For assistant messages, process thinking blocks and reorder content
@@ -225,6 +226,16 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
         googleRequest.tools = [{ functionDeclarations }];
         logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+
+        // For Claude models, set functionCallingConfig.mode = "VALIDATED"
+        // This ensures strict parameter validation (matches opencode-antigravity-auth)
+        if (isClaudeModel) {
+            googleRequest.toolConfig = {
+                functionCallingConfig: {
+                    mode: 'VALIDATED'
+                }
+            };
+        }
     }
 
     // Cap max tokens for Gemini models

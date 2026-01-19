@@ -78,6 +78,8 @@
                             <option value="en">English</option>
                             <option value="zh">中文</option>
                             <option value="tr">Türkçe</option>
+                            <option value="id">Bahasa Indonesia</option>
+                            <option value="pt">Português (BR)</option>
                         </select>
                     </div>
 
@@ -956,6 +958,35 @@
                     </div>
                 </div>
 
+                <!-- 🔀 Account Selection Strategy -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2 mb-1 px-1">
+                        <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
+                            x-text="$store.global.t('accountSelectionStrategy')">Account Selection Strategy</span>
+                        <div class="h-px flex-1 bg-space-border/30"></div>
+                    </div>
+
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-cyan/50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1 flex-1">
+                                <span class="text-sm font-medium text-gray-200"
+                                    x-text="$store.global.t('selectionStrategy')">Selection Strategy</span>
+                                <span class="text-[11px] text-gray-500"
+                                    x-text="currentStrategyDescription()">How accounts are selected for requests</span>
+                            </div>
+                            <select
+                                class="select bg-space-800 border-space-border text-gray-200 focus:border-neon-cyan focus:ring-neon-cyan/20 w-64"
+                                :value="serverConfig.accountSelection?.strategy || 'hybrid'"
+                                @change="toggleStrategy($el.value)"
+                                aria-label="Account selection strategy">
+                                <option value="hybrid" x-text="$store.global.t('strategyHybridLabel')">Hybrid (Smart Distribution)</option>
+                                <option value="sticky" x-text="$store.global.t('strategyStickyLabel')">Sticky (Cache Optimized)</option>
+                                <option value="round-robin" x-text="$store.global.t('strategyRoundRobinLabel')">Round Robin (Load Balanced)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ▼ Advanced Tuning (Fixed Logic) -->
                 <div class="view-card !p-0 border-space-border/50">
                     <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
@@ -1113,6 +1144,134 @@
                                 </div>
                                 <p class="text-[9px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('maxWaitDesc')">If all accounts are rate-limited longer than this, error immediately.</p>
+                            </div>
+                        </div>
+
+                        <!-- Error Handling Tuning -->
+                        <div class="space-y-4 pt-2 border-t border-space-border/10">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                    x-text="$store.global.t('errorHandlingTuning')">Error Handling Tuning</span>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('rateLimitDedupWindow')">Rate Limit Dedup Window</span>
+                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                        x-text="Math.round((serverConfig.rateLimitDedupWindowMs || 5000) / 1000) + 's'"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="1000" max="30000" step="1000"
+                                        class="custom-range custom-range-cyan flex-1"
+                                        :value="serverConfig.rateLimitDedupWindowMs || 5000"
+                                        :style="`background-size: ${((serverConfig.rateLimitDedupWindowMs || 5000) - 1000) / 290}% 100%`"
+                                        @input="toggleRateLimitDedupWindowMs($event.target.value)"
+                                        aria-label="Rate limit dedup window slider">
+                                    <input type="number" min="1000" max="30000" step="1000"
+                                        class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.rateLimitDedupWindowMs || 5000"
+                                        @change="toggleRateLimitDedupWindowMs($event.target.value)"
+                                        aria-label="Rate limit dedup window value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('rateLimitDedupWindowDesc')">Prevents concurrent retry storms.</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('maxConsecutiveFailures')">Max Consecutive Failures</span>
+                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                        x-text="serverConfig.maxConsecutiveFailures || 3"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="1" max="10" step="1"
+                                        class="custom-range custom-range-cyan flex-1"
+                                        :value="serverConfig.maxConsecutiveFailures || 3"
+                                        :style="`background-size: ${((serverConfig.maxConsecutiveFailures || 3) - 1) / 0.09}% 100%`"
+                                        @input="toggleMaxConsecutiveFailures($event.target.value)"
+                                        aria-label="Max consecutive failures slider">
+                                    <input type="number" min="1" max="10" step="1"
+                                        class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.maxConsecutiveFailures || 3"
+                                        @change="toggleMaxConsecutiveFailures($event.target.value)"
+                                        aria-label="Max consecutive failures value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('maxConsecutiveFailuresDesc')">Failures before extended cooldown.</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('extendedCooldown')">Extended Cooldown</span>
+                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                        x-text="((serverConfig.extendedCooldownMs || 60000) >= 60000 ? Math.round((serverConfig.extendedCooldownMs || 60000) / 60000) + 'm' : Math.round((serverConfig.extendedCooldownMs || 60000) / 1000) + 's')"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="10000" max="300000" step="10000"
+                                        class="custom-range custom-range-cyan flex-1"
+                                        :value="serverConfig.extendedCooldownMs || 60000"
+                                        :style="`background-size: ${((serverConfig.extendedCooldownMs || 60000) - 10000) / 2900}% 100%`"
+                                        @input="toggleExtendedCooldownMs($event.target.value)"
+                                        aria-label="Extended cooldown slider">
+                                    <input type="number" min="10000" max="300000" step="10000"
+                                        class="input input-xs input-bordered w-24 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.extendedCooldownMs || 60000"
+                                        @change="toggleExtendedCooldownMs($event.target.value)"
+                                        aria-label="Extended cooldown value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('extendedCooldownDesc')">Applied after max consecutive failures.</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('capacityRetryDelay')">Capacity Retry Delay</span>
+                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                        x-text="Math.round((serverConfig.capacityRetryDelayMs || 2000) / 1000) + 's'"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="500" max="10000" step="500"
+                                        class="custom-range custom-range-cyan flex-1"
+                                        :value="serverConfig.capacityRetryDelayMs || 2000"
+                                        :style="`background-size: ${((serverConfig.capacityRetryDelayMs || 2000) - 500) / 95}% 100%`"
+                                        @input="toggleCapacityRetryDelayMs($event.target.value)"
+                                        aria-label="Capacity retry delay slider">
+                                    <input type="number" min="500" max="10000" step="500"
+                                        class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.capacityRetryDelayMs || 2000"
+                                        @change="toggleCapacityRetryDelayMs($event.target.value)"
+                                        aria-label="Capacity retry delay value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('capacityRetryDelayDesc')">Delay for capacity (not quota) issues.</p>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('maxCapacityRetries')">Max Capacity Retries</span>
+                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
+                                        x-text="serverConfig.maxCapacityRetries || 3"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="1" max="10" step="1"
+                                        class="custom-range custom-range-cyan flex-1"
+                                        :value="serverConfig.maxCapacityRetries || 3"
+                                        :style="`background-size: ${((serverConfig.maxCapacityRetries || 3) - 1) / 0.09}% 100%`"
+                                        @input="toggleMaxCapacityRetries($event.target.value)"
+                                        aria-label="Max capacity retries slider">
+                                    <input type="number" min="1" max="10" step="1"
+                                        class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="serverConfig.maxCapacityRetries || 3"
+                                        @change="toggleMaxCapacityRetries($event.target.value)"
+                                        aria-label="Max capacity retries value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('maxCapacityRetriesDesc')">Retries before switching accounts.</p>
                             </div>
                         </div>
                     </div>

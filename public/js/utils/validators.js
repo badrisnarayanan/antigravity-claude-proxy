@@ -14,12 +14,13 @@ window.Validators = window.Validators || {};
  */
 window.Validators.validateRange = function(value, min, max, fieldName = 'Value') {
     const numValue = Number(value);
+    const t = Alpine.store('global').t;
 
     if (isNaN(numValue)) {
         return {
             isValid: false,
             value: min,
-            error: `${fieldName} must be a valid number`
+            error: t('mustBeValidNumber', { fieldName })
         };
     }
 
@@ -27,7 +28,7 @@ window.Validators.validateRange = function(value, min, max, fieldName = 'Value')
         return {
             isValid: false,
             value: min,
-            error: `${fieldName} must be at least ${min}`
+            error: t('mustBeAtLeast', { fieldName, min })
         };
     }
 
@@ -35,7 +36,7 @@ window.Validators.validateRange = function(value, min, max, fieldName = 'Value')
         return {
             isValid: false,
             value: max,
-            error: `${fieldName} must be at most ${max}`
+            error: t('mustBeAtMost', { fieldName, max })
         };
     }
 
@@ -43,70 +44,6 @@ window.Validators.validateRange = function(value, min, max, fieldName = 'Value')
         isValid: true,
         value: numValue,
         error: null
-    };
-};
-
-/**
- * Validate a port number
- * @param {number} port - Port number to validate
- * @returns {object} { isValid: boolean, value: number, error: string|null }
- */
-window.Validators.validatePort = function(port) {
-    const { PORT_MIN, PORT_MAX } = window.AppConstants.VALIDATION;
-    return window.Validators.validateRange(port, PORT_MIN, PORT_MAX, 'Port');
-};
-
-/**
- * Validate a string is not empty
- * @param {string} value - String to validate
- * @param {string} fieldName - Name of the field for error messages
- * @returns {object} { isValid: boolean, value: string, error: string|null }
- */
-window.Validators.validateNotEmpty = function(value, fieldName = 'Field') {
-    const trimmedValue = String(value || '').trim();
-
-    if (trimmedValue.length === 0) {
-        return {
-            isValid: false,
-            value: trimmedValue,
-            error: `${fieldName} cannot be empty`
-        };
-    }
-
-    return {
-        isValid: true,
-        value: trimmedValue,
-        error: null
-    };
-};
-
-/**
- * Validate a boolean value
- * @param {any} value - Value to validate as boolean
- * @returns {object} { isValid: boolean, value: boolean, error: string|null }
- */
-window.Validators.validateBoolean = function(value) {
-    if (typeof value === 'boolean') {
-        return {
-            isValid: true,
-            value: value,
-            error: null
-        };
-    }
-
-    // Try to coerce common values
-    if (value === 'true' || value === 1 || value === '1') {
-        return { isValid: true, value: true, error: null };
-    }
-
-    if (value === 'false' || value === 0 || value === '0') {
-        return { isValid: true, value: false, error: null };
-    }
-
-    return {
-        isValid: false,
-        value: false,
-        error: 'Value must be true or false'
     };
 };
 
@@ -120,16 +57,6 @@ window.Validators.validateBoolean = function(value) {
 window.Validators.validateTimeout = function(value, minMs = null, maxMs = null) {
     const { TIMEOUT_MIN, TIMEOUT_MAX } = window.AppConstants.VALIDATION;
     return window.Validators.validateRange(value, minMs ?? TIMEOUT_MIN, maxMs ?? TIMEOUT_MAX, 'Timeout');
-};
-
-/**
- * Validate log limit
- * @param {number} value - Log limit value
- * @returns {object} { isValid: boolean, value: number, error: string|null }
- */
-window.Validators.validateLogLimit = function(value) {
-    const { LOG_LIMIT_MIN, LOG_LIMIT_MAX } = window.AppConstants.VALIDATION;
-    return window.Validators.validateRange(value, LOG_LIMIT_MIN, LOG_LIMIT_MAX, 'Log limit');
 };
 
 /**
@@ -147,22 +74,4 @@ window.Validators.validate = function(value, validator, showError = true) {
     }
 
     return result;
-};
-
-/**
- * Create a validated input handler for Alpine.js
- * @param {Function} validator - Validator function
- * @param {Function} onValid - Callback when validation passes
- * @returns {Function} Handler function
- */
-window.Validators.createHandler = function(validator, onValid) {
-    return function(value) {
-        const result = window.Validators.validate(value, validator, true);
-
-        if (result.isValid && onValid) {
-            onValid.call(this, result.value);
-        }
-
-        return result.value;
-    };
 };

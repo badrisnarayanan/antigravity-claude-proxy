@@ -35,7 +35,7 @@
     "test:oauth": "node tests/test-oauth-no-browser.cjs",
     "test:emptyretry": "node tests/test-empty-response-retry.cjs",
     "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
-    "test:counttokens": "node tests/test-count-tokens.cjs"
+    "test:strategies": "node tests/test-strategies.cjs"
   },
   "keywords": [
     "claude",
@@ -58,8 +58,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/tokenizer": "^0.0.4",
-    "@lenml/tokenizer-gemini": "^3.7.2",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^12.5.0",
     "cors": "^2.8.5",

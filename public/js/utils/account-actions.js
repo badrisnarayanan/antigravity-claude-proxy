@@ -26,7 +26,7 @@ window.AccountActions.refreshAccount = async function(email) {
 
         const data = await response.json();
         if (data.status !== 'ok') {
-            return { success: false, error: data.error || 'Refresh failed' };
+            return { success: false, error: data.error || Alpine.store('global').t('refreshFailed') };
         }
 
         // 触发数据刷新
@@ -73,7 +73,7 @@ window.AccountActions.toggleAccount = async function(email, enabled) {
 
         const data = await response.json();
         if (data.status !== 'ok') {
-            throw new Error(data.error || 'Toggle failed');
+            throw new Error(data.error || Alpine.store('global').t('toggleFailed'));
         }
 
         // 确认服务器状态
@@ -111,7 +111,7 @@ window.AccountActions.deleteAccount = async function(email) {
 
         const data = await response.json();
         if (data.status !== 'ok') {
-            return { success: false, error: data.error || 'Delete failed' };
+            return { success: false, error: data.error || Alpine.store('global').t('deleteFailed') };
         }
 
         // 触发数据刷新
@@ -146,7 +146,7 @@ window.AccountActions.getFixAccountUrl = async function(email) {
 
         const data = await response.json();
         if (data.status !== 'ok') {
-            return { success: false, error: data.error || 'Failed to get auth URL' };
+            return { success: false, error: data.error || Alpine.store('global').t('authUrlFailed') };
         }
 
         return { success: true, url: data.url };
@@ -176,7 +176,7 @@ window.AccountActions.reloadAccounts = async function() {
 
         const data = await response.json();
         if (data.status !== 'ok') {
-            return { success: false, error: data.error || 'Reload failed' };
+            return { success: false, error: data.error || Alpine.store('global').t('reloadFailed') };
         }
 
         // 触发数据刷新
@@ -186,14 +186,4 @@ window.AccountActions.reloadAccounts = async function() {
     } catch (error) {
         return { success: false, error: error.message };
     }
-};
-
-/**
- * 检查账号是否可以删除
- * 来自 Antigravity 数据库的账号（source='database'）不可删除
- * @param {object} account - 账号对象
- * @returns {boolean} true 表示可删除
- */
-window.AccountActions.canDelete = function(account) {
-    return account && account.source !== 'database';
 };

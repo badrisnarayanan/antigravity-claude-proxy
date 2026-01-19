@@ -241,6 +241,130 @@ async function testGeminiToClaude(CLAUDE_MODEL, GEMINI_MODEL) {
     }
 }
 
+async function testGeminiToClaudeColdCache(CLAUDE_MODEL, GEMINI_MODEL) {
+    console.log('\n' + '='.repeat(60));
+    console.log('TEST: Gemini → Claude Cross-Model Switch (COLD CACHE)');
+    console.log('Simulates: thinking block with NO signature (stripped by Claude Code)');
+    console.log('Expected error without fix: "Expected thinking but found text"');
+    console.log('='.repeat(60));
+    console.log('');
+
+    const claudeConfig = getModelConfig('claude');
+    const geminiConfig = getModelConfig('gemini');
+
+    // TURN 1: Get response from Gemini with tool use
+    console.log('TURN 1: Request to Gemini (get tool_use)');
+    console.log('-'.repeat(40));
+
+    const turn1Messages = [
+        { role: 'user', content: 'Run the command "whoami" to show current user.' }
+    ];
+
+    const turn1Result = await streamRequest({
+        model: GEMINI_MODEL,
+        max_tokens: geminiConfig.max_tokens,
+        stream: true,
+        tools,
+        thinking: geminiConfig.thinking,
+        messages: turn1Messages
+    });
+
+    const turn1Content = analyzeContent(turn1Result.content);
+    console.log(`  Thinking: ${turn1Content.hasThinking ? 'YES' : 'NO'}`);
+    console.log(`  Signature: ${turn1Content.hasSignature ? 'YES' : 'NO'}`);
+    console.log(`  Tool Use: ${turn1Content.hasToolUse ? 'YES' : 'NO'}`);
+
+    if (!turn1Content.hasToolUse) {
+        console.log('  SKIP: No tool use in turn 1');
+        return { passed: false, skipped: true };
+    }
+
+    // Build assistant content simulating what Claude Code sends back
+    // CRITICAL: No signature on thinking block - simulates Claude Code stripping it
+    const assistantContent = [];
+
+    // Add thinking block WITHOUT signature - this is what causes the issue
+    // Claude Code strips signatures it doesn't understand
+    assistantContent.push({
+        type: 'thinking',
+        thinking: turn1Content.hasThinking && turn1Content.thinking[0]
+            ? turn1Content.thinking[0].thinking
+            : 'I need to run the whoami command.'
+        // NO signature field - simulating Claude Code stripping it
+    });
+
+    // Add text block
+    assistantContent.push({
+        type: 'text',
+        text: turn1Content.hasText && turn1Content.text[0]
+            ? turn1Content.text[0].text
+            : 'I will run the whoami command for you.'
+    });
+
+    // Add tool_use blocks (also without thoughtSignature)
+    for (const tool of turn1Content.toolUse) {
+        assistantContent.push({
+            type: 'tool_use',
+            id: tool.id,
+            name: tool.name,
+            input: tool.input
+            // NO thoughtSignature - Claude Code strips this too
+        });
+    }
+
+    console.log(`  Built assistant content with UNSIGNED thinking block`);
+
+    // TURN 2: Switch to Claude with unsigned thinking in history
+    console.log('\nTURN 2: Request to Claude (with UNSIGNED thinking block)');
+    console.log('-'.repeat(40));
+    console.log(`  Assistant content: ${JSON.stringify(assistantContent).substring(0, 300)}...`);
+
+    const turn2Messages = [
+        { role: 'user', content: 'Run the command "whoami" to show current user.' },
+        { role: 'assistant', content: assistantContent },
+        {
+            role: 'user',
+            content: [{
+                type: 'tool_result',
+                tool_use_id: turn1Content.toolUse[0].id,
+                content: 'testuser'
+            }]
+        }
+    ];
+
+    try {
+        const turn2Result = await streamRequest({
+            model: CLAUDE_MODEL,
+            max_tokens: claudeConfig.max_tokens,
+            stream: true,
+            tools,
+            thinking: claudeConfig.thinking,
+            messages: turn2Messages
+        });
+
+        const turn2Content = analyzeContent(turn2Result.content);
+        console.log(`  Response received: YES`);
+        console.log(`  Stop reason: ${turn2Result.stop_reason}`);
+        console.log(`  Thinking: ${turn2Content.hasThinking ? 'YES' : 'NO'}`);
+        console.log(`  Text: ${turn2Content.hasText ? 'YES' : 'NO'}`);
+        console.log(`  Tool Use: ${turn2Content.hasToolUse ? 'YES' : 'NO'}`);
+
+        // Success if we got any response without error
+        const passed = turn2Content.hasText || turn2Content.hasThinking || turn2Content.hasToolUse;
+        console.log(`  Result: ${passed ? 'PASS' : 'FAIL'}`);
+        return { passed };
+    } catch (error) {
+        // Check for the specific error from issue #120
+        const isExpectedError = error.message.includes('Expected') &&
+                               error.message.includes('thinking') &&
+                               error.message.includes('found');
+        console.log(`  Error: ${error.message.substring(0, 200)}`);
+        console.log(`  Is issue #120 error: ${isExpectedError ? 'YES' : 'NO'}`);
+        console.log(`  Result: FAIL`);
+        return { passed: false, error: error.message, isIssue120Error: isExpectedError };
+    }
+}
+
 async function testSameModelContinuation(CLAUDE_MODEL) {
     console.log('\n' + '='.repeat(60));
     console.log('TEST: Same Model Continuation - Claude (Control Test)');
@@ -479,11 +603,15 @@ async function main() {
     const geminiToClaude = await testGeminiToClaude(CLAUDE_MODEL, GEMINI_MODEL);
     results.push({ name: 'Gemini → Claude', ...geminiToClaude });
 
-    // Test 3: Same model Claude (control)
+    // Test 3: Gemini → Claude with COLD CACHE (simulates cache expiry)
+    const geminiToClaudeCold = await testGeminiToClaudeColdCache(CLAUDE_MODEL, GEMINI_MODEL);
+    results.push({ name: 'Gemini → Claude (Cold Cache)', ...geminiToClaudeCold });
+
+    // Test 4: Same model Claude (control)
     const sameModelClaude = await testSameModelContinuation(CLAUDE_MODEL);
     results.push({ name: 'Same Model (Claude → Claude)', ...sameModelClaude });
 
-    // Test 4: Same model Gemini (control)
+    // Test 5: Same model Gemini (control)
     const sameModelGemini = await testSameModelContinuationGemini(GEMINI_MODEL);
     results.push({ name: 'Same Model (Gemini → Gemini)', ...sameModelGemini });
 

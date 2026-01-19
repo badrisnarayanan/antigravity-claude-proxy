@@ -9,7 +9,6 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier } from './cloudcode/index.js';
-import { createCountTokensHandler } from './cloudcode/count-tokens.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -18,6 +17,7 @@ const __dirname = path.dirname(__filename);
 import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
+import { clearThinkingSignatureCache } from './format/signature-cache.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
@@ -26,10 +26,23 @@ import usageStats from './modules/usage-stats.js';
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
+// Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
+let STRATEGY_OVERRIDE = null;
+for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--strategy=')) {
+        STRATEGY_OVERRIDE = args[i].split('=')[1];
+    } else if (args[i] === '--strategy' && args[i + 1]) {
+        STRATEGY_OVERRIDE = args[i + 1];
+    }
+}
+
 const app = express();
 
+// Disable x-powered-by header for security
+app.disable('x-powered-by');
+
 // Initialize account manager (will be fully initialized on first request or startup)
-const accountManager = new AccountManager();
+export const accountManager = new AccountManager();
 
 // Track initialization status
 let isInitialized = false;
@@ -47,7 +60,7 @@ async function ensureInitialized() {
 
     initPromise = (async () => {
         try {
-            await accountManager.initialize();
+            await accountManager.initialize(STRATEGY_OVERRIDE);
             isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
@@ -100,6 +113,23 @@ app.use('/v1', (req, res, next) => {
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
 
+/**
+ * Silent handler for Claude Code CLI root POST requests
+ * Claude Code sends heartbeat/event requests to POST / which we don't need
+ * Using app.use instead of app.post for earlier middleware interception
+ */
+app.use((req, res, next) => {
+    // Handle Claude Code event logging requests silently
+    if (req.method === 'POST' && req.path === '/api/event_logging/batch') {
+        return res.status(200).json({ status: 'ok' });
+    }
+    // Handle Claude Code root POST requests silently
+    if (req.method === 'POST' && req.path === '/') {
+        return res.status(200).json({ status: 'ok' });
+    }
+    next();
+});
+
 // Mount WebUI (optional web interface for account management)
 mountWebUI(app, __dirname, accountManager);
 
@@ -150,15 +180,50 @@ function parseError(error) {
 
 // Request logging middleware
 app.use((req, res, next) => {
-    // Skip logging for event logging batch unless in debug mode
-    if (req.path === '/api/event_logging/batch') {
-        if (logger.isDebugEnabled) {
-             logger.debug(`[${req.method}] ${req.path}`);
+    const start = Date.now();
+
+    // Log response on finish
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const status = res.statusCode;
+        const logMsg = `[${req.method}] ${req.path} ${status} (${duration}ms)`;
+
+        // Skip standard logging for event logging batch unless in debug mode
+        if (req.path === '/api/event_logging/batch' || req.path === '/v1/messages/count_tokens') {
+            if (logger.isDebugEnabled) {
+                logger.debug(logMsg);
+            }
+        } else {
+            // Colorize status code
+            if (status >= 500) {
+                logger.error(logMsg);
+            } else if (status >= 400) {
+                logger.warn(logMsg);
+            } else {
+                logger.info(logMsg);
+            }
         }
-    } else {
-        logger.info(`[${req.method}] ${req.path}`);
-    }
+    });
+
     next();
+});
+
+/**
+ * Silent handler for Claude Code CLI root POST requests
+ * Claude Code sends heartbeat/event requests to POST / which we don't need
+ */
+app.post('/', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+/**
+ * Test endpoint - Clear thinking signature cache
+ * Used for testing cold cache scenarios in cross-model tests
+ */
+app.post('/test/clear-signature-cache', (req, res) => {
+    clearThinkingSignatureCache();
+    logger.debug('[Test] Cleared thinking signature cache');
+    res.json({ success: true, message: 'Thinking signature cache cleared' });
 });
 
 /**
@@ -204,7 +269,8 @@ app.get('/health', async (req, res) => {
 
                 try {
                     const token = await accountManager.getTokenForAccount(account);
-                    const quotas = await getModelQuotas(token);
+                    const projectId = account.subscription?.projectId || null;
+                    const quotas = await getModelQuotas(token, projectId);
 
                     // Format quotas for readability
                     const formattedQuotas = {};
@@ -299,11 +365,11 @@ app.get('/account-limits', async (req, res) => {
                 try {
                     const token = await accountManager.getTokenForAccount(account);
 
-                    // Fetch both quotas and subscription tier in parallel
-                    const [quotas, subscription] = await Promise.all([
-                        getModelQuotas(token),
-                        getSubscriptionTier(token)
-                    ]);
+                    // Fetch subscription tier first to get project ID
+                    const subscription = await getSubscriptionTier(token);
+
+                    // Then fetch quotas with project ID for accurate quota info
+                    const quotas = await getModelQuotas(token, subscription.projectId);
 
                     // Update account object with fresh data
                     account.subscription = {
@@ -601,16 +667,14 @@ app.get('/v1/models', async (req, res) => {
  * Count tokens endpoint - Anthropic Messages API compatible
  * Uses local tokenization with official tokenizers (@anthropic-ai/tokenizer for Claude, @lenml/tokenizer-gemini for Gemini)
  */
-app.post('/v1/messages/count_tokens', async (req, res) => {
-    try {
-        // Ensure account manager is initialized for API-based counting
-        await ensureInitialized();
-    } catch (error) {
-        // If initialization fails, handler will fall back to local estimation
-        logger.debug(`[TokenCounter] Account manager not initialized: ${error.message}`);
-    }
-
-    return createCountTokensHandler(accountManager)(req, res);
+app.post('/v1/messages/count_tokens', (req, res) => {
+    res.status(501).json({
+        type: 'error',
+        error: {
+            type: 'not_implemented',
+            message: 'Token counting is not implemented. Use /v1/messages with max_tokens or configure your client to skip token counting.'
+        }
+    });
 });
 
 /**
@@ -781,6 +845,7 @@ app.post('/v1/messages', async (req, res) => {
 usageStats.setupRoutes(app);
 
 app.use('*', (req, res) => {
+    // Log 404s (use originalUrl since wildcard strips req.path)
     if (logger.isDebugEnabled) {
         logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
     }

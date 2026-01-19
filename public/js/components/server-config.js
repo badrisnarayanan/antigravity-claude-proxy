@@ -88,15 +88,15 @@ window.Components.serverConfig = () => ({
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to change password');
+                throw new Error(data.error || store.t('failedToChangePassword'));
             }
 
             // Update stored password
             store.webuiPassword = newPassword;
-            store.showToast('Password changed successfully', 'success');
+            store.showToast(store.t('passwordChangedSuccess'), 'success');
             this.hidePasswordDialog();
         } catch (e) {
-            store.showToast('Failed to change password: ' + e.message, 'error');
+            store.showToast(store.t('failedToChangePassword') + ': ' + e.message, 'error');
         }
     },
 
@@ -119,16 +119,16 @@ window.Components.serverConfig = () => ({
 
             const data = await response.json();
             if (data.status === 'ok') {
-                const status = enabled ? 'enabled' : 'disabled';
-                store.showToast(`Debug mode ${status}`, 'success');
+                const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
+                store.showToast(store.t('debugModeToggled', { status }), 'success');
                 await this.fetchServerConfig(); // Confirm server state
             } else {
-                throw new Error(data.error || 'Failed to update debug mode');
+                throw new Error(data.error || store.t('failedToUpdateDebugMode'));
             }
         } catch (e) {
             // Rollback on error
             this.serverConfig.debug = previousValue;
-            store.showToast('Failed to update debug mode: ' + e.message, 'error');
+            store.showToast(store.t('failedToUpdateDebugMode') + ': ' + e.message, 'error');
         }
     },
 
@@ -151,16 +151,16 @@ window.Components.serverConfig = () => ({
 
             const data = await response.json();
             if (data.status === 'ok') {
-                const status = enabled ? 'enabled' : 'disabled';
-                store.showToast(`Token cache ${status}`, 'success');
+                const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
+                store.showToast(store.t('tokenCacheToggled', { status }), 'success');
                 await this.fetchServerConfig(); // Confirm server state
             } else {
-                throw new Error(data.error || 'Failed to update token cache');
+                throw new Error(data.error || store.t('failedToUpdateTokenCache'));
             }
         } catch (e) {
             // Rollback on error
             this.serverConfig.persistTokenCache = previousValue;
-            store.showToast('Failed to update token cache: ' + e.message, 'error');
+            store.showToast(store.t('failedToUpdateTokenCache') + ': ' + e.message, 'error');
         }
     },
 
@@ -206,15 +206,15 @@ window.Components.serverConfig = () => ({
 
                 const data = await response.json();
                 if (data.status === 'ok') {
-                    store.showToast(`${displayName} updated to ${value}`, 'success');
+                    store.showToast(store.t('fieldUpdated', { displayName, value }), 'success');
                     await this.fetchServerConfig(); // Confirm server state
                 } else {
-                    throw new Error(data.error || `Failed to update ${displayName}`);
+                    throw new Error(data.error || store.t('failedToUpdateField', { displayName }));
                 }
             } catch (e) {
                 // Rollback on error
                 this.serverConfig[fieldName] = previousValue;
-                store.showToast(`Failed to update ${displayName}: ` + e.message, 'error');
+                store.showToast(store.t('failedToUpdateField', { displayName }) + ': ' + e.message, 'error');
             }
         }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE);
     },
@@ -254,5 +254,102 @@ window.Components.serverConfig = () => ({
         const { MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxAccounts', value, 'Max Accounts',
             (v) => window.Validators.validateRange(v, MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX, 'Max Accounts'));
+    },
+
+    toggleRateLimitDedupWindowMs(value) {
+        const { RATE_LIMIT_DEDUP_MIN, RATE_LIMIT_DEDUP_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('rateLimitDedupWindowMs', value, 'Rate Limit Dedup Window',
+            (v) => window.Validators.validateTimeout(v, RATE_LIMIT_DEDUP_MIN, RATE_LIMIT_DEDUP_MAX));
+    },
+
+    toggleMaxConsecutiveFailures(value) {
+        const { MAX_CONSECUTIVE_FAILURES_MIN, MAX_CONSECUTIVE_FAILURES_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('maxConsecutiveFailures', value, 'Max Consecutive Failures',
+            (v) => window.Validators.validateRange(v, MAX_CONSECUTIVE_FAILURES_MIN, MAX_CONSECUTIVE_FAILURES_MAX, 'Max Consecutive Failures'));
+    },
+
+    toggleExtendedCooldownMs(value) {
+        const { EXTENDED_COOLDOWN_MIN, EXTENDED_COOLDOWN_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('extendedCooldownMs', value, 'Extended Cooldown',
+            (v) => window.Validators.validateTimeout(v, EXTENDED_COOLDOWN_MIN, EXTENDED_COOLDOWN_MAX));
+    },
+
+    toggleCapacityRetryDelayMs(value) {
+        const { CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('capacityRetryDelayMs', value, 'Capacity Retry Delay',
+            (v) => window.Validators.validateTimeout(v, CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX));
+    },
+
+    toggleMaxCapacityRetries(value) {
+        const { MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('maxCapacityRetries', value, 'Max Capacity Retries',
+            (v) => window.Validators.validateRange(v, MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX, 'Max Capacity Retries'));
+    },
+
+    // Toggle Account Selection Strategy
+    async toggleStrategy(strategy) {
+        const store = Alpine.store('global');
+        const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+
+        if (!validStrategies.includes(strategy)) {
+            store.showToast(store.t('invalidStrategy'), 'error');
+            return;
+        }
+
+        // Optimistic update
+        const previousValue = this.serverConfig.accountSelection?.strategy || 'hybrid';
+        if (!this.serverConfig.accountSelection) {
+            this.serverConfig.accountSelection = {};
+        }
+        this.serverConfig.accountSelection.strategy = strategy;
+
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountSelection: { strategy } })
+            }, store.webuiPassword);
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                const strategyLabel = this.getStrategyLabel(strategy);
+                store.showToast(store.t('strategyUpdated', { strategy: strategyLabel }), 'success');
+                await this.fetchServerConfig(); // Confirm server state
+            } else {
+                throw new Error(data.error || store.t('failedToUpdateStrategy'));
+            }
+        } catch (e) {
+            // Rollback on error
+            if (!this.serverConfig.accountSelection) {
+                this.serverConfig.accountSelection = {};
+            }
+            this.serverConfig.accountSelection.strategy = previousValue;
+            store.showToast(store.t('failedToUpdateStrategy') + ': ' + e.message, 'error');
+        }
+    },
+
+    // Get display label for a strategy
+    getStrategyLabel(strategy) {
+        const store = Alpine.store('global');
+        const labels = {
+            'sticky': store.t('strategyStickyLabel'),
+            'round-robin': store.t('strategyRoundRobinLabel'),
+            'hybrid': store.t('strategyHybridLabel')
+        };
+        return labels[strategy] || strategy;
+    },
+
+    // Get description for current strategy
+    currentStrategyDescription() {
+        const store = Alpine.store('global');
+        const strategy = this.serverConfig.accountSelection?.strategy || 'hybrid';
+        const descriptions = {
+            'sticky': store.t('strategyStickyDesc'),
+            'round-robin': store.t('strategyRoundRobinDesc'),
+            'hybrid': store.t('strategyHybridDesc')
+        };
+        return descriptions[strategy] || '';
     }
 });

@@ -35,6 +35,7 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
     }
 
     const parts = [];
+    const deferredInlineData = []; // Collect inlineData to add at the end (Issue #91)
 
     for (const block of content) {
         if (!block) continue;
@@ -152,8 +153,9 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
 
             parts.push({ functionResponse });
 
-            // Add any images from the tool result as separate parts
-            parts.push(...imageParts);
+            // Defer images from the tool result to end of parts array (Issue #91)
+            // This ensures all functionResponse parts are consecutive
+            deferredInlineData.push(...imageParts);
         } else if (block.type === 'thinking') {
             // Handle thinking blocks with signature compatibility check
             if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
@@ -182,6 +184,10 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             // Unsigned thinking blocks are dropped (existing behavior)
         }
     }
+
+    // Add deferred inlineData at the end (Issue #91)
+    // This ensures functionResponse parts are consecutive, which Claude's API requires
+    parts.push(...deferredInlineData);
 
     return parts;
 }

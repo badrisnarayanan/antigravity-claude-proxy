@@ -3,9 +3,10 @@
  * Entry point - starts the proxy server
  */
 
-import app from './server.js';
+import app, { accountManager } from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
+import { getStrategyLabel, STRATEGY_NAMES, DEFAULT_STRATEGY } from './account-manager/strategies/index.js';
 import path from 'path';
 import os from 'os';
 
@@ -13,6 +14,21 @@ import os from 'os';
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
+
+// Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
+let strategyOverride = null;
+for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--strategy=')) {
+        strategyOverride = args[i].split('=')[1];
+    } else if (args[i] === '--strategy' && args[i + 1]) {
+        strategyOverride = args[i + 1];
+    }
+}
+// Validate strategy
+if (strategyOverride && !STRATEGY_NAMES.includes(strategyOverride.toLowerCase())) {
+    logger.warn(`[Startup] Invalid strategy "${strategyOverride}". Valid options: ${STRATEGY_NAMES.join(', ')}. Using default.`);
+    strategyOverride = null;
+}
 
 // Initialize logger
 logger.setDebug(isDebug);
@@ -34,7 +50,7 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     // Clear console for a clean start
     console.clear();
 
@@ -44,7 +60,11 @@ app.listen(PORT, () => {
     const align4 = (text) => text + ' '.repeat(Math.max(0, 58 - text.length));
     
     // Build Control section dynamically
+    const strategyOptions = `(${STRATEGY_NAMES.join('/')})`;
+    const strategyLine2 = '                       ' + strategyOptions;
     let controlSection = '║  Control:                                                    ║\n';
+    controlSection += '║    --strategy=<s>     Set account selection strategy         ║\n';
+    controlSection += `${border}  ${align(strategyLine2)}${border}\n`;
     if (!isDebug) {
         controlSection += '║    --debug            Enable debug logging                   ║\n';
     }
@@ -53,17 +73,18 @@ app.listen(PORT, () => {
     }
     controlSection += '║    Ctrl+C             Stop server                            ║';
 
-    // Build status section if any modes are active
-    let statusSection = '';
-    if (isDebug || isFallbackEnabled) {
-        statusSection = '║                                                              ║\n';
-        statusSection += '║  Active Modes:                                               ║\n';
-        if (isDebug) {
-            statusSection += '║    ✓ Debug mode enabled                                      ║\n';
-        }
-        if (isFallbackEnabled) {
-            statusSection += '║    ✓ Model fallback enabled                                  ║\n';
-        }
+    // Get the strategy label (accountManager will be initialized by now)
+    const strategyLabel = accountManager.getStrategyLabel();
+
+    // Build status section - always show strategy, plus any active modes
+    let statusSection = '║                                                              ║\n';
+    statusSection += '║  Active Modes:                                               ║\n';
+    statusSection += `${border}    ${align4(`✓ Strategy: ${strategyLabel}`)}${border}\n`;
+    if (isDebug) {
+        statusSection += '║    ✓ Debug mode enabled                                      ║\n';
+    }
+    if (isFallbackEnabled) {
+        statusSection += '║    ✓ Model fallback enabled                                  ║\n';
     }
 
     logger.log(`
@@ -71,7 +92,7 @@ app.listen(PORT, () => {
 ║           Antigravity Claude Proxy Server                    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-${border}  ${align(`Server running at: http://localhost:${PORT}`)}${border}
+${border}  ${align(`Server and WebUI running at: http://localhost:${PORT}`)}${border}
 ${statusSection}║                                                              ║
 ${controlSection}
 ║                                                              ║
@@ -105,3 +126,21 @@ ${border}    ${align4(`export ANTHROPIC_BASE_URL=http://localhost:${PORT}`)}${bo
         logger.warn('Running in DEBUG mode - verbose logs enabled');
     }
 });
+
+// Graceful shutdown
+const shutdown = () => {
+    logger.info('Shutting down server...');
+    server.close(() => {
+        logger.success('Server stopped');
+        process.exit(0);
+    });
+
+    // Force close if it takes too long
+    setTimeout(() => {
+        logger.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

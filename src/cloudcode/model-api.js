@@ -57,14 +57,18 @@ export async function listModels(token) {
  * Returns model quotas including remaining fraction and reset time
  *
  * @param {string} token - OAuth access token
+ * @param {string} [projectId] - Optional project ID for accurate quota info
  * @returns {Promise<Object>} Raw response from fetchAvailableModels API
  */
-export async function fetchAvailableModels(token) {
+export async function fetchAvailableModels(token, projectId = null) {
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         ...ANTIGRAVITY_HEADERS
     };
+
+    // Include project ID in body for accurate quota info (per Quotio implementation)
+    const body = projectId ? { project: projectId } : {};
 
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
@@ -72,7 +76,7 @@ export async function fetchAvailableModels(token) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({})
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
@@ -95,10 +99,11 @@ export async function fetchAvailableModels(token) {
  * Extracts quota info (remaining fraction and reset time) for each model
  *
  * @param {string} token - OAuth access token
+ * @param {string} [projectId] - Optional project ID for accurate quota info
  * @returns {Promise<Object>} Map of modelId -> { remainingFraction, resetTime }
  */
-export async function getModelQuotas(token) {
-    const data = await fetchAvailableModels(token);
+export async function getModelQuotas(token, projectId = null) {
+    const data = await fetchAvailableModels(token, projectId);
     if (!data || !data.models) return {};
 
     const quotas = {};
@@ -108,13 +113,39 @@ export async function getModelQuotas(token) {
 
         if (modelData.quotaInfo) {
             quotas[modelId] = {
-                remainingFraction: modelData.quotaInfo.remainingFraction ?? null,
+                // When remainingFraction is missing but resetTime is present, quota is exhausted (0%)
+                remainingFraction: modelData.quotaInfo.remainingFraction ?? (modelData.quotaInfo.resetTime ? 0 : null),
                 resetTime: modelData.quotaInfo.resetTime ?? null
             };
         }
     }
 
     return quotas;
+}
+
+/**
+ * Parse tier ID string to determine subscription level
+ * @param {string} tierId - The tier ID from the API
+ * @returns {'free' | 'pro' | 'ultra' | 'unknown'} The subscription tier
+ */
+export function parseTierId(tierId) {
+    if (!tierId) return 'unknown';
+    const lower = tierId.toLowerCase();
+
+    if (lower.includes('ultra')) {
+        return 'ultra';
+    }
+    if (lower === 'standard-tier') {
+        // standard-tier = "Gemini Code Assist" (paid, project-based)
+        return 'pro';
+    }
+    if (lower.includes('pro') || lower.includes('premium')) {
+        return 'pro';
+    }
+    if (lower === 'free-tier' || lower.includes('free')) {
+        return 'free';
+    }
+    return 'unknown';
 }
 
 /**
@@ -154,6 +185,9 @@ export async function getSubscriptionTier(token) {
 
             const data = await response.json();
 
+            // Debug: Log all tier-related fields from the response
+            logger.debug(`[CloudCode] loadCodeAssist tier data: paidTier=${JSON.stringify(data.paidTier)}, currentTier=${JSON.stringify(data.currentTier)}, allowedTiers=${JSON.stringify(data.allowedTiers?.map(t => ({ id: t?.id, isDefault: t?.isDefault })))}`);
+
             // Extract project ID
             let projectId = null;
             if (typeof data.cloudaicompanionProject === 'string') {
@@ -162,22 +196,45 @@ export async function getSubscriptionTier(token) {
                 projectId = data.cloudaicompanionProject.id;
             }
 
-            // Extract subscription tier (priority: paidTier > currentTier)
-            let tier = 'free';
-            const tierId = data.paidTier?.id || data.currentTier?.id;
+            // Extract subscription tier
+            // Priority: paidTier > currentTier > allowedTiers
+            // - paidTier.id: "g1-pro-tier", "g1-ultra-tier" (Google One subscription)
+            // - currentTier.id: "standard-tier" (pro), "free-tier" (free)
+            // - allowedTiers: fallback when currentTier is missing
+            // Note: paidTier is sometimes missing from the response even for Pro accounts
+            let tier = 'unknown';
+            let tierId = null;
+            let tierSource = null;
 
-            if (tierId) {
-                const lowerTier = tierId.toLowerCase();
-                if (lowerTier.includes('ultra')) {
-                    tier = 'ultra';
-                } else if (lowerTier.includes('pro')) {
-                    tier = 'pro';
-                } else {
-                    tier = 'free';
+            // 1. Check paidTier first (Google One AI subscription - most reliable)
+            if (data.paidTier?.id) {
+                tierId = data.paidTier.id;
+                tier = parseTierId(tierId);
+                tierSource = 'paidTier';
+            }
+
+            // 2. Fall back to currentTier if paidTier didn't give us a tier
+            if (tier === 'unknown' && data.currentTier?.id) {
+                tierId = data.currentTier.id;
+                tier = parseTierId(tierId);
+                tierSource = 'currentTier';
+            }
+
+            // 3. Fall back to allowedTiers (find the default or first non-free tier)
+            if (tier === 'unknown' && Array.isArray(data.allowedTiers) && data.allowedTiers.length > 0) {
+                // First look for the default tier
+                let defaultTier = data.allowedTiers.find(t => t?.isDefault);
+                if (!defaultTier) {
+                    defaultTier = data.allowedTiers[0];
+                }
+                if (defaultTier?.id) {
+                    tierId = defaultTier.id;
+                    tier = parseTierId(tierId);
+                    tierSource = 'allowedTiers';
                 }
             }
 
-            logger.debug(`[CloudCode] Subscription detected: ${tier}, Project: ${projectId}`);
+            logger.debug(`[CloudCode] Subscription detected: ${tier} (tierId: ${tierId}, source: ${tierSource}), Project: ${projectId}`);
 
             return { tier, projectId };
         } catch (error) {

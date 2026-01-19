@@ -78,7 +78,7 @@ export function parseResetTime(responseOrError, errorText = '') {
 
         // Try to extract "quotaResetDelay" first (e.g. "754.431528ms" or "1.5s")
         // This is Google's preferred format for rate limit reset delay
-        const quotaDelayMatch = msg.match(/quotaResetDelay[:\s"]+(\\d+(?:\\.\\d+)?)(ms|s)/i);
+        const quotaDelayMatch = msg.match(/quotaResetDelay[:\s"]+(\d+(?:\.\d+)?)(ms|s)/i);
         if (quotaDelayMatch) {
             const value = parseFloat(quotaDelayMatch[1]);
             const unit = quotaDelayMatch[2].toLowerCase();
@@ -103,7 +103,7 @@ export function parseResetTime(responseOrError, errorText = '') {
         // Try to extract "retry-after-ms" or "retryDelay" - check seconds format first (e.g. "7739.23s")
         // Added stricter regex to avoid partial matches
         if (!resetMs) {
-             const secMatch = msg.match(/(?:retry[-_]?after[-_]?ms|retryDelay)[:\s"]+([\\d\\.]+)(?:s\b|s")/i);
+             const secMatch = msg.match(/(?:retry[-_]?after[-_]?ms|retryDelay)[:\s"]+([\d.]+)(?:s\b|s")/i);
              if (secMatch) {
                  resetMs = Math.ceil(parseFloat(secMatch[1]) * 1000);
                  logger.debug(`[CloudCode] Parsed retry seconds from body (precise): ${resetMs}ms`);
