@@ -38,10 +38,14 @@ export async function* streamSSEResponse(response, originalModel) {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
 
-        for (const line of lines) {
+        let startIndex = 0;
+        let index;
+
+        while ((index = buffer.indexOf('\n', startIndex)) !== -1) {
+            const line = buffer.slice(startIndex, index);
+            startIndex = index + 1;
+
             if (!line.startsWith('data:')) continue;
 
             const jsonText = line.slice(5).trim();
@@ -258,6 +262,7 @@ export async function* streamSSEResponse(response, originalModel) {
                 logger.warn('[CloudCode] SSE parse error:', parseError.message);
             }
         }
+        buffer = buffer.slice(startIndex);
     }
 
     // Handle no content received - throw error to trigger retry in streaming-handler
