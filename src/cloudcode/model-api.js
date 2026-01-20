@@ -128,7 +128,7 @@ export async function getModelQuotas(token, projectId = null) {
  * @param {string} tierId - The tier ID from the API
  * @returns {'free' | 'pro' | 'ultra' | 'unknown'} The subscription tier
  */
-function parseTierId(tierId) {
+export function parseTierId(tierId) {
     if (!tierId) return 'unknown';
     const lower = tierId.toLowerCase();
 

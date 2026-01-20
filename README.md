@@ -272,13 +272,37 @@ Gemini models include full thinking support with `thoughtSignature` handling for
 
 ## Multi-Account Load Balancing
 
-When you add multiple accounts, the proxy automatically:
+When you add multiple accounts, the proxy intelligently distributes requests across them using configurable selection strategies.
 
-- **Sticky account selection**: Stays on the same account to maximize prompt cache hits
-- **Smart rate limit handling**: Waits for short rate limits (≤2 min), switches accounts for longer ones
-- **Automatic cooldown**: Rate-limited accounts become available after reset time expires
-- **Invalid account detection**: Accounts needing re-authentication are marked and skipped
-- **Prompt caching support**: Stable session IDs enable cache hits across conversation turns
+### Account Selection Strategies
+
+Choose a strategy based on your needs:
+
+| Strategy | Best For | Description |
+| --- | --- | --- |
+| **Hybrid** (Default) | Most users | Smart selection combining health score, token bucket rate limiting, and LRU freshness |
+| **Sticky** | Prompt caching | Stays on the same account to maximize cache hits, switches only when rate-limited |
+| **Round-Robin** | Even distribution | Cycles through accounts sequentially for balanced load |
+
+**Configure via CLI:**
+
+```bash
+antigravity-claude-proxy start --strategy=hybrid    # Default: smart distribution
+antigravity-claude-proxy start --strategy=sticky    # Cache-optimized
+antigravity-claude-proxy start --strategy=round-robin  # Load-balanced
+```
+
+**Or via WebUI:** Settings → Server → Account Selection Strategy
+
+### How It Works
+
+- **Health Score Tracking**: Accounts earn points for successful requests and lose points for failures/rate-limits
+- **Token Bucket Rate Limiting**: Client-side throttling with regenerating tokens (50 max, 6/minute)
+- **Automatic Cooldown**: Rate-limited accounts recover automatically after reset time expires
+- **Invalid Account Detection**: Accounts needing re-authentication are marked and skipped
+- **Prompt Caching Support**: Session IDs derived from conversation enable cache hits across turns
+
+### Monitoring
 
 Check account status, subscription tiers, and quota anytime:
 
@@ -395,6 +419,7 @@ npm run test:streaming     # Streaming SSE events
 npm run test:interleaved   # Interleaved thinking
 npm run test:images        # Image processing
 npm run test:caching       # Prompt caching
+npm run test:strategies    # Account selection strategies
 ```
 
 ---

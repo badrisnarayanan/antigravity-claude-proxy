@@ -1,6 +1,6 @@
 /**
  * Account Manager
- * Manages multiple Antigravity accounts with sticky selection,
+ * Manages multiple Antigravity accounts with configurable selection strategies,
  * automatic failover, and smart cooldown for rate-limited accounts.
  */
 
@@ -23,13 +23,9 @@ import {
     clearProjectCache as clearProject,
     clearTokenCache as clearToken
 } from './credentials.js';
-import {
-    pickNext as selectNext,
-    getCurrentStickyAccount as getSticky,
-    shouldWaitForCurrentAccount as shouldWait,
-    pickStickyAccount as selectSticky
-} from './selection.js';
+import { createStrategy, getStrategyLabel, DEFAULT_STRATEGY } from './strategies/index.js';
 import { logger } from '../utils/logger.js';
+import { config } from '../config.js';
 
 export class AccountManager {
     #accounts = [];
@@ -37,19 +33,26 @@ export class AccountManager {
     #configPath;
     #settings = {};
     #initialized = false;
+    #strategy = null;
+    #strategyName = DEFAULT_STRATEGY;
 
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
 
-    constructor(configPath = ACCOUNT_CONFIG_PATH) {
+    constructor(configPath = ACCOUNT_CONFIG_PATH, strategyName = null) {
         this.#configPath = configPath;
+        // Strategy name can be set at construction or later via initialize
+        if (strategyName) {
+            this.#strategyName = strategyName;
+        }
     }
 
     /**
      * Initialize the account manager by loading config
+     * @param {string} [strategyOverride] - Override strategy name (from CLI flag or env var)
      */
-    async initialize() {
+    async initialize(strategyOverride = null) {
         if (this.#initialized) return;
 
         const { accounts, settings, activeIndex } = await loadAccounts(this.#configPath);
@@ -65,6 +68,16 @@ export class AccountManager {
             this.#accounts = defaultAccounts;
             this.#tokenCache = tokenCache;
         }
+
+        // Determine strategy: CLI override > env var > config file > default
+        const configStrategy = config?.accountSelection?.strategy;
+        const envStrategy = process.env.ACCOUNT_STRATEGY;
+        this.#strategyName = strategyOverride || envStrategy || configStrategy || this.#strategyName;
+
+        // Create the strategy instance
+        const strategyConfig = config?.accountSelection || {};
+        this.#strategy = createStrategy(this.#strategyName, strategyConfig);
+        logger.info(`[AccountManager] Using ${getStrategyLabel(this.#strategyName)} selection strategy`);
 
         // Clear any expired rate limits
         this.clearExpiredLimits();
@@ -138,51 +151,88 @@ export class AccountManager {
     }
 
     /**
-     * Pick the next available account (fallback when current is unavailable).
-     * Sets activeIndex to the selected account's index.
-     * @param {string} [modelId] - Optional model ID
-     * @returns {Object|null} The next available account or null if none available
-     */
-    pickNext(modelId = null) {
-        const { account, newIndex } = selectNext(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
-        this.#currentIndex = newIndex;
-        return account;
-    }
-
-    /**
-     * Get the current account without advancing the index (sticky selection).
-     * Used for cache continuity - sticks to the same account until rate-limited.
-     * @param {string} [modelId] - Optional model ID
-     * @returns {Object|null} The current account or null if unavailable/rate-limited
-     */
-    getCurrentStickyAccount(modelId = null) {
-        const { account, newIndex } = getSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
-        this.#currentIndex = newIndex;
-        return account;
-    }
-
-    /**
-     * Check if we should wait for the current account's rate limit to reset.
-     * Used for sticky account selection - wait if rate limit is short (≤ threshold).
-     * @param {string} [modelId] - Optional model ID
-     * @returns {{shouldWait: boolean, waitMs: number, account: Object|null}}
-     */
-    shouldWaitForCurrentAccount(modelId = null) {
-        return shouldWait(this.#accounts, this.#currentIndex, modelId);
-    }
-
-    /**
-     * Pick an account with sticky selection preference.
-     * Prefers the current account for cache continuity, only switches when:
-     * - Current account is rate-limited for > 2 minutes
-     * - Current account is invalid
-     * @param {string} [modelId] - Optional model ID
+     * Select an account using the configured strategy.
+     * This is the main method to use for account selection.
+     * @param {string} [modelId] - Model ID for the request
+     * @param {Object} [options] - Additional options
+     * @param {string} [options.sessionId] - Session ID for cache continuity
      * @returns {{account: Object|null, waitMs: number}} Account to use and optional wait time
      */
-    pickStickyAccount(modelId = null) {
-        const { account, waitMs, newIndex } = selectSticky(this.#accounts, this.#currentIndex, () => this.saveToDisk(), modelId);
-        this.#currentIndex = newIndex;
-        return { account, waitMs };
+    selectAccount(modelId = null, options = {}) {
+        if (!this.#strategy) {
+            throw new Error('AccountManager not initialized. Call initialize() first.');
+        }
+
+        const result = this.#strategy.selectAccount(this.#accounts, modelId, {
+            currentIndex: this.#currentIndex,
+            onSave: () => this.saveToDisk(),
+            ...options
+        });
+
+        this.#currentIndex = result.index;
+        return { account: result.account, waitMs: result.waitMs || 0 };
+    }
+
+    /**
+     * Notify the strategy of a successful request
+     * @param {Object} account - The account that was used
+     * @param {string} modelId - The model ID that was used
+     */
+    notifySuccess(account, modelId) {
+        if (this.#strategy) {
+            this.#strategy.onSuccess(account, modelId);
+        }
+    }
+
+    /**
+     * Notify the strategy of a rate limit
+     * @param {Object} account - The account that was rate-limited
+     * @param {string} modelId - The model ID that was rate-limited
+     */
+    notifyRateLimit(account, modelId) {
+        if (this.#strategy) {
+            this.#strategy.onRateLimit(account, modelId);
+        }
+    }
+
+    /**
+     * Notify the strategy of a failure
+     * @param {Object} account - The account that failed
+     * @param {string} modelId - The model ID that failed
+     */
+    notifyFailure(account, modelId) {
+        if (this.#strategy) {
+            this.#strategy.onFailure(account, modelId);
+        }
+    }
+
+    /**
+     * Get the current strategy name
+     * @returns {string} Strategy name
+     */
+    getStrategyName() {
+        return this.#strategyName;
+    }
+
+    /**
+     * Get the strategy display label
+     * @returns {string} Strategy display label
+     */
+    getStrategyLabel() {
+        return getStrategyLabel(this.#strategyName);
+    }
+
+    /**
+     * Get the health tracker from the current strategy (if available)
+     * Used by handlers for consecutive failure tracking
+     * Only available when using hybrid strategy
+     * @returns {Object|null} Health tracker instance or null if not available
+     */
+    getHealthTracker() {
+        if (this.#strategy && typeof this.#strategy.getHealthTracker === 'function') {
+            return this.#strategy.getHealthTracker();
+        }
+        return null;
     }
 
     /**
@@ -247,7 +297,8 @@ export class AccountManager {
      * @returns {Promise<string>} Project ID
      */
     async getProjectForAccount(account, token) {
-        return fetchProject(account, token, this.#projectCache);
+        // Pass onSave callback to persist managedProjectId in refresh token
+        return fetchProject(account, token, this.#projectCache, () => this.saveToDisk());
     }
 
     /**

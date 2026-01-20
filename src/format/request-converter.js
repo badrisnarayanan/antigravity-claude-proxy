@@ -226,6 +226,16 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
         googleRequest.tools = [{ functionDeclarations }];
         logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+
+        // For Claude models, set functionCallingConfig.mode = "VALIDATED"
+        // This ensures strict parameter validation (matches opencode-antigravity-auth)
+        if (isClaudeModel) {
+            googleRequest.toolConfig = {
+                functionCallingConfig: {
+                    mode: 'VALIDATED'
+                }
+            };
+        }
     }
 
     // Cap max tokens for Gemini models

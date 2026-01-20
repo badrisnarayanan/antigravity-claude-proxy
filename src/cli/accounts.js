@@ -17,7 +17,7 @@ import { createInterface } from 'readline/promises';
 import { stdin, stdout } from 'process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import net from 'net';
 import { ACCOUNT_CONFIG_PATH, DEFAULT_PORT, MAX_ACCOUNTS } from '../constants.js';
 import {
@@ -88,21 +88,25 @@ function createRL() {
 function openBrowser(url) {
     const platform = process.platform;
     let command;
+    let args;
 
     if (platform === 'darwin') {
-        command = `open "${url}"`;
+        command = 'open';
+        args = [url];
     } else if (platform === 'win32') {
-        command = `start "" "${url}"`;
+        command = 'cmd';
+        args = ['/c', 'start', '', url.replace(/&/g, '^&')];
     } else {
-        command = `xdg-open "${url}"`;
+        command = 'xdg-open';
+        args = [url];
     }
 
-    exec(command, (error) => {
-        if (error) {
-            console.log('\n⚠ Could not open browser automatically.');
-            console.log('Please open this URL manually:', url);
-        }
+    const child = spawn(command, args, { stdio: 'ignore', detached: true });
+    child.on('error', () => {
+        console.log('\n⚠ Could not open browser automatically.');
+        console.log('Please open this URL manually:', url);
     });
+    child.unref();
 }
 
 /**
@@ -206,20 +210,18 @@ async function addAccount(existingAccounts) {
         if (existing) {
             console.log(`\n⚠ Account ${result.email} already exists. Updating tokens.`);
             existing.refreshToken = result.refreshToken;
-            existing.projectId = result.projectId;
+            // Note: projectId will be discovered and stored in refresh token on first use
             existing.addedAt = new Date().toISOString();
             return null; // Don't add duplicate
         }
 
         console.log(`\n✓ Successfully authenticated: ${result.email}`);
-        if (result.projectId) {
-            console.log(`  Project ID: ${result.projectId}`);
-        }
+        console.log('  Project will be discovered on first API request.');
 
         return {
             email: result.email,
             refreshToken: result.refreshToken,
-            projectId: result.projectId,
+            // Note: projectId stored in refresh token, not as separate field
             addedAt: new Date().toISOString(),
             modelRateLimits: {}
         };
@@ -263,20 +265,18 @@ async function addAccountNoBrowser(existingAccounts, rl) {
         if (existing) {
             console.log(`\n⚠ Account ${result.email} already exists. Updating tokens.`);
             existing.refreshToken = result.refreshToken;
-            existing.projectId = result.projectId;
+            // Note: projectId will be discovered and stored in refresh token on first use
             existing.addedAt = new Date().toISOString();
             return null; // Don't add duplicate
         }
 
         console.log(`\n✓ Successfully authenticated: ${result.email}`);
-        if (result.projectId) {
-            console.log(`  Project ID: ${result.projectId}`);
-        }
+        console.log('  Project will be discovered on first API request.');
 
         return {
             email: result.email,
             refreshToken: result.refreshToken,
-            projectId: result.projectId,
+            // Note: projectId stored in refresh token, not as separate field
             addedAt: new Date().toISOString(),
             modelRateLimits: {}
         };

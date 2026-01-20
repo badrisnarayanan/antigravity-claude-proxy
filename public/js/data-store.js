@@ -125,11 +125,6 @@ document.addEventListener('alpine:init', () => {
                 this.computeQuotaRows();
 
                 this.lastUpdated = new Date().toLocaleTimeString();
-
-                // Fetch version from config endpoint if not already loaded
-                if (this.initialLoad) {
-                    this.fetchVersion(password);
-                }
             } catch (error) {
                 console.error('Fetch error:', error);
                 const store = Alpine.store('global');
@@ -137,20 +132,6 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
                 this.initialLoad = false; // Mark initial load as complete
-            }
-        },
-
-        async fetchVersion(password) {
-            try {
-                const { response } = await window.utils.request('/api/config', {}, password);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.version) {
-                        Alpine.store('global').version = data.version;
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to fetch version:', error);
             }
         },
 
@@ -381,13 +362,6 @@ document.addEventListener('alpine:init', () => {
             });
 
             return rows;
-        },
-
-        destroy() {
-            this.stopHealthCheck();
-            if (this._visibilityHandler) {
-                document.removeEventListener('visibilitychange', this._visibilityHandler);
-            }
         }
     });
 });

@@ -187,13 +187,3 @@ window.AccountActions.reloadAccounts = async function() {
         return { success: false, error: error.message };
     }
 };
-
-/**
- * 检查账号是否可以删除
- * 来自 Antigravity 数据库的账号（source='database'）不可删除
- * @param {object} account - 账号对象
- * @returns {boolean} true 表示可删除
- */
-window.AccountActions.canDelete = function(account) {
-    return account && account.source !== 'database';
-};

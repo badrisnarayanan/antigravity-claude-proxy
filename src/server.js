@@ -26,10 +26,23 @@ import usageStats from './modules/usage-stats.js';
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
+// Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
+let STRATEGY_OVERRIDE = null;
+for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--strategy=')) {
+        STRATEGY_OVERRIDE = args[i].split('=')[1];
+    } else if (args[i] === '--strategy' && args[i + 1]) {
+        STRATEGY_OVERRIDE = args[i + 1];
+    }
+}
+
 const app = express();
 
+// Disable x-powered-by header for security
+app.disable('x-powered-by');
+
 // Initialize account manager (will be fully initialized on first request or startup)
-const accountManager = new AccountManager();
+export const accountManager = new AccountManager();
 
 // Track initialization status
 let isInitialized = false;
@@ -47,7 +60,7 @@ async function ensureInitialized() {
 
     initPromise = (async () => {
         try {
-            await accountManager.initialize();
+            await accountManager.initialize(STRATEGY_OVERRIDE);
             isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
@@ -100,6 +113,23 @@ app.use('/v1', (req, res, next) => {
 // Setup usage statistics middleware
 usageStats.setupMiddleware(app);
 
+/**
+ * Silent handler for Claude Code CLI root POST requests
+ * Claude Code sends heartbeat/event requests to POST / which we don't need
+ * Using app.use instead of app.post for earlier middleware interception
+ */
+app.use((req, res, next) => {
+    // Handle Claude Code event logging requests silently
+    if (req.method === 'POST' && req.path === '/api/event_logging/batch') {
+        return res.status(200).json({ status: 'ok' });
+    }
+    // Handle Claude Code root POST requests silently
+    if (req.method === 'POST' && req.path === '/') {
+        return res.status(200).json({ status: 'ok' });
+    }
+    next();
+});
+
 // Mount WebUI (optional web interface for account management)
 mountWebUI(app, __dirname, accountManager);
 
@@ -150,15 +180,40 @@ function parseError(error) {
 
 // Request logging middleware
 app.use((req, res, next) => {
-    // Skip logging for event logging batch unless in debug mode
-    if (req.path === '/api/event_logging/batch') {
-        if (logger.isDebugEnabled) {
-             logger.debug(`[${req.method}] ${req.path}`);
+    const start = Date.now();
+
+    // Log response on finish
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const status = res.statusCode;
+        const logMsg = `[${req.method}] ${req.path} ${status} (${duration}ms)`;
+
+        // Skip standard logging for event logging batch unless in debug mode
+        if (req.path === '/api/event_logging/batch' || req.path === '/v1/messages/count_tokens') {
+            if (logger.isDebugEnabled) {
+                logger.debug(logMsg);
+            }
+        } else {
+            // Colorize status code
+            if (status >= 500) {
+                logger.error(logMsg);
+            } else if (status >= 400) {
+                logger.warn(logMsg);
+            } else {
+                logger.info(logMsg);
+            }
         }
-    } else {
-        logger.info(`[${req.method}] ${req.path}`);
-    }
+    });
+
     next();
+});
+
+/**
+ * Silent handler for Claude Code CLI root POST requests
+ * Claude Code sends heartbeat/event requests to POST / which we don't need
+ */
+app.post('/', (req, res) => {
+    res.status(200).json({ status: 'ok' });
 });
 
 /**
@@ -583,7 +638,7 @@ app.post('/refresh-token', async (req, res) => {
 app.get('/v1/models', async (req, res) => {
     try {
         await ensureInitialized();
-        const account = accountManager.pickNext();
+        const { account } = accountManager.selectAccount();
         if (!account) {
             return res.status(503).json({
                 type: 'error',
@@ -790,6 +845,7 @@ app.post('/v1/messages', async (req, res) => {
 usageStats.setupRoutes(app);
 
 app.use('*', (req, res) => {
+    // Log 404s (use originalUrl since wildcard strips req.path)
     if (logger.isDebugEnabled) {
         logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
     }

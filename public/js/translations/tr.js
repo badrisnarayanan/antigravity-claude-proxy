@@ -216,8 +216,21 @@ window.translations.tr = {
     persistTokenDesc: "Daha hızlı yeniden başlatmalar için OAuth oturumlarını diske kaydet",
     rateLimiting: "Hesap Hız Sınırlama ve Zaman Aşımları",
     defaultCooldown: "Varsayılan Soğuma Süresi",
+    defaultCooldownDesc: "API sıfırlama zamanı sağlamadığında yedek soğuma süresi.",
     maxWaitThreshold: "Maksimum Bekleme Eşiği (Yapışkan)",
     maxWaitDesc: "Yapışkan bir hesabın değiştirmeden önce sıfırlanması için beklenecek maksimum süre.",
+    // Hata İşleme Ayarları
+    errorHandlingTuning: "Hata İşleme Ayarları",
+    rateLimitDedupWindow: "Hız Sınırı Tekilleştirme Penceresi",
+    rateLimitDedupWindowDesc: "Birden fazla istek aynı anda hız sınırına ulaştığında yeniden deneme fırtınasını önler.",
+    maxConsecutiveFailures: "Maks. Ardışık Başarısızlık",
+    maxConsecutiveFailuresDesc: "Uzatılmış soğuma uygulamadan önce ardışık başarısızlık sayısı.",
+    extendedCooldown: "Uzatılmış Soğuma",
+    extendedCooldownDesc: "Maks. ardışık başarısızlık sonrası uygulanan soğuma süresi.",
+    capacityRetryDelay: "Kapasite Yeniden Deneme Gecikmesi",
+    capacityRetryDelayDesc: "Model kapasitesi tükendiğinde (kota değil) yeniden denemeden önceki gecikme.",
+    maxCapacityRetries: "Maks. Kapasite Yeniden Denemesi",
+    maxCapacityRetriesDesc: "Hesap değiştirmeden önce kapasite tükenmesi için maksimum yeniden deneme.",
     saveConfigServer: "Yapılandırmayı Kaydet",
     serverRestartAlert: "Değişiklikler {path} konumuna kaydedildi. Bazı ayarları uygulamak için sunucuyu yeniden başlatın.",
     changePassword: "WebUI Parolasını Değiştir",
@@ -313,4 +326,17 @@ window.translations.tr = {
 
     // TODO: Missing translation - Server config (exists in EN but missing here)
     // defaultCooldownDesc: "Fallback cooldown when API doesn't provide a reset time.",
+
+    // Account Selection Strategy translations
+    accountSelectionStrategy: "Hesap Seçim Stratejisi",
+    selectionStrategy: "Seçim Stratejisi",
+    strategyStickyLabel: "Sabit (Önbellek Optimizasyonu)",
+    strategyRoundRobinLabel: "Döngüsel (Yük Dengeleme)",
+    strategyHybridLabel: "Hibrit (Akıllı Dağıtım)",
+    strategyStickyDesc: "Hız sınırına ulaşılana kadar aynı hesapta kalır. Önbellek için en iyisi.",
+    strategyRoundRobinDesc: "Her istekte bir sonraki hesaba geçer. Maksimum verimlilik.",
+    strategyHybridDesc: "Sağlık, token ve tazeliğe dayalı akıllı seçim.",
+    strategyUpdated: "Strateji şu şekilde güncellendi: {strategy}",
+    failedToUpdateStrategy: "Strateji güncellenemedi",
+    invalidStrategy: "Geçersiz strateji seçildi",
 };

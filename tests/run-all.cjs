@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const tests = [
+    { name: 'Account Selection Strategies', file: 'test-strategies.cjs' },
     { name: 'Thinking Signatures', file: 'test-thinking-signatures.cjs' },
     { name: 'Multi-turn Tools (Non-Streaming)', file: 'test-multiturn-thinking-tools.cjs' },
     { name: 'Multi-turn Tools (Streaming)', file: 'test-multiturn-thinking-tools-streaming.cjs' },
@@ -18,7 +19,8 @@ const tests = [
     { name: 'Cross-Model Thinking', file: 'test-cross-model-thinking.cjs' },
     { name: 'OAuth No-Browser Mode', file: 'test-oauth-no-browser.cjs' },
     { name: 'Empty Response Retry', file: 'test-empty-response-retry.cjs' },
-    { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' }
+    { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
+    { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' }
 ];
 
 async function runTest(test) {

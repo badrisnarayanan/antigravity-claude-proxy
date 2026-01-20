@@ -248,5 +248,102 @@ window.Components.serverConfig = () => ({
         const { MAX_WAIT_MIN, MAX_WAIT_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxWaitBeforeErrorMs', value, 'Max Wait Threshold',
             (v) => window.Validators.validateTimeout(v, MAX_WAIT_MIN, MAX_WAIT_MAX));
+    },
+
+    toggleRateLimitDedupWindowMs(value) {
+        const { RATE_LIMIT_DEDUP_MIN, RATE_LIMIT_DEDUP_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('rateLimitDedupWindowMs', value, 'Rate Limit Dedup Window',
+            (v) => window.Validators.validateTimeout(v, RATE_LIMIT_DEDUP_MIN, RATE_LIMIT_DEDUP_MAX));
+    },
+
+    toggleMaxConsecutiveFailures(value) {
+        const { MAX_CONSECUTIVE_FAILURES_MIN, MAX_CONSECUTIVE_FAILURES_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('maxConsecutiveFailures', value, 'Max Consecutive Failures',
+            (v) => window.Validators.validateRange(v, MAX_CONSECUTIVE_FAILURES_MIN, MAX_CONSECUTIVE_FAILURES_MAX, 'Max Consecutive Failures'));
+    },
+
+    toggleExtendedCooldownMs(value) {
+        const { EXTENDED_COOLDOWN_MIN, EXTENDED_COOLDOWN_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('extendedCooldownMs', value, 'Extended Cooldown',
+            (v) => window.Validators.validateTimeout(v, EXTENDED_COOLDOWN_MIN, EXTENDED_COOLDOWN_MAX));
+    },
+
+    toggleCapacityRetryDelayMs(value) {
+        const { CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('capacityRetryDelayMs', value, 'Capacity Retry Delay',
+            (v) => window.Validators.validateTimeout(v, CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX));
+    },
+
+    toggleMaxCapacityRetries(value) {
+        const { MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('maxCapacityRetries', value, 'Max Capacity Retries',
+            (v) => window.Validators.validateRange(v, MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX, 'Max Capacity Retries'));
+    },
+
+    // Toggle Account Selection Strategy
+    async toggleStrategy(strategy) {
+        const store = Alpine.store('global');
+        const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+
+        if (!validStrategies.includes(strategy)) {
+            store.showToast(store.t('invalidStrategy'), 'error');
+            return;
+        }
+
+        // Optimistic update
+        const previousValue = this.serverConfig.accountSelection?.strategy || 'hybrid';
+        if (!this.serverConfig.accountSelection) {
+            this.serverConfig.accountSelection = {};
+        }
+        this.serverConfig.accountSelection.strategy = strategy;
+
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountSelection: { strategy } })
+            }, store.webuiPassword);
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                const strategyLabel = this.getStrategyLabel(strategy);
+                store.showToast(store.t('strategyUpdated', { strategy: strategyLabel }), 'success');
+                await this.fetchServerConfig(); // Confirm server state
+            } else {
+                throw new Error(data.error || store.t('failedToUpdateStrategy'));
+            }
+        } catch (e) {
+            // Rollback on error
+            if (!this.serverConfig.accountSelection) {
+                this.serverConfig.accountSelection = {};
+            }
+            this.serverConfig.accountSelection.strategy = previousValue;
+            store.showToast(store.t('failedToUpdateStrategy') + ': ' + e.message, 'error');
+        }
+    },
+
+    // Get display label for a strategy
+    getStrategyLabel(strategy) {
+        const store = Alpine.store('global');
+        const labels = {
+            'sticky': store.t('strategyStickyLabel'),
+            'round-robin': store.t('strategyRoundRobinLabel'),
+            'hybrid': store.t('strategyHybridLabel')
+        };
+        return labels[strategy] || strategy;
+    },
+
+    // Get description for current strategy
+    currentStrategyDescription() {
+        const store = Alpine.store('global');
+        const strategy = this.serverConfig.accountSelection?.strategy || 'hybrid';
+        const descriptions = {
+            'sticky': store.t('strategyStickyDesc'),
+            'round-robin': store.t('strategyRoundRobinDesc'),
+            'hybrid': store.t('strategyHybridDesc')
+        };
+        return descriptions[strategy] || '';
     }
 });

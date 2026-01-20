@@ -49,32 +49,3 @@ export function isNetworkError(error) {
         msg.includes('timeout')
     );
 }
-
-/**
- * Check if an error is an authentication error (permanent until fixed)
- * @param {Error} error - The error to check
- * @returns {boolean} True if it is an auth error
- */
-export function isAuthError(error) {
-    const msg = error.message.toLowerCase();
-    return (
-        msg.includes('401') ||
-        msg.includes('unauthenticated') ||
-        msg.includes('invalid_grant') ||
-        msg.includes('invalid_client')
-    );
-}
-
-/**
- * Check if an error is a rate limit error
- * @param {Error} error - The error to check
- * @returns {boolean} True if it is a rate limit error
- */
-export function isRateLimitError(error) {
-    const msg = error.message.toLowerCase();
-    return (
-        msg.includes('429') ||
-        msg.includes('resource_exhausted') ||
-        msg.includes('quota_exhausted')
-    );
-}
