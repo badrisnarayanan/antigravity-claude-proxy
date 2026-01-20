@@ -126,11 +126,6 @@ document.addEventListener('alpine:init', () => {
                 this.computeQuotaRows();
 
                 this.lastUpdated = new Date().toLocaleTimeString();
-
-                // Fetch version from config endpoint if not already loaded
-                if (this.initialLoad) {
-                    this.fetchVersion(password);
-                }
             } catch (error) {
                 console.error('Fetch error:', error);
                 const store = Alpine.store('global');

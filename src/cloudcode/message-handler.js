@@ -279,8 +279,10 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
                         if (response.status >= 400) {
                             lastError = new Error(`API error ${response.status}: ${errorText}`);
-                            // If it's a 5xx error, wait a bit before trying the next endpoint
-                            if (response.status >= 500) {
+                            // Try next endpoint for 403/404/5xx errors (matches opencode-antigravity-auth behavior)
+                            if (response.status === 403 || response.status === 404) {
+                                logger.warn(`[CloudCode] ${response.status} at ${endpoint}...`);
+                            } else if (response.status >= 500) {
                                 logger.warn(`[CloudCode] ${response.status} error, waiting 1s before retry...`);
                                 await sleep(1000);
                             }
