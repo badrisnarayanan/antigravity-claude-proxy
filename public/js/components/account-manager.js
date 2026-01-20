@@ -11,8 +11,11 @@ window.Components.accountManager = () => ({
     toggling: false,
     deleting: false,
     reloading: false,
+    regeneratingFingerprint: false,
+    regeneratingAllFingerprints: false,
     selectedAccountEmail: '',
     selectedAccountLimits: {},
+    selectedFingerprint: null,
 
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
@@ -241,5 +244,58 @@ window.Components.accountManager = () => ({
             percent: Math.round(val * 100),
             model: bestModel
         };
+    },
+
+    async regenerateFingerprint(email) {
+        return await window.ErrorHandler.withLoading(async () => {
+            const store = Alpine.store('global');
+
+            const { response, newPassword } = await window.utils.request(
+                `/api/accounts/${encodeURIComponent(email)}/fingerprint/regenerate`,
+                { method: 'POST' },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(`Fingerprint regenerated for ${email}`, 'success');
+                Alpine.store('data').fetchData();
+            } else {
+                throw new Error(data.error || 'Failed to regenerate fingerprint');
+            }
+        }, this, 'regeneratingFingerprint', { errorMessage: 'Failed to regenerate fingerprint' });
+    },
+
+    async regenerateAllFingerprints() {
+        return await window.ErrorHandler.withLoading(async () => {
+            const store = Alpine.store('global');
+
+            const { response, newPassword } = await window.utils.request(
+                '/api/accounts/fingerprints/regenerate-all',
+                { method: 'POST' },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(data.message || 'All fingerprints regenerated', 'success');
+                Alpine.store('data').fetchData();
+            } else {
+                throw new Error(data.error || 'Failed to regenerate fingerprints');
+            }
+        }, this, 'regeneratingAllFingerprints', { errorMessage: 'Failed to regenerate fingerprints' });
+    },
+
+    openFingerprintModal(account) {
+        this.selectedAccountEmail = account.email;
+        this.selectedFingerprint = account.fingerprint || null;
+        document.getElementById('fingerprint_modal').showModal();
+    },
+
+    formatFingerprintDate(timestamp) {
+        if (!timestamp) return '-';
+        return new Date(timestamp).toLocaleString();
     }
 });
