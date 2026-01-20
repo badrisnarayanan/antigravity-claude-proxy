@@ -280,7 +280,7 @@ export function mountWebUI(app, dirname, accountManager) {
     /**
      * POST /api/config - Update server configuration
      */
-    app.post('/api/config', (req, res) => {
+    app.post('/api/config', async (req, res) => {
         try {
             const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, accountSelection } = req.body;
 
@@ -326,7 +326,7 @@ export function mountWebUI(app, dirname, accountManager) {
                 });
             }
 
-            const success = saveConfig(updates);
+            const success = await saveConfig(updates);
 
             if (success) {
                 res.json({
@@ -350,7 +350,7 @@ export function mountWebUI(app, dirname, accountManager) {
     /**
      * POST /api/config/password - Change WebUI password
      */
-    app.post('/api/config/password', (req, res) => {
+    app.post('/api/config/password', async (req, res) => {
         try {
             const { oldPassword, newPassword } = req.body;
 
@@ -371,7 +371,7 @@ export function mountWebUI(app, dirname, accountManager) {
             }
 
             // Save new password
-            const success = saveConfig({ webuiPassword: newPassword });
+            const success = await saveConfig({ webuiPassword: newPassword });
 
             if (success) {
                 // Update in-memory config
@@ -550,7 +550,7 @@ export function mountWebUI(app, dirname, accountManager) {
     /**
      * POST /api/models/config - Update model configuration (hidden/pinned/alias)
      */
-    app.post('/api/models/config', (req, res) => {
+    app.post('/api/models/config', async (req, res) => {
         try {
             const { modelId, config: newModelConfig } = req.body;
 
@@ -568,7 +568,7 @@ export function mountWebUI(app, dirname, accountManager) {
             };
 
             // Save back to main config
-            const success = saveConfig({ modelMapping: currentMapping });
+            const success = await saveConfig({ modelMapping: currentMapping });
 
             if (success) {
                 // Update in-memory config reference
