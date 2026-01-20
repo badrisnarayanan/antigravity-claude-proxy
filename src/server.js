@@ -638,7 +638,7 @@ app.post('/refresh-token', async (req, res) => {
 app.get('/v1/models', async (req, res) => {
     try {
         await ensureInitialized();
-        const account = accountManager.pickNext();
+        const { account } = accountManager.selectAccount();
         if (!account) {
             return res.status(503).json({
                 type: 'error',
