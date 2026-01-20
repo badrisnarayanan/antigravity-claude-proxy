@@ -24,6 +24,7 @@ import usageStats from './modules/usage-stats.js';
 import eventManager from './modules/event-manager.js';
 import requestTracer from './modules/request-tracer.js';
 import issueDetector from './modules/issue-detector.js';
+import quotaPoller from './modules/quota-poller.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -54,6 +55,9 @@ async function ensureInitialized() {
             isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
+
+            // Initialize quota poller after account manager is ready
+            quotaPoller.initialize(accountManager);
         } catch (error) {
             initError = error;
             initPromise = null; // Allow retry on failure

@@ -31,7 +31,7 @@ const DEFAULT_CONFIG = {
 
     // Quota-based protection (Google suspends accounts that frequently exceed 10% remaining)
     // Enable quota threshold auto-disable
-    quotaThresholdEnabled: true,
+    quotaThresholdEnabled: false,
     // Disable when remaining quota falls to this percentage (0.2 = 20% remaining)
     // Set to 20% to provide safety margin before Google's risky 10% threshold
     quotaThreshold: 0.2,

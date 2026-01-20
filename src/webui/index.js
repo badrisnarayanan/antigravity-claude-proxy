@@ -25,6 +25,7 @@ import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
 import eventManager from '../modules/event-manager.js';
 import requestTracer from '../modules/request-tracer.js';
 import issueDetector from '../modules/issue-detector.js';
+import quotaPoller from '../modules/quota-poller.js';
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -798,6 +799,10 @@ export function mountWebUI(app, dirname, accountManager) {
         try {
             const updates = req.body;
             const newConfig = accountManager.setHealthConfig(updates);
+
+            // Notify quota poller of config change (may start/stop polling)
+            quotaPoller.onConfigChange();
+
             res.json({ status: 'ok', config: newConfig });
         } catch (error) {
             res.status(500).json({ status: 'error', error: error.message });
