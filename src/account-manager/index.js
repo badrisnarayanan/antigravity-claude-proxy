@@ -36,6 +36,11 @@ export class AccountManager {
     #strategy = null;
     #strategyName = DEFAULT_STRATEGY;
 
+    // Debounced saving
+    #dirty = false;
+    #saveTimeout = null;
+    #saveDelay = 1000; // 1s debounce
+
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
@@ -136,7 +141,7 @@ export class AccountManager {
     clearExpiredLimits() {
         const cleared = clearLimits(this.#accounts);
         if (cleared > 0) {
-            this.saveToDisk();
+            this.requestSave();
         }
         return cleared;
     }
@@ -165,7 +170,7 @@ export class AccountManager {
 
         const result = this.#strategy.selectAccount(this.#accounts, modelId, {
             currentIndex: this.#currentIndex,
-            onSave: () => this.saveToDisk(),
+            onSave: () => this.requestSave(),
             ...options
         });
 
@@ -243,7 +248,7 @@ export class AccountManager {
      */
     markRateLimited(email, resetMs = null, modelId = null) {
         markLimited(this.#accounts, email, resetMs, modelId);
-        this.saveToDisk();
+        this.requestSave();
     }
 
     /**
@@ -253,7 +258,7 @@ export class AccountManager {
      */
     markInvalid(email, reason = 'Unknown error') {
         markAccountInvalid(this.#accounts, email, reason);
-        this.saveToDisk();
+        this.requestSave();
     }
 
     /**
@@ -286,7 +291,7 @@ export class AccountManager {
             account,
             this.#tokenCache,
             (email, reason) => this.markInvalid(email, reason),
-            () => this.saveToDisk()
+            () => this.requestSave()
         );
     }
 
@@ -298,7 +303,7 @@ export class AccountManager {
      */
     async getProjectForAccount(account, token) {
         // Pass onSave callback to persist managedProjectId in refresh token
-        return fetchProject(account, token, this.#projectCache, () => this.saveToDisk());
+        return fetchProject(account, token, this.#projectCache, () => this.requestSave());
     }
 
     /**
@@ -318,10 +323,42 @@ export class AccountManager {
     }
 
     /**
+     * Request a debounced save to disk
+     */
+    requestSave() {
+        this.#dirty = true;
+        if (this.#saveTimeout) {
+            clearTimeout(this.#saveTimeout);
+        }
+        this.#saveTimeout = setTimeout(() => this.saveToDisk(), this.#saveDelay);
+    }
+
+    /**
+     * Immediately save to disk if there are pending changes
+     * @returns {Promise<void>}
+     */
+    async flush() {
+        if (this.#saveTimeout) {
+            clearTimeout(this.#saveTimeout);
+            this.#saveTimeout = null;
+        }
+        if (this.#dirty) {
+            await this.saveToDisk();
+        }
+    }
+
+    /**
      * Save current state to disk (async)
      * @returns {Promise<void>}
      */
     async saveToDisk() {
+        // Clear timeout and dirty flag before saving
+        if (this.#saveTimeout) {
+            clearTimeout(this.#saveTimeout);
+            this.#saveTimeout = null;
+        }
+        this.#dirty = false;
+
         await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
     }
 

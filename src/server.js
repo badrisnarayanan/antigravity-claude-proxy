@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier } from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
+import { monitorMiddleware, db } from './monitor/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +44,13 @@ app.disable('x-powered-by');
 
 // Initialize account manager (will be fully initialized on first request or startup)
 export const accountManager = new AccountManager();
+
+// Initialize Monitor DB
+try {
+    db.init();
+} catch (error) {
+    logger.error('[Server] Failed to initialize monitor database:', error);
+}
 
 // Track initialization status
 let isInitialized = false;
@@ -78,6 +86,9 @@ async function ensureInitialized() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+
+// Monitor middleware (tracks requests and responses)
+app.use(monitorMiddleware);
 
 // API Key authentication middleware for /v1/* endpoints
 app.use('/v1', (req, res, next) => {
@@ -352,6 +363,9 @@ app.get('/account-limits', async (req, res) => {
         // Fetch quotas for each account in parallel
         const results = await Promise.allSettled(
             allAccounts.map(async (account) => {
+                // Yield to event loop to prevent blocking with many accounts
+                await new Promise(resolve => setImmediate(resolve));
+
                 // Skip invalid accounts
                 if (account.isInvalid) {
                     return {
@@ -382,10 +396,8 @@ app.get('/account-limits', async (req, res) => {
                         lastChecked: Date.now()
                     };
 
-                    // Save updated account data to disk (async, don't wait)
-                    accountManager.saveToDisk().catch(err => {
-                        logger.error('[Server] Failed to save account data:', err);
-                    });
+                    // Save updated account data to disk (debounced)
+                    accountManager.requestSave();
 
                     return {
                         email: account.email,
@@ -404,6 +416,9 @@ app.get('/account-limits', async (req, res) => {
                 }
             })
         );
+
+        // Ensure all pending saves are written to disk
+        await accountManager.flush();
 
         // Process results
         const accountLimits = results.map((result, index) => {
@@ -775,6 +790,39 @@ app.post('/v1/messages', async (req, res) => {
             try {
                 // Use the streaming generator with account manager
                 for await (const event of sendMessageStream(request, accountManager, FALLBACK_ENABLED)) {
+                    // Capture usage and content for monitor
+                    if (res.monitorData) {
+                        if (event.type === 'message_start' && event.message?.usage) {
+                            res.monitorData.usage.input_tokens = event.message.usage.input_tokens || 0;
+                            // Initialize output tokens
+                            res.monitorData.usage.output_tokens = event.message.usage.output_tokens || 0;
+                        }
+                        if (event.type === 'message_delta' && event.delta?.usage) {
+                             res.monitorData.usage.output_tokens = event.delta.usage.output_tokens || 0;
+                        }
+
+                        // Capture content
+                        if (event.type === 'content_block_delta') {
+                            if (event.delta?.text) {
+                                res.monitorData.streamedContent.push(event.delta.text);
+                            } else if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
+                                res.monitorData.streamedContent.push(event.delta.thinking);
+                            } else if (event.delta?.type === 'signature_delta' && event.delta.signature) {
+                                // Signature might be binary or hex, handling simply as string for now if needed,
+                                // or ignoring if it's not human readable text.
+                                // PR mentions "thought signatures".
+                            }
+                        }
+
+                        // Capture thinking start
+                        if (event.type === 'content_block_start' && event.content_block?.type === 'thinking') {
+                             res.monitorData.streamedContent.push(`<thinking>\n`);
+                             if (event.content_block.thinking) {
+                                 res.monitorData.streamedContent.push(event.content_block.thinking);
+                             }
+                        }
+                    }
+
                     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     // Flush after each event for real-time streaming
                     if (res.flush) res.flush();
@@ -836,6 +884,32 @@ app.post('/v1/messages', async (req, res) => {
                 }
             });
         }
+    }
+});
+
+/**
+ * Monitor API endpoints
+ */
+app.get('/api/monitor/logs', (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const logs = db.getLogs({ limit, offset });
+        res.json({ status: 'ok', logs });
+    } catch (error) {
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+app.get('/api/monitor/logs/:id', (req, res) => {
+    try {
+        const log = db.getLog(req.params.id);
+        if (!log) {
+            return res.status(404).json({ status: 'error', error: 'Log not found' });
+        }
+        res.json({ status: 'ok', log });
+    } catch (error) {
+        res.status(500).json({ status: 'error', error: error.message });
     }
 });
 

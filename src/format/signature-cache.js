@@ -15,6 +15,38 @@ import { GEMINI_SIGNATURE_CACHE_TTL_MS, MIN_SIGNATURE_LENGTH } from '../constant
 const signatureCache = new Map();
 const thinkingSignatureCache = new Map();
 
+// Periodic cleanup interval (10 minutes)
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+
+/**
+ * Clean up expired entries from the caches.
+ * This function iterates over all entries and removes those that have exceeded the TTL.
+ * It is called periodically to prevent unbound memory growth.
+ * @private
+ */
+function cleanupExpiredEntries() {
+    const now = Date.now();
+
+    for (const [key, entry] of signatureCache.entries()) {
+        if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
+            signatureCache.delete(key);
+        }
+    }
+
+    for (const [key, entry] of thinkingSignatureCache.entries()) {
+        if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
+            thinkingSignatureCache.delete(key);
+        }
+    }
+}
+
+// Start periodic cleanup
+const cleanupInterval = setInterval(cleanupExpiredEntries, CLEANUP_INTERVAL_MS);
+// Ensure the interval doesn't prevent the process from exiting
+if (cleanupInterval.unref) {
+    cleanupInterval.unref();
+}
+
 /**
  * Store a signature for a tool_use_id
  * @param {string} toolUseId - The tool use ID
@@ -85,4 +117,12 @@ export function getCachedSignatureFamily(signature) {
  */
 export function clearThinkingSignatureCache() {
     thinkingSignatureCache.clear();
+}
+
+/**
+ * Manually trigger cleanup of expired entries.
+ * Primarily used for testing purposes.
+ */
+export function cleanupCache() {
+    cleanupExpiredEntries();
 }

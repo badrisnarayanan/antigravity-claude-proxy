@@ -15,7 +15,8 @@ import {
     MAX_CONSECUTIVE_FAILURES,
     EXTENDED_COOLDOWN_MS,
     CAPACITY_RETRY_DELAY_MS,
-    MAX_CAPACITY_RETRIES
+    MAX_CAPACITY_RETRIES,
+    isThinkingModel
 } from '../constants.js';
 import { isRateLimitError, isAuthError, isEmptyResponseError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
@@ -185,11 +186,15 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 
+            // Check if thinking is enabled for this model request
+            const isThinking = isThinkingModel(model) && anthropicRequest.thinking !== false;
+
             logger.debug(`[CloudCode] Starting stream for model: ${model}`);
 
             // Try each endpoint with index-based loop for capacity retry support
             let lastError = null;
             let retriedOnce = false; // Track if we've already retried for short rate limit
+            let retriedWithoutThinking = false; // Track if we've retried without thinking
             let capacityRetryCount = 0; // Gap 4: Track capacity exhaustion retries
             let endpointIndex = 0;
 
@@ -289,6 +294,23 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         }
 
                         lastError = new Error(`API error ${response.status}: ${errorText}`);
+
+                        // Check for invalid signature errors (400) when thinking is enabled
+                        // Retry once with thinking disabled to recover the session
+                        if (response.status === 400 && isThinking && !retriedWithoutThinking) {
+                            const lowerError = errorText.toLowerCase();
+                            if (lowerError.includes('signature') || lowerError.includes('invalid argument')) {
+                                logger.warn(`[CloudCode] Invalid signature error detected during stream, retrying without thinking... (${errorText})`);
+                                retriedWithoutThinking = true;
+
+                                // Disable thinking for this retry
+                                anthropicRequest.thinking = false;
+
+                                // Recursive call with modified request
+                                yield* sendMessageStream(anthropicRequest, accountManager, fallbackEnabled);
+                                return;
+                            }
+                        }
 
                         // If it's a 5xx error, wait a bit before trying the next endpoint
                         if (response.status >= 500) {

@@ -19,8 +19,6 @@ import { logger } from '../utils/logger.js';
  */
 export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
     try {
-        // Check if config file exists using async access
-        await access(configPath, fsConstants.F_OK);
         const configData = await readFile(configPath, 'utf-8');
         const config = JSON.parse(configData);
 
