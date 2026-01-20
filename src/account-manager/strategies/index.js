@@ -7,6 +7,11 @@
 import { StickyStrategy } from './sticky-strategy.js';
 import { RoundRobinStrategy } from './round-robin-strategy.js';
 import { HybridStrategy } from './hybrid-strategy.js';
+import { SilentFailoverStrategy } from './silent-failover-strategy.js';
+import { OnDemandStrategy } from './on-demand-strategy.js';
+import { AggressiveStrategy } from './aggressive-strategy.js';
+import { QuotaFirstStrategy } from './quota-first-strategy.js';
+import { ConservativeStrategy } from './conservative-strategy.js';
 import { logger } from '../../utils/logger.js';
 import {
     SELECTION_STRATEGIES,
@@ -20,7 +25,7 @@ export const DEFAULT_STRATEGY = DEFAULT_SELECTION_STRATEGY;
 
 /**
  * Create a strategy instance
- * @param {string} strategyName - Name of the strategy ('sticky', 'round-robin', 'hybrid')
+ * @param {string} strategyName - Name of the strategy
  * @param {Object} config - Strategy configuration
  * @returns {BaseStrategy} The strategy instance
  */
@@ -41,6 +46,29 @@ export function createStrategy(strategyName, config = {}) {
             logger.debug('[Strategy] Creating HybridStrategy');
             return new HybridStrategy(config);
 
+        case 'silent-failover':
+        case 'silentfailover':
+            logger.debug('[Strategy] Creating SilentFailoverStrategy');
+            return new SilentFailoverStrategy(config);
+
+        case 'on-demand':
+        case 'ondemand':
+            logger.debug('[Strategy] Creating OnDemandStrategy');
+            return new OnDemandStrategy(config);
+
+        case 'aggressive':
+            logger.debug('[Strategy] Creating AggressiveStrategy');
+            return new AggressiveStrategy(config);
+
+        case 'quota-first':
+        case 'quotafirst':
+            logger.debug('[Strategy] Creating QuotaFirstStrategy');
+            return new QuotaFirstStrategy(config);
+
+        case 'conservative':
+            logger.debug('[Strategy] Creating ConservativeStrategy');
+            return new ConservativeStrategy(config);
+
         default:
             logger.warn(`[Strategy] Unknown strategy "${strategyName}", falling back to ${DEFAULT_STRATEGY}`);
             return new HybridStrategy(config);
@@ -55,7 +83,8 @@ export function createStrategy(strategyName, config = {}) {
 export function isValidStrategy(name) {
     if (!name) return false;
     const lower = name.toLowerCase();
-    return STRATEGY_NAMES.includes(lower) || lower === 'roundrobin';
+    const aliases = ['roundrobin', 'silentfailover', 'ondemand', 'quotafirst'];
+    return STRATEGY_NAMES.includes(lower) || aliases.includes(lower);
 }
 
 /**
@@ -65,14 +94,25 @@ export function isValidStrategy(name) {
  */
 export function getStrategyLabel(name) {
     const lower = (name || DEFAULT_STRATEGY).toLowerCase();
-    if (lower === 'roundrobin') return STRATEGY_LABELS['round-robin'];
-    return STRATEGY_LABELS[lower] || STRATEGY_LABELS[DEFAULT_STRATEGY];
+    const aliasMap = {
+        'roundrobin': 'round-robin',
+        'silentfailover': 'silent-failover',
+        'ondemand': 'on-demand',
+        'quotafirst': 'quota-first'
+    };
+    const normalized = aliasMap[lower] || lower;
+    return STRATEGY_LABELS[normalized] || STRATEGY_LABELS[DEFAULT_STRATEGY];
 }
 
 // Re-export strategies for direct use
 export { StickyStrategy } from './sticky-strategy.js';
 export { RoundRobinStrategy } from './round-robin-strategy.js';
 export { HybridStrategy } from './hybrid-strategy.js';
+export { SilentFailoverStrategy } from './silent-failover-strategy.js';
+export { OnDemandStrategy } from './on-demand-strategy.js';
+export { AggressiveStrategy } from './aggressive-strategy.js';
+export { QuotaFirstStrategy } from './quota-first-strategy.js';
+export { ConservativeStrategy } from './conservative-strategy.js';
 export { BaseStrategy } from './base-strategy.js';
 
 // Re-export trackers

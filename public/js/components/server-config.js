@@ -283,7 +283,11 @@ window.Components.serverConfig = () => ({
     // Toggle Account Selection Strategy
     async toggleStrategy(strategy) {
         const store = Alpine.store('global');
-        const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+        const validStrategies = [
+            'sticky', 'round-robin', 'hybrid',
+            'silent-failover', 'on-demand', 'aggressive',
+            'quota-first', 'conservative'
+        ];
 
         if (!validStrategies.includes(strategy)) {
             store.showToast(store.t('invalidStrategy'), 'error');
@@ -330,7 +334,12 @@ window.Components.serverConfig = () => ({
         const labels = {
             'sticky': store.t('strategyStickyLabel'),
             'round-robin': store.t('strategyRoundRobinLabel'),
-            'hybrid': store.t('strategyHybridLabel')
+            'hybrid': store.t('strategyHybridLabel'),
+            'silent-failover': store.t('strategySilentFailoverLabel') || 'Silent Failover (Hide Errors)',
+            'on-demand': store.t('strategyOnDemandLabel') || 'On-Demand (Enable Per Request)',
+            'aggressive': store.t('strategyAggressiveLabel') || 'Aggressive (Instant Switch)',
+            'quota-first': store.t('strategyQuotaFirstLabel') || 'Quota-First (Maximize Usage)',
+            'conservative': store.t('strategyConservativeLabel') || 'Conservative (Single Active)'
         };
         return labels[strategy] || strategy;
     },
@@ -342,8 +351,20 @@ window.Components.serverConfig = () => ({
         const descriptions = {
             'sticky': store.t('strategyStickyDesc'),
             'round-robin': store.t('strategyRoundRobinDesc'),
-            'hybrid': store.t('strategyHybridDesc')
+            'hybrid': store.t('strategyHybridDesc'),
+            'silent-failover': store.t('strategySilentFailoverDesc') || 'Hides errors from user, silently switches on failure. May add latency.',
+            'on-demand': store.t('strategyOnDemandDesc') || 'Enables account for request, disables after. Minimal rate limit exposure.',
+            'aggressive': store.t('strategyAggressiveDesc') || 'Switches account on any issue. Maximum reliability, no cache.',
+            'quota-first': store.t('strategyQuotaFirstDesc') || 'Prefers accounts with highest remaining quota.',
+            'conservative': store.t('strategyConservativeDesc') || 'Uses one account until exhausted. Minimal multi-account exposure.'
         };
         return descriptions[strategy] || '';
+    },
+
+    // Check if current strategy should show latency warning
+    isLatencyWarningStrategy() {
+        const strategy = this.serverConfig.accountSelection?.strategy || 'hybrid';
+        const latencyStrategies = ['silent-failover', 'on-demand', 'aggressive'];
+        return latencyStrategies.includes(strategy);
     }
 });

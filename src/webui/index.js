@@ -310,7 +310,11 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             // Account selection strategy validation
             if (accountSelection && typeof accountSelection === 'object') {
-                const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+                const validStrategies = [
+                    'sticky', 'round-robin', 'hybrid',
+                    'silent-failover', 'on-demand', 'aggressive',
+                    'quota-first', 'conservative'
+                ];
                 if (accountSelection.strategy && validStrategies.includes(accountSelection.strategy)) {
                     updates.accountSelection = {
                         ...(config.accountSelection || {}),

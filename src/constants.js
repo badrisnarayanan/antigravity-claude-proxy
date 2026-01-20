@@ -118,15 +118,44 @@ export const MAX_CAPACITY_RETRIES = config?.maxCapacityRetries || 3;
 export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature length
 
 // Account selection strategies
-export const SELECTION_STRATEGIES = ['sticky', 'round-robin', 'hybrid'];
+export const SELECTION_STRATEGIES = [
+    'sticky',
+    'round-robin',
+    'hybrid',
+    'silent-failover',
+    'on-demand',
+    'aggressive',
+    'quota-first',
+    'conservative'
+];
 export const DEFAULT_SELECTION_STRATEGY = 'hybrid';
 
 // Strategy display labels
 export const STRATEGY_LABELS = {
     'sticky': 'Sticky (Cache Optimized)',
     'round-robin': 'Round Robin (Load Balanced)',
-    'hybrid': 'Hybrid (Smart Distribution)'
+    'hybrid': 'Hybrid (Smart Distribution)',
+    'silent-failover': 'Silent Failover (Hide Errors)',
+    'on-demand': 'On-Demand (Enable Per Request)',
+    'aggressive': 'Aggressive (Instant Switch)',
+    'quota-first': 'Quota-First (Maximize Usage)',
+    'conservative': 'Conservative (Single Active)'
 };
+
+// Strategy descriptions for UI
+export const STRATEGY_DESCRIPTIONS = {
+    'sticky': 'Stays on same account until rate-limited. Best for prompt caching.',
+    'round-robin': 'Rotates to next account every request. Maximum throughput.',
+    'hybrid': 'Smart selection using health scores and token buckets.',
+    'silent-failover': 'Hides errors from user, silently switches on failure. May add latency.',
+    'on-demand': 'Enables account for request, disables after. Minimal rate limit exposure.',
+    'aggressive': 'Switches account on any issue. Maximum reliability, no cache.',
+    'quota-first': 'Prefers accounts with highest remaining quota.',
+    'conservative': 'Uses one account until exhausted. Minimal multi-account exposure.'
+};
+
+// Strategies that may add latency (show warning in UI)
+export const LATENCY_WARNING_STRATEGIES = ['silent-failover', 'on-demand', 'aggressive'];
 
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
@@ -270,7 +299,11 @@ export default {
     isThinkingModel,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI,
+    SELECTION_STRATEGIES,
+    DEFAULT_SELECTION_STRATEGY,
     STRATEGY_LABELS,
+    STRATEGY_DESCRIPTIONS,
+    LATENCY_WARNING_STRATEGIES,
     MODEL_FALLBACK_MAP,
     TEST_MODELS,
     DEFAULT_PRESETS,
