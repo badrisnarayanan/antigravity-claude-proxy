@@ -26,6 +26,14 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 4. Sends to Antigravity's Cloud Code API
 5. Converts responses back to **Anthropic format** with full thinking/streaming support
 
+## Features
+
+- **Improved Reliability**:
+    - **Resume Reliability**: Retries requests once with thinking disabled if the upstream rejects the thinking signature (e.g., during session resumption failures), ensuring continuity.
+    - **Smart Rate Limiting**: Honors upstream retry delays with short backoff, but proactively rotates accounts if the delay is long, minimizing blocking.
+    - **Schema Sanitization**: Recursively cleans nested schema fields in tool definitions to prevent upstream 400 errors caused by client-side JSON Schema extensions.
+    - **Fail-Fast**: Quickly detects permanent auth failures and invalidates tokens rather than retrying futilely.
+
 ## Prerequisites
 
 - **Node.js** 18 or later

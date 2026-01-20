@@ -669,5 +669,13 @@ export function cleanSchema(schema) {
         result.type = toGoogleType(result.type);
     }
 
+    // Phase 6: Remove extension fields (blocklist approach to preserve standard keywords)
+    // Only remove fields starting with x- to avoid breaking standard JSON schema features
+    for (const key of Object.keys(result)) {
+        if (key.startsWith('x-')) {
+            delete result[key];
+        }
+    }
+
     return result;
 }

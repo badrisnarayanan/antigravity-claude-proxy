@@ -37,7 +37,8 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     const modelFamily = getModelFamily(modelName);
     const isClaudeModel = modelFamily === 'claude';
     const isGeminiModel = modelFamily === 'gemini';
-    const isThinking = isThinkingModel(modelName);
+    // Use convention: explicitly set to false in request to disable thinking (for retries)
+    const isThinking = isThinkingModel(modelName) && thinking !== false;
 
     const googleRequest = {
         contents: [],
