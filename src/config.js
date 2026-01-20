@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { logger } from './utils/logger.js';
@@ -90,13 +91,16 @@ export function getPublicConfig() {
     return { ...config };
 }
 
-export function saveConfig(updates) {
+export async function saveConfig(updates) {
     try {
         // Apply updates
         config = { ...config, ...updates };
 
+        // Ensure directory exists
+        await mkdir(CONFIG_DIR, { recursive: true });
+
         // Save to disk
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+        await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
         return true;
     } catch (error) {
         logger.error('[Config] Failed to save config:', error);
