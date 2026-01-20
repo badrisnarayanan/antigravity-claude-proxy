@@ -32,10 +32,16 @@ function getFamily(modelId) {
  * @param {string} family - The model family
  * @returns {string} Short model name
  */
+const regexCache = new Map();
 function getShortName(modelId, family) {
     if (family === 'other') return modelId;
     // Remove family prefix (e.g., "claude-opus-4-5" -> "opus-4-5")
-    return modelId.replace(new RegExp(`^${family}-`, 'i'), '');
+    let regex = regexCache.get(family);
+    if (!regex) {
+        regex = new RegExp(`^${family}-`, 'i');
+        regexCache.set(family, regex);
+    }
+    return modelId.replace(regex, '');
 }
 
 /**
