@@ -363,6 +363,9 @@ app.get('/account-limits', async (req, res) => {
         // Fetch quotas for each account in parallel
         const results = await Promise.allSettled(
             allAccounts.map(async (account) => {
+                // Yield to event loop to prevent blocking with many accounts
+                await new Promise(resolve => setImmediate(resolve));
+
                 // Skip invalid accounts
                 if (account.isInvalid) {
                     return {
