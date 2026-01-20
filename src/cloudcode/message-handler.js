@@ -120,7 +120,7 @@ setInterval(() => {
  */
 export async function sendMessage(anthropicRequest, accountManager, fallbackEnabled = false) {
     const model = anthropicRequest.model;
-    const isThinking = isThinkingModel(model);
+    const isThinking = isThinkingModel(model) && anthropicRequest.thinking !== false;
 
     // Retry loop with account failover
     // Ensure we try at least as many times as there are accounts to cycle through everyone
@@ -192,6 +192,7 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
             // Try each endpoint with index-based loop for capacity retry support
             let lastError = null;
             let retriedOnce = false; // Track if we've already retried for short rate limit
+            let retriedWithoutThinking = false; // Track if we've retried without thinking
             let capacityRetryCount = 0; // Gap 4: Track capacity exhaustion retries
             let endpointIndex = 0;
 
@@ -294,6 +295,24 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                         }
 
                         if (response.status >= 400) {
+                            // Check for invalid signature errors (400) when thinking is enabled
+                            // Retry once with thinking disabled to recover the session
+                            if (response.status === 400 && isThinking && !retriedWithoutThinking) {
+                                const lowerError = errorText.toLowerCase();
+                                if (lowerError.includes('signature') || lowerError.includes('invalid argument')) {
+                                    logger.warn(`[CloudCode] Invalid signature error detected, retrying without thinking... (${errorText})`);
+                                    retriedWithoutThinking = true;
+
+                                    // Disable thinking for this retry
+                                    // Note: We need to modify the original request object for this retry
+                                    anthropicRequest.thinking = false;
+
+                                    // Recursive call with modified request and same account
+                                    // We pass true for fallbackEnabled to respect original setting
+                                    return await sendMessage(anthropicRequest, accountManager, fallbackEnabled);
+                                }
+                            }
+
                             lastError = new Error(`API error ${response.status}: ${errorText}`);
                             // If it's a 5xx error, wait a bit before trying the next endpoint
                             if (response.status >= 500) {
