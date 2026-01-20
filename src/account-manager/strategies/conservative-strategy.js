@@ -5,6 +5,8 @@ export class ConservativeStrategy extends BaseStrategy {
     #activeAccountEmail = null;
     #failureCount = 0;
     #maxFailuresBeforeSwitch = 3;
+    #accounts = [];
+    #pendingSave = null;
 
     constructor(config = {}) {
         super(config);
@@ -13,6 +15,8 @@ export class ConservativeStrategy extends BaseStrategy {
 
     selectAccount(accounts, modelId, options = {}) {
         const { onSave } = options;
+        this.#accounts = accounts;
+        this.#pendingSave = onSave;
 
         if (accounts.length === 0) {
             return { account: null, index: 0, waitMs: 0 };
@@ -50,24 +54,24 @@ export class ConservativeStrategy extends BaseStrategy {
         return { account: null, index: 0, waitMs: 0 };
     }
 
-    onSuccess(account, modelId) {
+    onSuccess(account, modelId, options = {}) {
         this.#failureCount = 0;
     }
 
-    onRateLimit(account, modelId) {
+    onRateLimit(account, modelId, options = {}) {
         if (account && account.email === this.#activeAccountEmail) {
             logger.info(`[ConservativeStrategy] Active account rate-limited: ${account.email}`);
-            this.#deactivateCurrent(account);
+            this.#deactivateCurrent(account, options.onSave);
         }
     }
 
-    onFailure(account, modelId) {
+    onFailure(account, modelId, options = {}) {
         if (account && account.email === this.#activeAccountEmail) {
             this.#failureCount++;
 
             if (this.#failureCount >= this.#maxFailuresBeforeSwitch) {
                 logger.info(`[ConservativeStrategy] Max failures reached for: ${account.email}`);
-                this.#deactivateCurrent(account);
+                this.#deactivateCurrent(account, options.onSave);
             }
         }
     }
@@ -114,12 +118,14 @@ export class ConservativeStrategy extends BaseStrategy {
         if (onSave) onSave();
     }
 
-    #deactivateCurrent(account) {
+    #deactivateCurrent(account, onSave) {
         if (account) {
             account.enabled = false;
         }
         this.#activeAccountEmail = null;
         this.#failureCount = 0;
+
+        if (onSave) onSave();
     }
 
     getActiveAccountEmail() {

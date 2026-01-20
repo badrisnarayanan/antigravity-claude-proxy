@@ -95,7 +95,7 @@ export class HybridStrategy extends BaseStrategy {
     /**
      * Called after a successful request
      */
-    onSuccess(account, modelId) {
+    onSuccess(account, modelId, options = {}) {
         if (account && account.email) {
             this.#healthTracker.recordSuccess(account.email);
         }
@@ -104,7 +104,7 @@ export class HybridStrategy extends BaseStrategy {
     /**
      * Called when a request is rate-limited
      */
-    onRateLimit(account, modelId) {
+    onRateLimit(account, modelId, options = {}) {
         if (account && account.email) {
             this.#healthTracker.recordRateLimit(account.email);
         }
@@ -113,7 +113,7 @@ export class HybridStrategy extends BaseStrategy {
     /**
      * Called when a request fails
      */
-    onFailure(account, modelId) {
+    onFailure(account, modelId, options = {}) {
         if (account && account.email) {
             this.#healthTracker.recordFailure(account.email);
             // Refund the token since the request didn't complete

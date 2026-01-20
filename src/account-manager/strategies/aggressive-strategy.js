@@ -5,11 +5,11 @@ export class AggressiveStrategy extends BaseStrategy {
     #currentIndex = 0;
     #issueTracker = new Map();
     #switchThreshold = 1;
+    #accountCount = 1;
 
     constructor(config = {}) {
         super(config);
         this.#switchThreshold = config.switchThreshold || 1;
-        this.silentFailover = true;
     }
 
     selectAccount(accounts, modelId, options = {}) {
@@ -18,6 +18,8 @@ export class AggressiveStrategy extends BaseStrategy {
         if (accounts.length === 0) {
             return { account: null, index: 0, waitMs: 0 };
         }
+
+        this.#accountCount = accounts.length;
 
         if (this.#currentIndex >= accounts.length) {
             this.#currentIndex = 0;
@@ -52,18 +54,18 @@ export class AggressiveStrategy extends BaseStrategy {
         return this.selectAccount(accounts, modelId, options);
     }
 
-    onSuccess(account, modelId) {
+    onSuccess(account, modelId, options = {}) {
         if (account && account.email) {
             this.#issueTracker.delete(account.email);
         }
     }
 
-    onRateLimit(account, modelId) {
+    onRateLimit(account, modelId, options = {}) {
         this.#recordIssue(account);
         this.#rotateNext();
     }
 
-    onFailure(account, modelId) {
+    onFailure(account, modelId, options = {}) {
         this.#recordIssue(account);
         this.#rotateNext();
     }
@@ -75,7 +77,7 @@ export class AggressiveStrategy extends BaseStrategy {
     }
 
     #rotateNext() {
-        this.#currentIndex++;
+        this.#currentIndex = (this.#currentIndex + 1) % Math.max(1, this.#accountCount);
         logger.debug(`[AggressiveStrategy] Rotating to next account (index: ${this.#currentIndex})`);
     }
 }

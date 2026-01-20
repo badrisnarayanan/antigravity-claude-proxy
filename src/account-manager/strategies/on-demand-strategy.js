@@ -2,7 +2,7 @@ import { BaseStrategy } from './base-strategy.js';
 import { logger } from '../../utils/logger.js';
 
 export class OnDemandStrategy extends BaseStrategy {
-    #activeRequests = new Map();
+    #activeAccounts = new Map();
     #currentIndex = 0;
 
     constructor(config = {}) {
@@ -10,21 +10,10 @@ export class OnDemandStrategy extends BaseStrategy {
     }
 
     selectAccount(accounts, modelId, options = {}) {
-        const { onSave, requestId } = options;
+        const { onSave } = options;
 
         if (accounts.length === 0) {
             return { account: null, index: 0, waitMs: 0 };
-        }
-
-        const enabledAccounts = accounts.filter(a => a.enabled !== false && !a.isInvalid);
-
-        if (enabledAccounts.length === 0) {
-            for (const account of accounts) {
-                if (!account.isInvalid) {
-                    account.enabled = true;
-                    break;
-                }
-            }
         }
 
         const startIndex = this.#currentIndex % accounts.length;
@@ -36,25 +25,26 @@ export class OnDemandStrategy extends BaseStrategy {
 
             if (!account.isInvalid) {
                 const wasDisabled = account.enabled === false;
+                account.enabled = true;
+
                 if (wasDisabled) {
-                    account.enabled = true;
                     logger.debug(`[OnDemandStrategy] Enabled account for request: ${account.email}`);
                 }
 
                 account.lastUsed = Date.now();
 
-                const rid = requestId || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                this.#activeRequests.set(rid, { email: account.email, index: idx, wasDisabled });
+                const activeCount = (this.#activeAccounts.get(account.email) || 0) + 1;
+                this.#activeAccounts.set(account.email, activeCount);
 
                 if (onSave) onSave();
 
                 const position = idx + 1;
                 const total = accounts.length;
-                logger.info(`[OnDemandStrategy] Using account: ${account.email} (${position}/${total})`);
+                logger.info(`[OnDemandStrategy] Using account: ${account.email} (${position}/${total}, active: ${activeCount})`);
 
                 this.#currentIndex = (idx + 1) % accounts.length;
 
-                return { account, index: idx, waitMs: 0, requestId: rid };
+                return { account, index: idx, waitMs: 0 };
             }
 
             attempts++;
@@ -64,37 +54,35 @@ export class OnDemandStrategy extends BaseStrategy {
     }
 
     onSuccess(account, modelId, options = {}) {
-        this.#releaseAccount(options.requestId, account);
+        this.#releaseAccount(account, options.onSave);
     }
 
     onRateLimit(account, modelId, options = {}) {
-        this.#releaseAccount(options.requestId, account);
+        this.#releaseAccount(account, options.onSave);
     }
 
     onFailure(account, modelId, options = {}) {
-        this.#releaseAccount(options.requestId, account);
+        this.#releaseAccount(account, options.onSave);
     }
 
-    #releaseAccount(requestId, account) {
-        if (!account) return;
+    #releaseAccount(account, onSave) {
+        if (!account || !account.email) return;
 
-        const requestInfo = requestId ? this.#activeRequests.get(requestId) : null;
+        const activeCount = this.#activeAccounts.get(account.email) || 0;
 
-        if (requestInfo) {
-            this.#activeRequests.delete(requestId);
-        }
-
-        const hasOtherActiveRequests = Array.from(this.#activeRequests.values())
-            .some(r => r.email === account.email);
-
-        if (!hasOtherActiveRequests) {
+        if (activeCount <= 1) {
+            this.#activeAccounts.delete(account.email);
             account.enabled = false;
             logger.debug(`[OnDemandStrategy] Disabled account after request: ${account.email}`);
+
+            if (onSave) onSave();
+        } else {
+            this.#activeAccounts.set(account.email, activeCount - 1);
         }
     }
 
-    getActiveRequestCount() {
-        return this.#activeRequests.size;
+    getActiveAccountCount() {
+        return this.#activeAccounts.size;
     }
 }
 

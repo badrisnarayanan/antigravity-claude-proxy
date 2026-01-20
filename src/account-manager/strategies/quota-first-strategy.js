@@ -58,13 +58,13 @@ export class QuotaFirstStrategy extends BaseStrategy {
         return { account: best.account, index: best.index, waitMs: 0 };
     }
 
-    onSuccess(account, modelId) {
+    onSuccess(account, modelId, options = {}) {
     }
 
-    onRateLimit(account, modelId) {
+    onRateLimit(account, modelId, options = {}) {
     }
 
-    onFailure(account, modelId) {
+    onFailure(account, modelId, options = {}) {
     }
 }
 

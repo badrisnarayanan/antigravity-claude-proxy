@@ -42,8 +42,9 @@ export class BaseStrategy {
      * Called after a successful request
      * @param {Object} account - The account that was used
      * @param {string} modelId - The model ID that was used
+     * @param {Object} [options] - Additional options including onSave callback
      */
-    onSuccess(account, modelId) {
+    onSuccess(account, modelId, options = {}) {
         // Default: no-op, override in subclass if needed
     }
 
@@ -51,8 +52,9 @@ export class BaseStrategy {
      * Called when a request is rate-limited
      * @param {Object} account - The account that was rate-limited
      * @param {string} modelId - The model ID that was rate-limited
+     * @param {Object} [options] - Additional options including onSave callback
      */
-    onRateLimit(account, modelId) {
+    onRateLimit(account, modelId, options = {}) {
         // Default: no-op, override in subclass if needed
     }
 
@@ -60,8 +62,9 @@ export class BaseStrategy {
      * Called when a request fails (non-rate-limit error)
      * @param {Object} account - The account that failed
      * @param {string} modelId - The model ID that failed
+     * @param {Object} [options] - Additional options including onSave callback
      */
-    onFailure(account, modelId) {
+    onFailure(account, modelId, options = {}) {
         // Default: no-op, override in subclass if needed
     }
 

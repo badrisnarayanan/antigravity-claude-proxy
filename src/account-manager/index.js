@@ -180,7 +180,9 @@ export class AccountManager {
      */
     notifySuccess(account, modelId) {
         if (this.#strategy) {
-            this.#strategy.onSuccess(account, modelId);
+            this.#strategy.onSuccess(account, modelId, {
+                onSave: () => this.saveToDisk()
+            });
         }
     }
 
@@ -191,7 +193,9 @@ export class AccountManager {
      */
     notifyRateLimit(account, modelId) {
         if (this.#strategy) {
-            this.#strategy.onRateLimit(account, modelId);
+            this.#strategy.onRateLimit(account, modelId, {
+                onSave: () => this.saveToDisk()
+            });
         }
     }
 
@@ -202,7 +206,9 @@ export class AccountManager {
      */
     notifyFailure(account, modelId) {
         if (this.#strategy) {
-            this.#strategy.onFailure(account, modelId);
+            this.#strategy.onFailure(account, modelId, {
+                onSave: () => this.saveToDisk()
+            });
         }
     }
 
