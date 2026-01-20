@@ -51,7 +51,7 @@
         <!-- Stats Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 lg:gap-3">
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-cyan-500/30 hover:bg-cyan-500/5 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(6,182,212,0.1)] transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewAllAccounts')">
             <!-- Icon -->
@@ -63,7 +63,10 @@
                 </svg>
             </div>
             <!-- Value -->
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.total"></div>
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate"
+                 x-data="Components.animatedCounter(0)"
+                 x-effect="target = stats.total"
+                 x-text="Math.round(current)"></div>
             <!-- Title -->
             <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('totalAccounts')"></div>
@@ -95,7 +98,7 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-green-500/30 hover:bg-green-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-green-500/30 hover:bg-green-500/5 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(34,197,94,0.1)] transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'models'"
             :title="$store.global.t('clickToViewModels')">
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-green-400/70 transition-colors">
@@ -104,7 +107,10 @@
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.active"></div>
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate"
+                 x-data="Components.animatedCounter(0)"
+                 x-effect="target = stats.active"
+                 x-text="Math.round(current)"></div>
             <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('active')"></div>
             <div class="stat-desc text-green-400/60 text-[10px] truncate flex items-center gap-1">
@@ -116,7 +122,7 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-red-500/30 hover:bg-red-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-red-500/30 hover:bg-red-500/5 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(239,68,68,0.1)] transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewLimitedAccounts')">
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-red-500/70 transition-colors">
@@ -125,7 +131,10 @@
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.limited"></div>
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate"
+                 x-data="Components.animatedCounter(0)"
+                 x-effect="target = stats.limited"
+                 x-text="Math.round(current)"></div>
             <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
                 x-text="$store.global.t('rateLimited')"></div>
             <div class="stat-desc text-red-500/60 text-[10px] truncate flex items-center gap-1">
@@ -137,7 +146,7 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-orange-500/30 hover:bg-orange-500/5 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(249,115,22,0.1)] transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'models'"
             :title="$store.global.t('clickToViewModels')">
             <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-orange-500/70 transition-colors">
@@ -146,7 +155,10 @@
                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.modelUsage ? stats.modelUsage.limited : 0"></div>
+            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate"
+                 x-data="Components.animatedCounter(0)"
+                 x-effect="target = (stats.modelUsage ? stats.modelUsage.limited : 0)"
+                 x-text="Math.round(current)"></div>
             <div class="stat-title text-gray-500 font-mono text-[10px] lg:text-xs uppercase tracking-wider truncate"
                 x-text="$store.global.t('quotasDepletedTitle')"></div>
             <div class="stat-desc text-orange-500/60 text-[10px] truncate flex items-center gap-1">
@@ -224,15 +236,24 @@
                 <div class="flex flex-wrap gap-2.5 text-[10px] font-mono">
                     <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('totalColon')">Total:</span>
-                        <span class="text-white ml-1 font-bold" x-text="usageStats.total"></span>
+                        <span class="text-white ml-1 font-bold"
+                              x-data="Components.animatedCounter(0)"
+                              x-effect="target = usageStats.total"
+                              x-text="Math.round(current)"></span>
                     </div>
                     <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('todayColon')">Today:</span>
-                        <span class="text-neon-cyan ml-1 font-bold" x-text="usageStats.today"></span>
+                        <span class="text-neon-cyan ml-1 font-bold"
+                              x-data="Components.animatedCounter(0)"
+                              x-effect="target = usageStats.today"
+                              x-text="Math.round(current)"></span>
                     </div>
                     <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('hour1Colon')">1H:</span>
-                        <span class="text-neon-green ml-1 font-bold" x-text="usageStats.thisHour"></span>
+                        <span class="text-neon-green ml-1 font-bold"
+                              x-data="Components.animatedCounter(0)"
+                              x-effect="target = usageStats.thisHour"
+                              x-text="Math.round(current)"></span>
                     </div>
                 </div>
             </div>
@@ -454,18 +475,24 @@
 
             <!-- Empty State (After Filtering) -->
             <div x-show="stats.hasTrendData && !hasFilteredTrendData"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-space-900/30 z-10"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-space-900/40 backdrop-blur-sm z-10 transition-all duration-300"
                 style="display: none;">
-                <div class="flex flex-col items-center gap-4 animate-fade-in">
-                    <div class="w-12 h-12 rounded-full bg-space-850 flex items-center justify-center text-gray-600 border border-space-border/50">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
+                <div class="flex flex-col items-center gap-4 animate-fade-in max-w-xs text-center p-6 rounded-xl border border-space-border/20 bg-space-900/60 shadow-xl shadow-black/20">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-neon-purple/20 blur-xl rounded-full"></div>
+                        <div class="relative w-16 h-16 rounded-full bg-gradient-to-b from-space-800 to-space-900 flex items-center justify-center text-gray-500 border border-space-border/50 shadow-inner group-hover:scale-105 transition-transform">
+                            <svg class="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
                     </div>
-                    <div class="text-xs font-mono text-gray-500 text-center">
-                        <p x-text="$store.global.t('noDataTracked')">No data tracked yet</p>
-                        <p class="text-[10px] opacity-60 mt-1" x-text="'[' + getTimeRangeLabel() + ']'"></p>
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-medium text-gray-300" x-text="$store.global.t('noDataTracked')">No data tracked yet</h4>
+                        <p class="text-[10px] text-gray-500 font-mono" x-text="'[' + getTimeRangeLabel() + ']'"></p>
+                    </div>
+                    <div class="text-[10px] text-gray-600 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
+                        <span class="mr-1">💡</span> Try selecting a different time range
                     </div>
                 </div>
             </div>
