@@ -28,12 +28,13 @@ function getAntigravityDbPath() {
 
 /**
  * Generate platform-specific User-Agent string.
- * @returns {string} User-Agent in format "antigravity/version os/arch"
+ * @returns {string} User-Agent in format "VSCode/version os/arch"
  */
 function getPlatformUserAgent() {
     const os = platform();
     const architecture = arch();
-    return `antigravity/1.11.5 ${os}/${architecture}`;
+    // Mimic VS Code 1.96.0
+    return `VSCode/1.96.0 ${os}/${architecture}`;
 }
 
 // Cloud Code API endpoints (in fallback order)
@@ -51,8 +52,8 @@ export const ANTIGRAVITY_HEADERS = {
     'User-Agent': getPlatformUserAgent(),
     'X-Goog-Api-Client': 'google-cloud-sdk vscode_cloudshelleditor/0.1',
     'Client-Metadata': JSON.stringify({
-        ideType: 'IDE_UNSPECIFIED',
-        platform: 'PLATFORM_UNSPECIFIED',
+        ideType: 'VSCODE',
+        platform: 'LINUX',
         pluginType: 'GEMINI'
     })
 };

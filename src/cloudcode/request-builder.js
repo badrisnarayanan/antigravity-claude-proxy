@@ -49,7 +49,7 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
         project: projectId,
         model: model,
         request: googleRequest,
-        userAgent: 'antigravity',
+        userAgent: 'vscode',
         requestType: 'agent',  // CLIProxyAPI v6.6.89 compatibility
         requestId: 'agent-' + crypto.randomUUID()
     };
