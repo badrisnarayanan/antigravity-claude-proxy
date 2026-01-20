@@ -23,6 +23,9 @@ const require = createRequire(import.meta.url);
 let Database = null;
 let moduleLoadError = null;
 
+// Connection cache
+const dbCache = new Map();
+
 /**
  * Load the better-sqlite3 module with auto-rebuild on version mismatch
  * Uses synchronous require to maintain API compatibility
@@ -82,20 +85,44 @@ function loadDatabaseModule() {
 }
 
 /**
+ * Get a cached database connection or create a new one
+ * @param {string} dbPath - Path to the database file
+ * @returns {Object} Database connection instance
+ */
+function getDatabaseConnection(dbPath) {
+    const Db = loadDatabaseModule();
+
+    // Check if we have a cached connection
+    if (dbCache.has(dbPath)) {
+        const cachedDb = dbCache.get(dbPath);
+        if (cachedDb.open) {
+            return cachedDb;
+        }
+        // Remove closed connection from cache
+        dbCache.delete(dbPath);
+    }
+
+    // Create new connection
+    const db = new Db(dbPath, {
+        readonly: true,
+        fileMustExist: true
+    });
+
+    // Cache the new connection
+    dbCache.set(dbPath, db);
+    return db;
+}
+
+/**
  * Query Antigravity database for authentication status
  * @param {string} [dbPath] - Optional custom database path
  * @returns {Object} Parsed auth data with apiKey, email, name, etc.
  * @throws {Error} If database doesn't exist, query fails, or no auth status found
  */
 export function getAuthStatus(dbPath = ANTIGRAVITY_DB_PATH) {
-    const Db = loadDatabaseModule();
-    let db;
     try {
-        // Open database in read-only mode
-        db = new Db(dbPath, {
-            readonly: true,
-            fileMustExist: true
-        });
+        // Get cached or new database connection
+        const db = getDatabaseConnection(dbPath);
 
         // Prepare and execute query
         const stmt = db.prepare(
@@ -132,12 +159,8 @@ export function getAuthStatus(dbPath = ANTIGRAVITY_DB_PATH) {
             throw error;
         }
         throw new Error(`Failed to read Antigravity database: ${error.message}`);
-    } finally {
-        // Always close database connection
-        if (db) {
-            db.close();
-        }
     }
+    // No finally block needed as we keep connections open
 }
 
 /**
@@ -146,24 +169,33 @@ export function getAuthStatus(dbPath = ANTIGRAVITY_DB_PATH) {
  * @returns {boolean} True if database exists and can be opened
  */
 export function isDatabaseAccessible(dbPath = ANTIGRAVITY_DB_PATH) {
-    let db;
     try {
-        const Db = loadDatabaseModule();
-        db = new Db(dbPath, {
-            readonly: true,
-            fileMustExist: true
-        });
+        getDatabaseConnection(dbPath);
         return true;
     } catch {
         return false;
-    } finally {
-        if (db) {
-            db.close();
+    }
+}
+
+/**
+ * Close all cached database connections
+ * Useful for cleanup or testing
+ */
+export function closeAllConnections() {
+    for (const [path, db] of dbCache.entries()) {
+        try {
+            if (db.open) {
+                db.close();
+            }
+        } catch (e) {
+            console.error(`Error closing database ${path}:`, e);
         }
     }
+    dbCache.clear();
 }
 
 export default {
     getAuthStatus,
-    isDatabaseAccessible
+    isDatabaseAccessible,
+    closeAllConnections
 };
