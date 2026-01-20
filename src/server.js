@@ -382,10 +382,8 @@ app.get('/account-limits', async (req, res) => {
                         lastChecked: Date.now()
                     };
 
-                    // Save updated account data to disk (async, don't wait)
-                    accountManager.saveToDisk().catch(err => {
-                        logger.error('[Server] Failed to save account data:', err);
-                    });
+                    // Save updated account data to disk (debounced)
+                    accountManager.requestSave();
 
                     return {
                         email: account.email,
@@ -404,6 +402,9 @@ app.get('/account-limits', async (req, res) => {
                 }
             })
         );
+
+        // Ensure all pending saves are written to disk
+        await accountManager.flush();
 
         // Process results
         const accountLimits = results.map((result, index) => {
