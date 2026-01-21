@@ -117,28 +117,70 @@ async function waitForService(timeout = 10000, initialDelay = 1000) {
 }
 
 /**
- * Start the server as a background process
+ * Start the server as a background process (or foreground with --log)
  */
 async function startServer() {
-  if (isServiceRunning()) {
+  // Check for --log flag
+  const logMode = args.includes('--log');
+
+  if (isServiceRunning() && !logMode) {
     console.log('');
-    console.log('🛸 Antigravity Proxy is already in orbit');
+    console.log('╭' + '─'.repeat(48) + '╮');
+    console.log('│  🛸 Antigravity Proxy is already in orbit      │');
+    console.log('╰' + '─'.repeat(48) + '╯');
+    console.log('');
+
     const pid = getServicePid();
     const port = getPort();
-    console.log(`   └─ PID: ${pid}`);
-    console.log(`   └─ http://localhost:${port}`);
+    console.log(`   ┌─ PID: ${pid}`);
+    console.log(`   ├─ Local: http://localhost:${port}`);
+    console.log(`   └─ Dashboard: http://localhost:${port}`);
     console.log('');
     return;
   }
 
   console.log('');
-  console.log('🌌 Launching Antigravity Proxy...');
+  if (logMode) {
+    console.log('🌌 Launching Antigravity Proxy (foreground mode)...');
+    console.log('   Press Ctrl+C to stop');
+    console.log('');
+  } else {
+    console.log('🌌 Launching Antigravity Proxy...');
+  }
 
   const serverScript = join(__dirname, '..', 'src', 'index.js');
   const port = getPort();
 
-  // Spawn the server as a detached background process
-  const serverProcess = spawn('node', [serverScript, ...args.slice(1)], {
+  // Filter out --log from args passed to server
+  const serverArgs = args.slice(1).filter(arg => arg !== '--log');
+
+  if (logMode) {
+    // Foreground mode - show logs directly
+    const serverProcess = spawn('node', [serverScript, ...serverArgs], {
+      stdio: 'inherit', // Show output in current terminal
+      env: { ...process.env, PORT: port.toString() }
+    });
+
+    serverProcess.on('error', (error) => {
+      console.error('');
+      console.error('⚠️  Launch failed:', error.message);
+      console.error('');
+      process.exit(1);
+    });
+
+    serverProcess.on('exit', (code) => {
+      console.log('');
+      console.log('🌙 Proxy has exited');
+      console.log('');
+      process.exit(code || 0);
+    });
+
+    // Keep process running
+    return;
+  }
+
+  // Background mode - detached process
+  const serverProcess = spawn('node', [serverScript, ...serverArgs], {
     detached: true,
     stdio: 'ignore',
     env: { ...process.env, PORT: port.toString() }
@@ -157,7 +199,10 @@ async function startServer() {
 
   // Wait for service to be ready
   if (await waitForService()) {
-    console.log('⚡ Proxy is now in orbit!');
+    console.log('╭' + '─'.repeat(48) + '╮');
+    console.log('│⚡ Proxy is now in orbit!');
+    console.log('╰' + '─'.repeat(48) + '╯');
+
     console.log('');
     console.log('   ┌─ Process ID:', serverProcess.pid);
     console.log('   ├─ Local:', `http://localhost:${port}`);
@@ -345,6 +390,7 @@ USAGE
 ━━━ OPTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   --help, -h         Show this help
   --version, -v      Show version
+  --log              Run in foreground with visible logs
   --strategy=NAME    Load balancing: hybrid (default),
                      sticky (cache-optimized), round-robin
   --fallback         Enable model fallback on errors
@@ -354,6 +400,7 @@ USAGE
 
 ━━━ EXAMPLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   acc start                    Launch proxy
+  acc start --log              Launch with visible logs
   acc ui                       Open dashboard
   PORT=3000 acc start          Use custom port
   acc start --strategy=sticky  Optimize for prompt caching
