@@ -270,6 +270,18 @@ window.translations.id = {
     defaultCooldownDesc: "Cooldown bawaan jika API tidak memberikan waktu reset.",
     maxWaitThreshold: "Batas Tunggu Maksimal",
     maxWaitDesc: "Jika semua akun terkena rate limit lebih lama dari ini, langsung gagal.",
+    // Error Handling Tuning
+    errorHandlingTuning: "Penyetelan Penanganan Error",
+    rateLimitDedupWindow: "Jendela Deduplikasi Rate Limit",
+    rateLimitDedupWindowDesc: "Mencegah badai retry ketika beberapa permintaan terkena rate limit bersamaan.",
+    maxConsecutiveFailures: "Maks. Kegagalan Berturut-turut",
+    maxConsecutiveFailuresDesc: "Jumlah kegagalan berturut-turut sebelum menerapkan cooldown diperpanjang.",
+    extendedCooldown: "Cooldown Diperpanjang",
+    extendedCooldownDesc: "Durasi cooldown setelah mencapai maks. kegagalan berturut-turut.",
+    capacityRetryDelay: "Jeda Retry Kapasitas",
+    capacityRetryDelayDesc: "Jeda sebelum retry saat kapasitas model habis (bukan kuota).",
+    maxCapacityRetries: "Maks. Retry Kapasitas",
+    maxCapacityRetriesDesc: "Maksimum retry untuk kehabisan kapasitas sebelum ganti akun.",
     saveConfigServer: "Simpan Konfigurasi",
     serverRestartAlert: "Tersimpan ke {path}. Restart server untuk menerapkan.",
 
@@ -368,4 +380,17 @@ window.translations.id = {
     mustBeAtMost: "{fieldName} maksimal {max}",
     cannotBeEmpty: "{fieldName} tidak boleh kosong",
     mustBeTrueOrFalse: "Nilai harus true atau false",
+
+    // Account Selection Strategy translations
+    accountSelectionStrategy: "Strategi Pemilihan Akun",
+    selectionStrategy: "Strategi Pemilihan",
+    strategyStickyLabel: "Tetap (Optimisasi Cache)",
+    strategyRoundRobinLabel: "Bergilir (Load Balanced)",
+    strategyHybridLabel: "Hibrida (Distribusi Cerdas)",
+    strategyStickyDesc: "Tetap di akun yang sama hingga terkena rate limit. Terbaik untuk cache prompt.",
+    strategyRoundRobinDesc: "Berputar ke akun berikutnya setiap permintaan. Throughput maksimum.",
+    strategyHybridDesc: "Pemilihan cerdas berdasarkan kesehatan, token, dan kesegaran.",
+    strategyUpdated: "Strategi diubah ke: {strategy}",
+    failedToUpdateStrategy: "Gagal memperbarui strategi",
+    invalidStrategy: "Strategi tidak valid dipilih",
 };

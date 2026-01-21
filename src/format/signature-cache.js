@@ -48,32 +48,6 @@ export function getCachedSignature(toolUseId) {
 }
 
 /**
- * Clear expired entries from the cache
- * Can be called periodically to prevent memory buildup
- */
-export function cleanupCache() {
-    const now = Date.now();
-    for (const [key, entry] of signatureCache) {
-        if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
-            signatureCache.delete(key);
-        }
-    }
-    for (const [key, entry] of thinkingSignatureCache) {
-        if (now - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
-            thinkingSignatureCache.delete(key);
-        }
-    }
-}
-
-/**
- * Get the current cache size (for debugging)
- * @returns {number} Number of entries in the cache
- */
-export function getCacheSize() {
-    return signatureCache.size;
-}
-
-/**
  * Cache a thinking block signature with its model family
  * @param {string} signature - The thinking signature to cache
  * @param {string} modelFamily - The model family ('claude' or 'gemini')
@@ -103,14 +77,6 @@ export function getCachedSignatureFamily(signature) {
     }
 
     return entry.modelFamily;
-}
-
-/**
- * Get the current thinking signature cache size (for debugging)
- * @returns {number} Number of entries in the thinking signature cache
- */
-export function getThinkingCacheSize() {
-    return thinkingSignatureCache.size;
 }
 
 /**

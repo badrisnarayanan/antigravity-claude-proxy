@@ -150,6 +150,23 @@ export class EmptyResponseError extends AntigravityError {
 }
 
 /**
+ * Capacity exhausted error - Google's model is at capacity (not user quota)
+ * Should retry on same account with shorter delay, not switch accounts immediately
+ * Different from QUOTA_EXHAUSTED which indicates user's daily/hourly limit
+ */
+export class CapacityExhaustedError extends AntigravityError {
+    /**
+     * @param {string} message - Error message
+     * @param {number|null} retryAfterMs - Suggested retry delay in ms
+     */
+    constructor(message = 'Model capacity exhausted', retryAfterMs = null) {
+        super(message, 'CAPACITY_EXHAUSTED', true, { retryAfterMs });
+        this.name = 'CapacityExhaustedError';
+        this.retryAfterMs = retryAfterMs;
+    }
+}
+
+/**
  * Check if an error is a rate limit error
  * Works with both custom error classes and legacy string-based errors
  * @param {Error} error - Error to check
@@ -188,6 +205,22 @@ export function isEmptyResponseError(error) {
         error?.name === 'EmptyResponseError';
 }
 
+/**
+ * Check if an error is a capacity exhausted error (model overload, not user quota)
+ * This is different from quota exhaustion - capacity issues are temporary infrastructure
+ * limits that should be retried on the SAME account with shorter delays
+ * @param {Error} error - Error to check
+ * @returns {boolean}
+ */
+export function isCapacityExhaustedError(error) {
+    if (error instanceof CapacityExhaustedError) return true;
+    const msg = (error.message || '').toLowerCase();
+    return msg.includes('model_capacity_exhausted') ||
+        msg.includes('capacity_exhausted') ||
+        msg.includes('model is currently overloaded') ||
+        msg.includes('service temporarily unavailable');
+}
+
 export default {
     AntigravityError,
     RateLimitError,
@@ -197,7 +230,9 @@ export default {
     ApiError,
     NativeModuleError,
     EmptyResponseError,
+    CapacityExhaustedError,
     isRateLimitError,
     isAuthError,
-    isEmptyResponseError
+    isEmptyResponseError,
+    isCapacityExhaustedError
 };

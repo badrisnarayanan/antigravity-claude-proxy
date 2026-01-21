@@ -43,7 +43,7 @@ export function getDefaultTierId(allowedTiers) {
  * @param {number} [delayMs=5000] - Delay between polling attempts
  * @returns {Promise<string|null>} Managed project ID or null if failed
  */
-export async function onboardUser(token, tierId, projectId = null, maxAttempts = 10, delayMs = 5000) {
+export async function onboardUser(token, tierId, projectId = undefined, maxAttempts = 10, delayMs = 5000) {
     const metadata = {
         ideType: 'IDE_UNSPECIFIED',
         platform: 'PLATFORM_UNSPECIFIED',
@@ -58,16 +58,11 @@ export async function onboardUser(token, tierId, projectId = null, maxAttempts =
         tierId,
         metadata
     };
+    // Note: Do NOT add cloudaicompanionProject to requestBody
+    // Reference implementation only sets metadata.duetProject, not the body field
+    // Adding cloudaicompanionProject causes 400 errors for auto-provisioned tiers (g1-pro, g1-ultra)
 
-    // Check if this is a free tier (handles raw API values like 'free-tier')
-    const isFree = tierId.toLowerCase().includes('free');
-
-    // Non-free tiers require a cloudaicompanionProject
-    if (!isFree && projectId) {
-        requestBody.cloudaicompanionProject = projectId;
-    }
-
-    logger.debug(`[Onboarding] Starting onboard with tierId: ${tierId}, projectId: ${projectId}, isFree: ${isFree}`);
+    logger.debug(`[Onboarding] Starting onboard with tierId: ${tierId}, projectId: ${projectId}`);
 
     for (const endpoint of ONBOARD_USER_ENDPOINTS) {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {

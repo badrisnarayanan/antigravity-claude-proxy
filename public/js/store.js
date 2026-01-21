@@ -30,6 +30,27 @@ document.addEventListener('alpine:init', () => {
                     this.activeTab = hash;
                 }
             });
+
+            // 4. Fetch version from API
+            this.fetchVersion();
+        },
+
+        async fetchVersion() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.version) {
+                        this.version = data.version;
+                    }
+                    // Update maxAccounts in data store
+                    if (data.config && typeof data.config.maxAccounts === 'number') {
+                        Alpine.store('data').maxAccounts = data.config.maxAccounts;
+                    }
+                }
+            } catch (error) {
+                console.debug('Could not fetch version:', error);
+            }
         },
 
         // App State

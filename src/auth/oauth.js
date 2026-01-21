@@ -18,6 +18,34 @@ import { logger } from '../utils/logger.js';
 import { onboardUser, getDefaultTierId } from '../account-manager/onboarding.js';
 
 /**
+ * Parse refresh token parts (aligned with opencode-antigravity-auth)
+ * Format: refreshToken|projectId|managedProjectId
+ *
+ * @param {string} refresh - Composite refresh token string
+ * @returns {{refreshToken: string, projectId: string|undefined, managedProjectId: string|undefined}}
+ */
+export function parseRefreshParts(refresh) {
+    const [refreshToken = '', projectId = '', managedProjectId = ''] = (refresh ?? '').split('|');
+    return {
+        refreshToken,
+        projectId: projectId || undefined,
+        managedProjectId: managedProjectId || undefined,
+    };
+}
+
+/**
+ * Format refresh token parts back into composite string
+ *
+ * @param {{refreshToken: string, projectId?: string|undefined, managedProjectId?: string|undefined}} parts
+ * @returns {string} Composite refresh token
+ */
+export function formatRefreshParts(parts) {
+    const projectSegment = parts.projectId ?? '';
+    const base = `${parts.refreshToken}|${projectSegment}`;
+    return parts.managedProjectId ? `${base}|${parts.managedProjectId}` : base;
+}
+
+/**
  * Generate PKCE code verifier and challenge
  */
 function generatePKCE() {
@@ -267,11 +295,15 @@ export async function exchangeCode(code, verifier) {
 
 /**
  * Refresh access token using refresh token
+ * Handles composite refresh tokens (refreshToken|projectId|managedProjectId)
  *
- * @param {string} refreshToken - OAuth refresh token
+ * @param {string} compositeRefresh - OAuth refresh token (may be composite)
  * @returns {Promise<{accessToken: string, expiresIn: number}>} New access token
  */
-export async function refreshAccessToken(refreshToken) {
+export async function refreshAccessToken(compositeRefresh) {
+    // Parse the composite refresh token to extract the actual OAuth token
+    const parts = parseRefreshParts(compositeRefresh);
+
     const response = await fetch(OAUTH_CONFIG.tokenUrl, {
         method: 'POST',
         headers: {
@@ -280,7 +312,7 @@ export async function refreshAccessToken(refreshToken) {
         body: new URLSearchParams({
             client_id: OAUTH_CONFIG.clientId,
             client_secret: OAUTH_CONFIG.clientSecret,
-            refresh_token: refreshToken,
+            refresh_token: parts.refreshToken,  // Use the actual OAuth token
             grant_type: 'refresh_token'
         })
     });
@@ -408,6 +440,8 @@ export async function completeOAuthFlow(code, verifier) {
 }
 
 export default {
+    parseRefreshParts,
+    formatRefreshParts,
     getAuthorizationUrl,
     extractCodeFromInput,
     startCallbackServer,

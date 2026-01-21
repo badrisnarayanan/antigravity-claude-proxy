@@ -67,17 +67,7 @@ export const LOAD_CODE_ASSIST_ENDPOINTS = [
 // Endpoint order for onboardUser (same as generateContent fallbacks)
 export const ONBOARD_USER_ENDPOINTS = ANTIGRAVITY_ENDPOINT_FALLBACKS;
 
-// Hybrid headers specifically for loadCodeAssist
-// Uses google-api-nodejs-client User-Agent (required for project discovery on some accounts)
-// export const LOAD_CODE_ASSIST_HEADERS = {
-//     'User-Agent': 'google-api-nodejs-client/9.15.1',
-//     'X-Goog-Api-Client': 'google-cloud-sdk vscode_cloudshelleditor/0.1',
-//     'Client-Metadata': JSON.stringify({
-//         ideType: 'IDE_UNSPECIFIED',
-//         platform: 'PLATFORM_UNSPECIFIED',
-//         pluginType: 'GEMINI'
-//     })
-// };
+// Headers for loadCodeAssist API
 export const LOAD_CODE_ASSIST_HEADERS = ANTIGRAVITY_HEADERS;
 
 // Default project ID if none can be discovered
@@ -113,8 +103,30 @@ export const MAX_ACCOUNTS = config?.maxAccounts || 10; // From config or 10
 // Rate limit wait thresholds
 export const MAX_WAIT_BEFORE_ERROR_MS = config?.maxWaitBeforeErrorMs || 120000; // From config or 2 minutes
 
+// Gap 1: Retry deduplication - prevents thundering herd on concurrent rate limits
+export const RATE_LIMIT_DEDUP_WINDOW_MS = config?.rateLimitDedupWindowMs || 5000; // 5 seconds
+
+// Gap 2: Consecutive failure tracking - extended cooldown after repeated failures
+export const MAX_CONSECUTIVE_FAILURES = config?.maxConsecutiveFailures || 3;
+export const EXTENDED_COOLDOWN_MS = config?.extendedCooldownMs || 60000; // 1 minute
+
+// Gap 4: Capacity exhaustion - shorter retry for model capacity issues (not quota)
+export const CAPACITY_RETRY_DELAY_MS = config?.capacityRetryDelayMs || 2000; // 2 seconds
+export const MAX_CAPACITY_RETRIES = config?.maxCapacityRetries || 3;
+
 // Thinking model constants
 export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature length
+
+// Account selection strategies
+export const SELECTION_STRATEGIES = ['sticky', 'round-robin', 'hybrid'];
+export const DEFAULT_SELECTION_STRATEGY = 'hybrid';
+
+// Strategy display labels
+export const STRATEGY_LABELS = {
+    'sticky': 'Sticky (Cache Optimized)',
+    'round-robin': 'Round Robin (Load Balanced)',
+    'hybrid': 'Hybrid (Smart Distribution)'
+};
 
 // Gemini-specific limits
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
@@ -245,6 +257,11 @@ export default {
     MAX_EMPTY_RESPONSE_RETRIES,
     MAX_ACCOUNTS,
     MAX_WAIT_BEFORE_ERROR_MS,
+    RATE_LIMIT_DEDUP_WINDOW_MS,
+    MAX_CONSECUTIVE_FAILURES,
+    EXTENDED_COOLDOWN_MS,
+    CAPACITY_RETRY_DELAY_MS,
+    MAX_CAPACITY_RETRIES,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,
@@ -253,6 +270,7 @@ export default {
     isThinkingModel,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI,
+    STRATEGY_LABELS,
     MODEL_FALLBACK_MAP,
     TEST_MODELS,
     DEFAULT_PRESETS,

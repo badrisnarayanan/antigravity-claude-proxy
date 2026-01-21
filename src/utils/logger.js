@@ -140,6 +140,3 @@ class Logger extends EventEmitter {
 
 // Export a singleton instance
 export const logger = new Logger();
-
-// Export class if needed for multiple instances
-export { Logger };

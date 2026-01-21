@@ -12,7 +12,7 @@ import { logger } from '../utils/logger.js';
  * @param {Object} part - Content part to check
  * @returns {boolean} True if the part is a thinking block
  */
-export function isThinkingPart(part) {
+function isThinkingPart(part) {
     return part.type === 'thinking' ||
         part.type === 'redacted_thinking' ||
         part.thinking !== undefined ||
@@ -22,7 +22,7 @@ export function isThinkingPart(part) {
 /**
  * Check if a thinking part has a valid signature (>= MIN_SIGNATURE_LENGTH chars)
  */
-export function hasValidSignature(part) {
+function hasValidSignature(part) {
     const signature = part.thought === true ? part.thoughtSignature : part.signature;
     return typeof signature === 'string' && signature.length >= MIN_SIGNATURE_LENGTH;
 }
@@ -61,7 +61,7 @@ export function hasUnsignedThinkingBlocks(messages) {
 /**
  * Sanitize a thinking part by keeping only allowed fields
  */
-export function sanitizeThinkingPart(part) {
+function sanitizeThinkingPart(part) {
     // Gemini-style thought blocks: { thought: true, text, thoughtSignature }
     if (part.thought === true) {
         const sanitized = { thought: true };
@@ -85,7 +85,7 @@ export function sanitizeThinkingPart(part) {
  * Sanitize a thinking block by removing extra fields like cache_control.
  * Only keeps: type, thinking, signature (for thinking) or type, data (for redacted_thinking)
  */
-export function sanitizeAnthropicThinkingBlock(block) {
+function sanitizeAnthropicThinkingBlock(block) {
     if (!block) return block;
 
     if (block.type === 'thinking') {
@@ -366,7 +366,7 @@ function isPlainUserMessage(message) {
  * @param {Array<Object>} messages - Array of messages
  * @returns {Object} State object with inToolLoop, interruptedTool, turnHasThinking, etc.
  */
-export function analyzeConversationState(messages) {
+function analyzeConversationState(messages) {
     if (!Array.isArray(messages) || messages.length === 0) {
         return { inToolLoop: false, interruptedTool: false, turnHasThinking: false, toolResultCount: 0 };
     }

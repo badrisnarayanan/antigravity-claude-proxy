@@ -17,7 +17,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
@@ -77,6 +77,7 @@ async function removeAccount(email) {
 
 /**
  * Add new account to config
+ * @throws {Error} If MAX_ACCOUNTS limit is reached (for new accounts only)
  */
 async function addAccount(accountData) {
     const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
@@ -95,6 +96,10 @@ async function addAccount(accountData) {
         };
         logger.info(`[WebUI] Account ${accountData.email} updated`);
     } else {
+        // Check MAX_ACCOUNTS limit before adding new account
+        if (accounts.length >= MAX_ACCOUNTS) {
+            throw new Error(`Maximum of ${MAX_ACCOUNTS} accounts reached. Update maxAccounts in config to increase the limit.`);
+        }
         // Add new account
         accounts.push({
             ...accountData,
@@ -352,7 +357,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, quotaThreshold } = req.body;
+const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -378,9 +383,18 @@ export function mountWebUI(app, dirname, accountManager) {
             if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
                 updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
             }
-            // Quota threshold: 0-0.99 (0% to 99%)
-            if (typeof quotaThreshold === 'number' && quotaThreshold >= 0 && quotaThreshold < 1) {
-                updates.quotaThreshold = quotaThreshold;
+if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
+                updates.maxAccounts = maxAccounts;
+            }
+            // Account selection strategy validation
+            if (accountSelection && typeof accountSelection === 'object') {
+                const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+                if (accountSelection.strategy && validStrategies.includes(accountSelection.strategy)) {
+                    updates.accountSelection = {
+                        ...(config.accountSelection || {}),
+                        strategy: accountSelection.strategy
+                    };
+                }
             }
 
             if (Object.keys(updates).length === 0) {
@@ -732,10 +746,11 @@ export function mountWebUI(app, dirname, accountManager) {
                         const accountData = await completeOAuthFlow(code, verifier);
 
                         // Add or update the account
+                        // Note: Don't set projectId here - it will be discovered and stored
+                        // in the refresh token via getProjectForAccount() on first use
                         await addAccount({
                             email: accountData.email,
                             refreshToken: accountData.refreshToken,
-                            projectId: accountData.projectId,
                             source: 'oauth'
                         });
 
