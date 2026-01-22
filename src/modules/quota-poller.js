@@ -8,11 +8,12 @@
  * This module is designed to be modular and non-intrusive:
  * - Starts/stops based on quota protection configuration
  * - Does not modify existing logic, only adds periodic checks
- * - Uses existing AccountManager methods for quota fetching
+ * - Uses CloudCode API to fetch quota data per account
  */
 
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
+import { getModelQuotas } from '../cloudcode/model-api.js';
 
 // Polling interval (5 minutes by default)
 const DEFAULT_POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -44,7 +45,7 @@ function getPollInterval() {
 
 /**
  * Poll quotas for all enabled accounts
- * Uses the existing getModelQuotas + checkAccountQuotas flow
+ * Fetches quota data via CloudCode API and triggers health threshold checks
  */
 async function pollAllAccountQuotas() {
     if (isPolling) {
@@ -66,7 +67,8 @@ async function pollAllAccountQuotas() {
     const startTime = Date.now();
 
     try {
-        const accounts = accountManager.getAccounts().filter(a => a.enabled);
+        // Use getAllAccounts() and filter enabled ones
+        const accounts = accountManager.getAllAccounts().filter(a => a.enabled !== false && !a.isInvalid);
 
         if (accounts.length === 0) {
             logger.debug('[QuotaPoller] No enabled accounts to poll');
@@ -79,11 +81,27 @@ async function pollAllAccountQuotas() {
 
         for (const account of accounts) {
             try {
-                // Use existing getModelQuotas method
-                const quotas = await accountManager.getModelQuotas(account.email);
+                // Get OAuth token for the account
+                const token = await accountManager.getTokenForAccount(account);
+                if (!token) {
+                    logger.debug(`[QuotaPoller] No token for ${account.email}, skipping`);
+                    continue;
+                }
+
+                // Get project ID (use cached or fetch)
+                const projectId = await accountManager.getProjectForAccount(account, token);
+
+                // Fetch quota data from CloudCode API
+                const quotas = await getModelQuotas(token, projectId);
 
                 if (quotas && Object.keys(quotas).length > 0) {
-                    // Use existing checkAccountQuotas method
+                    // Update account's cached quota data
+                    account.quota = {
+                        models: quotas,
+                        lastChecked: Date.now()
+                    };
+
+                    // Trigger health threshold checks
                     const changes = accountManager.checkAccountQuotas(account.email, quotas);
                     totalChanges += changes.length;
                 }
@@ -91,6 +109,11 @@ async function pollAllAccountQuotas() {
                 // Log but don't fail the entire poll
                 logger.debug(`[QuotaPoller] Failed to poll ${account.email}: ${err.message}`);
             }
+        }
+
+        // Save updated quota data to disk
+        if (totalChanges > 0) {
+            await accountManager.saveToDisk();
         }
 
         const duration = Date.now() - startTime;

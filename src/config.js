@@ -46,10 +46,15 @@ const DEFAULT_CONFIG = {
             tokensPerMinute: 6,       // Regeneration rate
             initialTokens: 50         // Starting tokens
         },
+        // Quota-aware selection (strategy layer - temporary exclusion)
+        // Works with health.quotaThreshold (account layer - persistent disable)
+        // Strategy layer: soft exclusion during selection, no persistence
+        // Account layer: hard disable, persisted to accounts.json, requires recovery
         quota: {
-            lowThreshold: 0.10,       // 10% - reduce score
-            criticalThreshold: 0.05,  // 5% - exclude from candidates
+            lowThreshold: 0.10,       // 10% - reduce selection score
+            criticalThreshold: 0.05,  // 5% - exclude from candidates (temporary)
             staleMs: 300000           // 5 min - max age of quota data to trust
+            // Note: health.quotaThreshold (default 20%) triggers persistent disable
         }
     }
 };

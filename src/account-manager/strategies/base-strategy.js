@@ -85,6 +85,15 @@ export class BaseStrategy {
             }
         }
 
+        // Check account-layer health status (disabled, manualDisabled, quotaDisabled)
+        // This integrates the persistent health tracking from health.js
+        if (modelId && account.health && account.health[modelId]) {
+            const health = account.health[modelId];
+            if (health.disabled || health.manualDisabled || health.quotaDisabled) {
+                return false;
+            }
+        }
+
         return true;
     }
 

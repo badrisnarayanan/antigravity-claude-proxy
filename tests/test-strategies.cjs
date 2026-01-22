@@ -513,6 +513,77 @@ async function runTests() {
         assertEqual(usable[1].account.email, 'd@example.com');
     });
 
+    test('BaseStrategy: isAccountUsable returns false for health-disabled model', () => {
+        class TestStrategy extends BaseStrategy {
+            selectAccount() { return { account: null, index: 0 }; }
+        }
+        const strategy = new TestStrategy();
+        const account = {
+            email: 'test@example.com',
+            health: {
+                'claude-sonnet': {
+                    disabled: true,
+                    disabledReason: 'Auto: 5 consecutive failures'
+                }
+            }
+        };
+        assertFalse(strategy.isAccountUsable(account, 'claude-sonnet'), 'Health-disabled model should not be usable');
+        // Different model should still be usable
+        assertTrue(strategy.isAccountUsable(account, 'gemini-flash'), 'Other models should be usable');
+    });
+
+    test('BaseStrategy: isAccountUsable returns false for manually disabled model', () => {
+        class TestStrategy extends BaseStrategy {
+            selectAccount() { return { account: null, index: 0 }; }
+        }
+        const strategy = new TestStrategy();
+        const account = {
+            email: 'test@example.com',
+            health: {
+                'claude-sonnet': {
+                    manualDisabled: true
+                }
+            }
+        };
+        assertFalse(strategy.isAccountUsable(account, 'claude-sonnet'), 'Manually disabled model should not be usable');
+    });
+
+    test('BaseStrategy: isAccountUsable returns false for quota-disabled model', () => {
+        class TestStrategy extends BaseStrategy {
+            selectAccount() { return { account: null, index: 0 }; }
+        }
+        const strategy = new TestStrategy();
+        const account = {
+            email: 'test@example.com',
+            health: {
+                'claude-sonnet': {
+                    quotaDisabled: true,
+                    quotaResetTime: new Date(Date.now() + 3600000).toISOString()
+                }
+            }
+        };
+        assertFalse(strategy.isAccountUsable(account, 'claude-sonnet'), 'Quota-disabled model should not be usable');
+    });
+
+    test('BaseStrategy: isAccountUsable returns true when health exists but not disabled', () => {
+        class TestStrategy extends BaseStrategy {
+            selectAccount() { return { account: null, index: 0 }; }
+        }
+        const strategy = new TestStrategy();
+        const account = {
+            email: 'test@example.com',
+            health: {
+                'claude-sonnet': {
+                    disabled: false,
+                    manualDisabled: false,
+                    quotaDisabled: false,
+                    healthScore: 85
+                }
+            }
+        };
+        assertTrue(strategy.isAccountUsable(account, 'claude-sonnet'), 'Healthy model should be usable');
+    });
+
     // ==========================================================================
     // STICKY STRATEGY TESTS
     // ==========================================================================

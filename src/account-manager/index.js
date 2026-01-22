@@ -521,7 +521,7 @@ export class AccountManager {
         const result = checkQuota(account, modelId, remainingFraction, resetTime);
         if (result) {
             // Save if there was a change
-            this.save();
+            this.saveToDisk();
         }
         return result;
     }
@@ -541,7 +541,7 @@ export class AccountManager {
         const changes = checkAccQuotas(account, quotas);
         if (changes.length > 0) {
             // Save if there were changes
-            this.save();
+            this.saveToDisk();
         }
         return changes;
     }
