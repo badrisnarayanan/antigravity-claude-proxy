@@ -45,6 +45,11 @@ const DEFAULT_CONFIG = {
             maxTokens: 50,            // Maximum token capacity
             tokensPerMinute: 6,       // Regeneration rate
             initialTokens: 50         // Starting tokens
+        },
+        quota: {
+            lowThreshold: 0.10,       // 10% - reduce score
+            criticalThreshold: 0.05,  // 5% - exclude from candidates
+            staleMs: 300000           // 5 min - max age of quota data to trust
         }
     }
 };

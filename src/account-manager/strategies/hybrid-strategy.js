@@ -1,33 +1,36 @@
 /**
  * Hybrid Strategy
  *
- * Smart selection based on health score, token bucket, and LRU freshness.
+ * Smart selection based on health score, token bucket, quota, and LRU freshness.
  * Combines multiple signals for optimal account distribution.
  *
  * Scoring formula:
- *   score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (LRU × 0.1)
+ *   score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (Quota × 3) + (LRU × 0.1)
  *
  * Filters accounts that are:
  * - Not rate-limited
  * - Not invalid or disabled
  * - Health score >= minUsable
  * - Has tokens available
+ * - Quota not critically low (< 5%)
  */
 
 import { BaseStrategy } from './base-strategy.js';
-import { HealthTracker, TokenBucketTracker } from './trackers/index.js';
+import { HealthTracker, TokenBucketTracker, QuotaTracker } from './trackers/index.js';
 import { logger } from '../../utils/logger.js';
 
 // Default weights for scoring
 const DEFAULT_WEIGHTS = {
     health: 2,
     tokens: 5,
+    quota: 3,
     lru: 0.1
 };
 
 export class HybridStrategy extends BaseStrategy {
     #healthTracker;
     #tokenBucketTracker;
+    #quotaTracker;
     #weights;
 
     /**
@@ -35,12 +38,14 @@ export class HybridStrategy extends BaseStrategy {
      * @param {Object} config - Strategy configuration
      * @param {Object} [config.healthScore] - Health tracker configuration
      * @param {Object} [config.tokenBucket] - Token bucket configuration
+     * @param {Object} [config.quota] - Quota tracker configuration
      * @param {Object} [config.weights] - Scoring weights
      */
     constructor(config = {}) {
         super(config);
         this.#healthTracker = new HealthTracker(config.healthScore || {});
         this.#tokenBucketTracker = new TokenBucketTracker(config.tokenBucket || {});
+        this.#quotaTracker = new QuotaTracker(config.quota || {});
         this.#weights = { ...DEFAULT_WEIGHTS, ...config.weights };
     }
 
@@ -71,7 +76,7 @@ export class HybridStrategy extends BaseStrategy {
         const scored = candidates.map(({ account, index }) => ({
             account,
             index,
-            score: this.#calculateScore(account)
+            score: this.#calculateScore(account, modelId)
         }));
 
         scored.sort((a, b) => b.score - a.score);
@@ -126,7 +131,7 @@ export class HybridStrategy extends BaseStrategy {
      * @private
      */
     #getCandidates(accounts, modelId) {
-        return accounts
+        const candidates = accounts
             .map((account, index) => ({ account, index }))
             .filter(({ account }) => {
                 // Basic usability check
@@ -144,15 +149,40 @@ export class HybridStrategy extends BaseStrategy {
                     return false;
                 }
 
+                // Quota availability check (exclude critically low quota)
+                if (this.#quotaTracker.isQuotaCritical(account, modelId)) {
+                    logger.debug(`[HybridStrategy] Excluding ${account.email}: quota critically low for ${modelId}`);
+                    return false;
+                }
+
                 return true;
             });
+
+        // If no candidates after quota filter, fall back to all usable accounts
+        // (better to use critical quota than fail entirely)
+        if (candidates.length === 0) {
+            const fallback = accounts
+                .map((account, index) => ({ account, index }))
+                .filter(({ account }) => {
+                    if (!this.isAccountUsable(account, modelId)) return false;
+                    if (!this.#healthTracker.isUsable(account.email)) return false;
+                    if (!this.#tokenBucketTracker.hasTokens(account.email)) return false;
+                    return true;
+                });
+            if (fallback.length > 0) {
+                logger.warn('[HybridStrategy] All accounts have critical quota, using fallback');
+                return fallback;
+            }
+        }
+
+        return candidates;
     }
 
     /**
      * Calculate the combined score for an account
      * @private
      */
-    #calculateScore(account) {
+    #calculateScore(account, modelId) {
         const email = account.email;
 
         // Health component (0-100 scaled by weight)
@@ -165,6 +195,10 @@ export class HybridStrategy extends BaseStrategy {
         const tokenRatio = tokens / maxTokens;
         const tokenComponent = (tokenRatio * 100) * this.#weights.tokens;
 
+        // Quota component (0-100 scaled by weight)
+        const quotaScore = this.#quotaTracker.getScore(account, modelId);
+        const quotaComponent = quotaScore * this.#weights.quota;
+
         // LRU component (older = higher score)
         // Use time since last use, capped at 1 hour for scoring
         const lastUsed = account.lastUsed || 0;
@@ -172,7 +206,7 @@ export class HybridStrategy extends BaseStrategy {
         const lruMinutes = timeSinceLastUse / 60000;
         const lruComponent = lruMinutes * this.#weights.lru;
 
-        return healthComponent + tokenComponent + lruComponent;
+        return healthComponent + tokenComponent + quotaComponent + lruComponent;
     }
 
     /**
@@ -189,6 +223,14 @@ export class HybridStrategy extends BaseStrategy {
      */
     getTokenBucketTracker() {
         return this.#tokenBucketTracker;
+    }
+
+    /**
+     * Get the quota tracker (for testing/debugging)
+     * @returns {QuotaTracker} The quota tracker instance
+     */
+    getQuotaTracker() {
+        return this.#quotaTracker;
     }
 }
 

@@ -136,24 +136,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async fetchVersion(password) {
-            try {
-                const { response } = await window.utils.request('/api/config', {}, password);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.version) {
-                        Alpine.store('global').version = data.version;
-                    }
-                    // Store maxAccounts from config
-                    if (data.config && typeof data.config.maxAccounts === 'number') {
-                        this.maxAccounts = data.config.maxAccounts;
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to fetch version:', error);
-            }
-        },
-
         async performHealthCheck() {
             try {
                 // Get password from global store

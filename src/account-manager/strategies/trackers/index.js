@@ -6,3 +6,4 @@
 
 export { HealthTracker } from './health-tracker.js';
 export { TokenBucketTracker } from './token-bucket-tracker.js';
+export { QuotaTracker } from './quota-tracker.js';

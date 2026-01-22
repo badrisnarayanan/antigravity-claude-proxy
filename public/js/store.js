@@ -43,6 +43,10 @@ document.addEventListener('alpine:init', () => {
                     if (data.version) {
                         this.version = data.version;
                     }
+                    // Update maxAccounts in data store
+                    if (data.config && typeof data.config.maxAccounts === 'number') {
+                        Alpine.store('data').maxAccounts = data.config.maxAccounts;
+                    }
                 }
             } catch (error) {
                 console.debug('Could not fetch version:', error);

@@ -19,6 +19,7 @@ async function runTests() {
     // Dynamic imports for ESM modules
     const { HealthTracker } = await import('../src/account-manager/strategies/trackers/health-tracker.js');
     const { TokenBucketTracker } = await import('../src/account-manager/strategies/trackers/token-bucket-tracker.js');
+    const { QuotaTracker } = await import('../src/account-manager/strategies/trackers/quota-tracker.js');
     const { StickyStrategy } = await import('../src/account-manager/strategies/sticky-strategy.js');
     const { RoundRobinStrategy } = await import('../src/account-manager/strategies/round-robin-strategy.js');
     const { HybridStrategy } = await import('../src/account-manager/strategies/hybrid-strategy.js');
@@ -275,6 +276,149 @@ async function runTests() {
         tracker.consume('test@example.com');
         tracker.reset('test@example.com');
         assertEqual(tracker.getTokens('test@example.com'), 50, 'Reset should restore initial');
+    });
+
+    // ==========================================================================
+    // QUOTA TRACKER TESTS
+    // ==========================================================================
+    console.log('\n─── QuotaTracker Tests ───');
+
+    test('QuotaTracker: getQuotaFraction returns null for missing data', () => {
+        const tracker = new QuotaTracker();
+        const account = { email: 'test@example.com' };
+        assertNull(tracker.getQuotaFraction(account, 'model'), 'Missing quota should return null');
+    });
+
+    test('QuotaTracker: getQuotaFraction returns correct value', () => {
+        const tracker = new QuotaTracker();
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.75 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertEqual(tracker.getQuotaFraction(account, 'model'), 0.75);
+    });
+
+    test('QuotaTracker: isQuotaFresh returns false when no lastChecked', () => {
+        const tracker = new QuotaTracker();
+        const account = { email: 'test@example.com' };
+        assertFalse(tracker.isQuotaFresh(account), 'Missing lastChecked should not be fresh');
+    });
+
+    test('QuotaTracker: isQuotaFresh returns true for recent data', () => {
+        const tracker = new QuotaTracker({ staleMs: 300000 }); // 5 min
+        const account = {
+            email: 'test@example.com',
+            quota: { lastChecked: Date.now() - 60000 } // 1 min ago
+        };
+        assertTrue(tracker.isQuotaFresh(account), 'Recent data should be fresh');
+    });
+
+    test('QuotaTracker: isQuotaFresh returns false for stale data', () => {
+        const tracker = new QuotaTracker({ staleMs: 300000 }); // 5 min
+        const account = {
+            email: 'test@example.com',
+            quota: { lastChecked: Date.now() - 600000 } // 10 min ago
+        };
+        assertFalse(tracker.isQuotaFresh(account), 'Old data should be stale');
+    });
+
+    test('QuotaTracker: isQuotaCritical returns false for unknown quota', () => {
+        const tracker = new QuotaTracker({ criticalThreshold: 0.05 });
+        const account = { email: 'test@example.com' };
+        assertFalse(tracker.isQuotaCritical(account, 'model'), 'Unknown quota should not be critical');
+    });
+
+    test('QuotaTracker: isQuotaCritical returns true when quota <= threshold', () => {
+        const tracker = new QuotaTracker({ criticalThreshold: 0.05 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.04 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertTrue(tracker.isQuotaCritical(account, 'model'), 'Low quota should be critical');
+    });
+
+    test('QuotaTracker: isQuotaCritical returns false when quota > threshold', () => {
+        const tracker = new QuotaTracker({ criticalThreshold: 0.05 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.10 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertFalse(tracker.isQuotaCritical(account, 'model'), 'Higher quota should not be critical');
+    });
+
+    test('QuotaTracker: isQuotaCritical returns false for stale data', () => {
+        const tracker = new QuotaTracker({ criticalThreshold: 0.05, staleMs: 300000 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.01 } },
+                lastChecked: Date.now() - 600000 // 10 min ago (stale)
+            }
+        };
+        assertFalse(tracker.isQuotaCritical(account, 'model'), 'Stale critical data should be ignored');
+    });
+
+    test('QuotaTracker: isQuotaLow returns true for low but not critical quota', () => {
+        const tracker = new QuotaTracker({ lowThreshold: 0.10, criticalThreshold: 0.05 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.08 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertTrue(tracker.isQuotaLow(account, 'model'), 'Quota at 8% should be low');
+    });
+
+    test('QuotaTracker: isQuotaLow returns false for critical quota', () => {
+        const tracker = new QuotaTracker({ lowThreshold: 0.10, criticalThreshold: 0.05 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.03 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertFalse(tracker.isQuotaLow(account, 'model'), 'Critical quota should not be just low');
+    });
+
+    test('QuotaTracker: getScore returns unknownScore for missing quota', () => {
+        const tracker = new QuotaTracker({ unknownScore: 50 });
+        const account = { email: 'test@example.com' };
+        assertEqual(tracker.getScore(account, 'model'), 50, 'Unknown quota should return default score');
+    });
+
+    test('QuotaTracker: getScore returns 0-100 based on fraction', () => {
+        const tracker = new QuotaTracker();
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 0.75 } },
+                lastChecked: Date.now()
+            }
+        };
+        assertEqual(tracker.getScore(account, 'model'), 75, 'Score should be fraction * 100');
+    });
+
+    test('QuotaTracker: getScore applies penalty for stale data', () => {
+        const tracker = new QuotaTracker({ staleMs: 300000 });
+        const account = {
+            email: 'test@example.com',
+            quota: {
+                models: { 'model': { remainingFraction: 1.0 } },
+                lastChecked: Date.now() - 600000 // 10 min ago
+            }
+        };
+        assertEqual(tracker.getScore(account, 'model'), 90, 'Stale data should have 10% penalty');
     });
 
     // ==========================================================================
@@ -641,6 +785,108 @@ async function runTests() {
         // Both have same health and tokens, but old-account has higher LRU
         const result = strategy.selectAccount(accounts, 'model');
         assertEqual(result.account.email, 'old-account@example.com', 'Older account should win with LRU weight');
+    });
+
+    test('HybridStrategy: filters out accounts with critical quota', () => {
+        const strategy = new HybridStrategy({
+            healthScore: { initial: 70 },
+            tokenBucket: { initialTokens: 50, maxTokens: 50 },
+            quota: { criticalThreshold: 0.05, staleMs: 300000 }
+        });
+
+        const accounts = [
+            {
+                email: 'critical@example.com',
+                enabled: true,
+                lastUsed: Date.now() - 3600000, // Older (would normally win LRU)
+                quota: {
+                    models: { 'model': { remainingFraction: 0.02 } },
+                    lastChecked: Date.now()
+                }
+            },
+            {
+                email: 'healthy@example.com',
+                enabled: true,
+                lastUsed: Date.now()
+            }
+        ];
+
+        const result = strategy.selectAccount(accounts, 'model');
+        assertEqual(result.account.email, 'healthy@example.com', 'Critical quota account should be excluded');
+    });
+
+    test('HybridStrategy: prefers higher quota accounts', () => {
+        const strategy = new HybridStrategy({
+            healthScore: { initial: 70 },
+            tokenBucket: { initialTokens: 50, maxTokens: 50 },
+            quota: { weight: 3 },
+            weights: { health: 2, tokens: 5, quota: 3, lru: 0.1 }
+        });
+
+        // Create accounts with same lastUsed (equal LRU)
+        const now = Date.now();
+        const accounts = [
+            {
+                email: 'low-quota@example.com',
+                enabled: true,
+                lastUsed: now,
+                quota: {
+                    models: { 'model': { remainingFraction: 0.20 } },
+                    lastChecked: now
+                }
+            },
+            {
+                email: 'high-quota@example.com',
+                enabled: true,
+                lastUsed: now,
+                quota: {
+                    models: { 'model': { remainingFraction: 0.80 } },
+                    lastChecked: now
+                }
+            }
+        ];
+
+        const result = strategy.selectAccount(accounts, 'model');
+        assertEqual(result.account.email, 'high-quota@example.com', 'Higher quota account should be preferred');
+    });
+
+    test('HybridStrategy: falls back when all accounts have critical quota', () => {
+        const strategy = new HybridStrategy({
+            healthScore: { initial: 70 },
+            tokenBucket: { initialTokens: 50, maxTokens: 50 },
+            quota: { criticalThreshold: 0.05, staleMs: 300000 }
+        });
+
+        const accounts = [
+            {
+                email: 'critical1@example.com',
+                enabled: true,
+                lastUsed: Date.now() - 60000,
+                quota: {
+                    models: { 'model': { remainingFraction: 0.02 } },
+                    lastChecked: Date.now()
+                }
+            },
+            {
+                email: 'critical2@example.com',
+                enabled: true,
+                lastUsed: Date.now(),
+                quota: {
+                    models: { 'model': { remainingFraction: 0.01 } },
+                    lastChecked: Date.now()
+                }
+            }
+        ];
+
+        // Should fall back and select an account even though all are critical
+        const result = strategy.selectAccount(accounts, 'model');
+        assertTrue(result.account !== null, 'Should fall back to critical quota accounts when no alternatives');
+    });
+
+    test('HybridStrategy: getQuotaTracker returns tracker', () => {
+        const strategy = new HybridStrategy();
+        const tracker = strategy.getQuotaTracker();
+        assertTrue(tracker instanceof QuotaTracker, 'Should return QuotaTracker instance');
     });
 
     // ==========================================================================
