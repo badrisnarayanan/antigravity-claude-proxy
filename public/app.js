@@ -68,24 +68,24 @@ document.addEventListener('alpine:init', () => {
             // Handle responsive sidebar transitions
             let lastWidth = window.innerWidth;
             let resizeTimeout = null;
-            
+
             window.addEventListener('resize', () => {
                 if (resizeTimeout) clearTimeout(resizeTimeout);
-                
+
                 resizeTimeout = setTimeout(() => {
                     const currentWidth = window.innerWidth;
                     const lgBreakpoint = 1024;
-                    
+
                     // Desktop -> Mobile: Auto-close sidebar to prevent overlay blocking screen
                     if (lastWidth >= lgBreakpoint && currentWidth < lgBreakpoint) {
                         this.sidebarOpen = false;
                     }
-                    
+
                     // Mobile -> Desktop: Auto-open sidebar (restore standard desktop layout)
                     if (lastWidth < lgBreakpoint && currentWidth >= lgBreakpoint) {
                         this.sidebarOpen = true;
                     }
-                    
+
                     lastWidth = currentWidth;
                 }, 150);
             });
@@ -223,6 +223,48 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 Alpine.store('global').showToast(Alpine.store('global').t('failedToStartOAuth') + ': ' + e.message, 'error');
             }
+        },
+
+        shutdownServer() {
+            if (!confirm(Alpine.store('global').t('confirmShutdown') || 'Are you sure you want to stop the server?')) {
+                return;
+            }
+
+            const password = Alpine.store('global').webuiPassword;
+            window.utils.request('/api/shutdown', { method: 'POST' }, password)
+                .then(async ({ response }) => {
+                    const data = await response.json();
+                    if (data.status === 'ok') {
+                        Alpine.store('global').showToast('Server shutting down...', 'success');
+                        // Force disconnection state
+                        Alpine.store('data').connectionStatus = 'disconnected';
+                        Alpine.store('data').error = 'Server stopped by user';
+                        if (this.refreshTimer) clearInterval(this.refreshTimer);
+
+                        // Auto-close attempt
+                        setTimeout(() => {
+                            try {
+                                window.close();
+                            } catch (e) {
+                                console.log('Auto-close blocked');
+                            }
+
+                            // Fallback UI if close fails or is blocked
+                            document.body.innerHTML = `
+                                <div class="flex flex-col items-center justify-center h-screen bg-black text-white font-mono">
+                                    <h1 class="text-2xl mb-4 text-green-500">Server Shutdown Complete</h1>
+                                    <p class="text-gray-400">You can now close this tab.</p>
+                                    <button onclick="window.close()" class="mt-8 px-6 py-2 border border-gray-700 hover:bg-gray-800 rounded transition-colors">Close Tab</button>
+                                </div>
+                            `;
+                        }, 1000);
+                    } else {
+                        throw new Error(data.error || 'Shutdown failed');
+                    }
+                })
+                .catch(err => {
+                    Alpine.store('global').showToast('Shutdown error: ' + err.message, 'error');
+                });
         }
     }));
 });

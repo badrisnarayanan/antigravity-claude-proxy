@@ -261,6 +261,20 @@ export function mountWebUI(app, dirname, accountManager) {
         }
     });
 
+    /**
+     * POST /api/shutdown - Gracefully shutdown the server
+     */
+    app.post('/api/shutdown', (req, res) => {
+        logger.warn('[WebUI] Shutdown requested by user');
+        res.json({ status: 'ok', message: 'Server shutting down...' });
+        
+        // Give time for response to be sent
+        setTimeout(() => {
+            logger.info('[WebUI] Shutting down process...');
+            process.exit(0);
+        }, 500);
+    });
+
     // ==========================================
     // Configuration API
     // ==========================================

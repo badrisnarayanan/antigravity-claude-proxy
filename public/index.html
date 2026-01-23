@@ -65,7 +65,8 @@
         class="h-14 border-b border-space-border flex items-center px-4 lg:px-6 justify-between bg-space-900/50 backdrop-blur-md z-50 relative">
         <div class="flex items-center gap-3">
             <!-- Mobile Menu Button -->
-            <button @click="toggleSidebar()" class="text-gray-400 hover:text-white focus:outline-none p-1 transition-colors">
+            <button @click="toggleSidebar()"
+                class="text-gray-400 hover:text-white focus:outline-none p-1 transition-colors">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -97,9 +98,22 @@
 
             <div class="h-4 w-px bg-space-border"></div>
 
+            <button type="button"
+                class="btn btn-ghost btn-xs btn-square text-red-400 hover:text-red-300 hover:bg-white/5"
+                @click="shutdownServer()" :title="$store.global.t('shutdown') || 'Shutdown Server'"
+                aria-label="Shutdown Server">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            <div class="h-4 w-px bg-space-border"></div>
+
             <!-- Refresh Button -->
-            <button type="button" class="btn btn-ghost btn-xs btn-square text-gray-400 hover:text-white hover:bg-white/5"
-                @click="fetchData" :disabled="loading" :title="$store.global.t('refreshData')" aria-label="Refresh data">
+            <button type="button"
+                class="btn btn-ghost btn-xs btn-square text-gray-400 hover:text-white hover:bg-white/5"
+                @click="fetchData" :disabled="loading" :title="$store.global.t('refreshData')"
+                aria-label="Refresh data">
                 <svg class="w-4 h-4" :class="{'animate-spin': loading}" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -113,20 +127,15 @@
     <div class="flex h-[calc(100vh-56px)] relative">
 
         <!-- Mobile Sidebar Overlay -->
-        <div x-show="sidebarOpen" 
-             x-transition:enter="transition-opacity ease-linear duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition-opacity ease-linear duration-300"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             @click="sidebarOpen = false"
-             class="fixed inset-0 bg-black/50 z-40 lg:hidden"
-             style="display: none;"></div>
+        <div x-show="sidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0" @click="sidebarOpen = false"
+            class="fixed inset-0 bg-black/50 z-40 lg:hidden" style="display: none;"></div>
 
         <!-- Sidebar -->
         <div class="fixed top-14 bottom-0 left-0 z-40 bg-space-900 border-r border-space-border transition-all duration-300 shadow-2xl overflow-hidden lg:static lg:h-auto lg:shadow-none lg:flex-shrink-0"
-             :class="{
+            :class="{
                  'translate-x-0': sidebarOpen,
                  '-translate-x-full': !sidebarOpen,
                  'w-64': sidebarOpen,
@@ -134,7 +143,7 @@
                  'lg:w-64': sidebarOpen,
                  'sidebar-collapsed': !sidebarOpen
              }">
-             
+
             <!-- Inner Sidebar Content (Fixed Width to prevent squashing) -->
             <div class="w-64 flex flex-col h-full pt-6 pb-4 flex-shrink-0">
                 <!-- Mobile Menu Header -->
@@ -142,7 +151,8 @@
                     <span class="text-sm font-bold text-white" x-text="$store.global.t('menu')">Menu</span>
                     <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
@@ -150,7 +160,7 @@
                 <!-- Desktop Header (Main) -->
                 <div class="px-4 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest hidden lg:block"
                     x-text="$store.global.t('main')">Main</div>
-                
+
                 <nav class="flex flex-col gap-1">
                     <button
                         class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
@@ -189,7 +199,8 @@
                 <nav class="flex flex-col gap-1">
                     <button
                         class="nav-item flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
-                        :class="{'active': $store.global.activeTab === 'logs'}" @click="$store.global.activeTab = 'logs'">
+                        :class="{'active': $store.global.activeTab === 'logs'}"
+                        @click="$store.global.activeTab = 'logs'">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -214,8 +225,9 @@
                 <div class="mt-auto px-6 text-[10px] text-gray-700 font-mono">
                     <div class="flex justify-between">
                         <span x-text="'V ' + $store.global.version">V 1.0.0</span>
-                        <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank" rel="noopener noreferrer"
-                            class="hover:text-neon-purple transition-colors" x-text="$store.global.t('github')">GitHub</a>
+                        <a href="https://github.com/badri-s2001/antigravity-claude-proxy" target="_blank"
+                            rel="noopener noreferrer" class="hover:text-neon-purple transition-colors"
+                            x-text="$store.global.t('github')">GitHub</a>
                     </div>
                 </div>
             </div>
@@ -227,13 +239,11 @@
             <!-- Views Container -->
             <!-- Dashboard -->
             <div x-show="$store.global.activeTab === 'dashboard'" x-load-view="'dashboard'"
-                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from"
-                class="w-full"></div>
+                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
             <!-- Models -->
             <div x-show="$store.global.activeTab === 'models'" x-load-view="'models'"
-                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from"
-                class="w-full"></div>
+                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
             <!-- Logs -->
             <div x-show="$store.global.activeTab === 'logs'" x-load-view="'logs'" x-transition:enter="fade-enter-active"
@@ -241,23 +251,23 @@
 
             <!-- Accounts -->
             <div x-show="$store.global.activeTab === 'accounts'" x-load-view="'accounts'"
-                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from"
-                class="w-full"></div>
+                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
             <!-- Settings -->
             <div x-show="$store.global.activeTab === 'settings'" x-load-view="'settings'"
-                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from"
-                class="w-full"></div>
+                x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
         </div>
     </div>
 
     <!-- Add Account Modal -->
     <dialog id="add_account_modal" class="modal backdrop-blur-sm">
-        <div class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
+        <div
+            class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
             <h3 class="font-bold text-lg text-white mb-4" x-text="$store.global.t('addAccount')">Add New Account</h3>
 
             <div class="flex flex-col gap-4">
-                <p class="text-sm text-gray-400 leading-relaxed" x-text="$store.global.t('connectGoogleDesc')">Connect a Google
+                <p class="text-sm text-gray-400 leading-relaxed" x-text="$store.global.t('connectGoogleDesc')">Connect a
+                    Google
                     Workspace account to increase your API quota limit.
                     The account will be used to proxy Claude requests via Antigravity.</p>
 
@@ -282,13 +292,17 @@
                 <div class="text-center mt-2">
                     <p class="text-xs text-gray-500 mb-2" x-text="$store.global.t('or')">OR</p>
                     <details class="group">
-                        <summary class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
-                            <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        <summary
+                            class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
+                            <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7" />
                             </svg>
                             <span x-text="$store.global.t('useCliCommand')">Use CLI Command</span>
                         </summary>
-                        <div class="mt-3 p-3 bg-black/50 rounded border border-space-border/30 font-mono text-xs text-gray-300">
+                        <div
+                            class="mt-3 p-3 bg-black/50 rounded border border-space-border/30 font-mono text-xs text-gray-300">
                             <div class="flex items-center gap-2">
                                 <span class="text-gray-600">$</span>
                                 <code>npm run accounts:add</code>
@@ -300,7 +314,8 @@
 
             <div class="modal-action mt-6">
                 <form method="dialog">
-                    <button type="submit" class="btn btn-ghost hover:bg-white/10" x-text="$store.global.t('close')">Close</button>
+                    <button type="submit" class="btn btn-ghost hover:bg-white/10"
+                        x-text="$store.global.t('close')">Close</button>
                 </form>
             </div>
         </div>
@@ -313,8 +328,10 @@
     <dialog id="oauth_progress_modal" class="modal" :class="{ 'modal-open': $store.global.oauthProgress.active }">
         <div class="modal-box bg-space-900 border border-neon-purple/50">
             <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                <svg class="w-6 h-6 text-neon-purple animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg class="w-6 h-6 text-neon-purple animate-spin" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <span x-text="$store.global.t('oauthWaiting')">Waiting for OAuth...</span>
             </h3>
@@ -325,20 +342,21 @@
             <!-- Progress Bar -->
             <div class="w-full bg-space-800 rounded-full h-2 mb-4 overflow-hidden">
                 <div class="bg-neon-purple h-2 rounded-full transition-all duration-500"
-                     :style="`width: ${($store.global.oauthProgress.current / $store.global.oauthProgress.max) * 100}%`">
+                    :style="`width: ${($store.global.oauthProgress.current / $store.global.oauthProgress.max) * 100}%`">
                 </div>
             </div>
 
             <!-- Progress Text -->
             <div class="flex justify-between text-xs text-gray-600 mb-4">
                 <span x-text="`${$store.global.oauthProgress.current} / ${$store.global.oauthProgress.max}s`"></span>
-                <span x-text="`${Math.round(($store.global.oauthProgress.current / $store.global.oauthProgress.max) * 100)}%`"></span>
+                <span
+                    x-text="`${Math.round(($store.global.oauthProgress.current / $store.global.oauthProgress.max) * 100)}%`"></span>
             </div>
 
             <div class="modal-action">
                 <button class="btn btn-sm btn-ghost text-gray-400"
-                        @click="$store.global.oauthProgress.cancel && $store.global.oauthProgress.cancel()"
-                        x-text="$store.global.t('cancelOAuth')">
+                    @click="$store.global.oauthProgress.cancel && $store.global.oauthProgress.cancel()"
+                    x-text="$store.global.t('cancelOAuth')">
                     Cancel
                 </button>
             </div>
