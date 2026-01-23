@@ -263,6 +263,8 @@
     <dialog id="add_account_modal" class="modal backdrop-blur-sm">
         <div
             class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
+    <dialog id="add_account_modal" class="modal backdrop-blur-sm" x-data="addAccountModal">
+        <div class="modal-box max-w-lg w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
             <h3 class="font-bold text-lg text-white mb-4" x-text="$store.global.t('addAccount')">Add New Account</h3>
 
             <div class="flex flex-col gap-4">
@@ -291,6 +293,47 @@
 
                 <div class="text-center mt-2">
                     <p class="text-xs text-gray-500 mb-2" x-text="$store.global.t('or')">OR</p>
+                    
+                    <!-- Manual Mode (collapsible) -->
+                    <details class="group mb-2" @toggle="initManualAuth($event)">
+                        <summary class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
+                            <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span x-text="$store.global.t('manualMode')">Manual Mode</span>
+                        </summary>
+                        <div class="mt-3 p-3 bg-black/50 rounded border border-space-border/30 text-xs">
+                            <template x-if="authUrl">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <input type="text" readonly :value="authUrl" 
+                                               class="input input-xs input-bordered flex-1 bg-space-800 text-gray-300 font-mono">
+                                        <button class="btn btn-xs btn-ghost text-neon-cyan" @click="copyLink" :title="$store.global.t('linkCopied')">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" x-model="callbackInput" 
+                                               :placeholder="$store.global.t('pasteCallbackPlaceholder')"
+                                               class="input input-xs input-bordered flex-1 bg-space-800 text-gray-300 font-mono">
+                                        <button class="btn btn-xs btn-success" 
+                                                @click="completeManualAuth" 
+                                                :disabled="!callbackInput || submitting"
+                                                :class="{ 'loading': submitting }">
+                                            <span x-text="$store.global.t('completeAuth')">OK</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="!authUrl">
+                                <div class="text-gray-500">Loading...</div>
+                            </template>
+                        </div>
+                    </details>
+
+                    <!-- CLI Command -->
                     <details class="group">
                         <summary
                             class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
@@ -316,11 +359,12 @@
                 <form method="dialog">
                     <button type="submit" class="btn btn-ghost hover:bg-white/10"
                         x-text="$store.global.t('close')">Close</button>
+                    <button type="submit" class="btn btn-ghost hover:bg-white/10" @click="resetState()" x-text="$store.global.t('close')">Close</button>
                 </form>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button type="button" x-text="$store.global.t('close')">close</button>
+            <button type="button" @click="resetState()" x-text="$store.global.t('close')">close</button>
         </form>
     </dialog>
 
@@ -392,6 +436,7 @@
     <script src="js/components/claude-config.js"></script>
     <script src="js/components/logs-viewer.js"></script>
     <script src="js/components/server-config.js"></script>
+    <script src="js/components/add-account-modal.js"></script>
     <!-- 4. App (registers Alpine components from window.Components) -->
     <script src="app.js"></script>
 </body>

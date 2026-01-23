@@ -298,6 +298,24 @@ window.translations.zh = {
     quotaDistribution: "配额分布",
     resetsIn: "{time} 后重置",
     noQuotaData: "暂无此账号的配额数据。",
+    // Manual OAuth Mode
+    manualMode: "手动模式",
+    manualModeDesc: "(当回调无法到达时使用)",
+    authLinkLabel: "授权链接：",
+    linkCopied: "链接已复制到剪贴板",
+    pasteCallbackLabel: "粘贴回调 URL 或授权码：",
+    pasteCallbackPlaceholder: "http://localhost:51121/oauth-callback?code=... 或 4/0xxx...",
+    completeAuth: "完成授权",
+    authFailed: "授权失败",
+    // Import/Export
+    export: "导出",
+    import: "导入",
+    exportAccounts: "导出账号",
+    importAccounts: "导入账号",
+    exportSuccess: "已导出 {count} 个账号",
+    exportFailed: "导出失败",
+    importSuccess: "导入完成：",
+    importFailed: "导入失败",
 
     // TODO: Missing translations - Hardcoded strings from HTML
     // pageTitle: "Antigravity Console",

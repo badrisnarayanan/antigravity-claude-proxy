@@ -139,15 +139,19 @@ export function extractCodeFromInput(input) {
 
 /**
  * Start a local server to receive the OAuth callback
- * Returns a promise that resolves with the authorization code
+ * Returns an object with a promise and an abort function
  *
  * @param {string} expectedState - Expected state parameter for CSRF protection
  * @param {number} timeoutMs - Timeout in milliseconds (default 120000)
- * @returns {Promise<string>} Authorization code from OAuth callback
+ * @returns {{promise: Promise<string>, abort: Function}} Object with promise and abort function
  */
 export function startCallbackServer(expectedState, timeoutMs = 120000) {
-    return new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
+    let server = null;
+    let timeoutId = null;
+    let isAborted = false;
+
+    const promise = new Promise((resolve, reject) => {
+        server = http.createServer((req, res) => {
             const url = new URL(req.url, `http://localhost:${OAUTH_CONFIG.callbackPort}`);
 
             if (url.pathname !== '/oauth-callback') {
@@ -241,11 +245,28 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
         });
 
         // Timeout after specified duration
-        setTimeout(() => {
-            server.close();
-            reject(new Error('OAuth callback timeout - no response received'));
+        timeoutId = setTimeout(() => {
+            if (!isAborted) {
+                server.close();
+                reject(new Error('OAuth callback timeout - no response received'));
+            }
         }, timeoutMs);
     });
+
+    // Abort function to clean up server when manual completion happens
+    const abort = () => {
+        if (isAborted) return;
+        isAborted = true;
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        if (server) {
+            server.close();
+            logger.info('[OAuth] Callback server aborted (manual completion)');
+        }
+    };
+
+    return { promise, abort };
 }
 
 /**
