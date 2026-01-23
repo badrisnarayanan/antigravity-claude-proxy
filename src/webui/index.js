@@ -783,11 +783,12 @@ export function mountWebUI(app, dirname, accountManager) {
             const { url, verifier, state } = getAuthorizationUrl();
 
             // Start callback server on port 51121 (same as CLI)
-            const serverPromise = startCallbackServer(state, 120000); // 2 min timeout
+            const { promise: serverPromise, abort: abortServer } = startCallbackServer(state, 120000); // 2 min timeout
 
             // Store the flow data
             pendingOAuthFlows.set(state, {
                 serverPromise,
+                abortServer,
                 verifier,
                 state,
                 timestamp: Date.now()
@@ -820,7 +821,10 @@ export function mountWebUI(app, dirname, accountManager) {
                     }
                 })
                 .catch((err) => {
-                    logger.error('[WebUI] OAuth callback server error:', err);
+                    // Only log if not aborted (manual completion causes this)
+                    if (!err.message?.includes('aborted')) {
+                        logger.error('[WebUI] OAuth callback server error:', err);
+                    }
                     pendingOAuthFlows.delete(state);
                 });
 
@@ -855,7 +859,7 @@ export function mountWebUI(app, dirname, accountManager) {
                 });
             }
 
-            const { verifier } = flowData;
+            const { verifier, abortServer } = flowData;
 
             // Extract code from input (URL or raw code)
             const { extractCodeFromInput, completeOAuthFlow } = await import('../auth/oauth.js');
@@ -874,6 +878,11 @@ export function mountWebUI(app, dirname, accountManager) {
 
             // Reload AccountManager to pick up the new account
             await accountManager.reload();
+
+            // Abort the callback server since manual completion succeeded
+            if (abortServer) {
+                abortServer();
+            }
 
             // Clean up
             pendingOAuthFlows.delete(state);
