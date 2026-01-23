@@ -3,32 +3,56 @@
  */
 
 window.utils = {
-    // Shared Request Wrapper
-    async request(url, options = {}, webuiPassword = '') {
+    // Shared Request Wrapper with timeout protection
+    async request(url, options = {}, webuiPassword = '', timeout = 30000) {
         options.headers = options.headers || {};
         if (webuiPassword) {
             options.headers['x-webui-password'] = webuiPassword;
         }
 
-        let response = await fetch(url, options);
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        options.signal = controller.signal;
 
-        if (response.status === 401) {
-            const store = Alpine.store('global');
-            const password = prompt(store ? store.t('enterPassword') : 'Enter Web UI Password:');
-            if (password) {
-                // Return new password so caller can update state
-                // This implies we need a way to propagate the new password back
-                // For simplicity in this functional utility, we might need a callback or state access
-                // But generally utils shouldn't probably depend on global state directly if possible
-                // let's stick to the current logic but wrapped
-                localStorage.setItem('antigravity_webui_password', password);
-                options.headers['x-webui-password'] = password;
-                response = await fetch(url, options);
-                return { response, newPassword: password };
+        try {
+            let response = await fetch(url, options);
+            clearTimeout(timeoutId);
+
+            if (response.status === 401) {
+                const store = Alpine.store('global');
+                const password = prompt(store ? store.t('enterPassword') : 'Enter Web UI Password:');
+                if (password) {
+                    localStorage.setItem('antigravity_webui_password', password);
+                    options.headers['x-webui-password'] = password;
+
+                    // Create new controller for retry
+                    const retryController = new AbortController();
+                    const retryTimeoutId = setTimeout(() => retryController.abort(), timeout);
+                    options.signal = retryController.signal;
+
+                    try {
+                        response = await fetch(url, options);
+                        clearTimeout(retryTimeoutId);
+                        return { response, newPassword: password };
+                    } catch (retryError) {
+                        clearTimeout(retryTimeoutId);
+                        if (retryError.name === 'AbortError') {
+                            throw new Error('Request timeout');
+                        }
+                        throw retryError;
+                    }
+                }
             }
-        }
 
-        return { response, newPassword: null };
+            return { response, newPassword: null };
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout - server may be unresponsive');
+            }
+            throw error;
+        }
     },
 
     formatTimeUntil(isoTime) {
