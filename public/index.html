@@ -7,12 +7,9 @@
     <title>Antigravity Console</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
-    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Alpine.js must be deferred so stores register their listeners first -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- Compiled Tailwind CSS (includes DaisyUI) -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -20,7 +17,6 @@
     class="bg-space-950 text-gray-300 font-sans antialiased min-h-screen overflow-hidden selection:bg-neon-purple selection:text-white"
     x-cloak x-data="app" x-init="console.log('App initialized')">
 
-    <!-- Toast Notification -->
     <div class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
         <template x-if="$store.global.toast">
             <div x-transition:enter="transition ease-out duration-300"
@@ -35,7 +31,6 @@
                     'alert-error border-red-500/20 bg-space-900/90 text-red-400': $store.global.toast.type === 'error'
                  }">
                 <div class="flex items-center gap-3">
-                    <!-- Icons based on type -->
                     <template x-if="$store.global.toast.type === 'info'">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -60,11 +55,9 @@
         </template>
     </div>
 
-    <!-- Navbar -->
     <div
         class="h-14 border-b border-space-border flex items-center px-4 lg:px-6 justify-between bg-space-900/50 backdrop-blur-md z-50 relative">
         <div class="flex items-center gap-3">
-            <!-- Mobile Menu Button -->
             <button @click="toggleSidebar()"
                 class="text-gray-400 hover:text-white focus:outline-none p-1 transition-colors">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,7 +77,6 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <!-- Connection Pill -->
             <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono border transition-all duration-300"
                 :class="connectionStatus === 'connected'
                     ? 'bg-neon-green/10 border-neon-green/20 text-neon-green'
@@ -109,7 +101,6 @@
             </button>
             <div class="h-4 w-px bg-space-border"></div>
 
-            <!-- Refresh Button -->
             <button type="button"
                 class="btn btn-ghost btn-xs btn-square text-gray-400 hover:text-white hover:bg-white/5"
                 @click="fetchData" :disabled="loading" :title="$store.global.t('refreshData')"
@@ -123,17 +114,14 @@
         </div>
     </div>
 
-    <!-- Layout -->
     <div class="flex h-[calc(100vh-56px)] relative">
 
-        <!-- Mobile Sidebar Overlay -->
         <div x-show="sidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300"
             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
             x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0" @click="sidebarOpen = false"
             class="fixed inset-0 bg-black/50 z-40 lg:hidden" style="display: none;"></div>
 
-        <!-- Sidebar -->
         <div class="fixed top-14 bottom-0 left-0 z-40 bg-space-900 border-r border-space-border transition-all duration-300 shadow-2xl overflow-hidden lg:static lg:h-auto lg:shadow-none lg:flex-shrink-0"
             :class="{
                  'translate-x-0': sidebarOpen,
@@ -144,9 +132,7 @@
                  'sidebar-collapsed': !sidebarOpen
              }">
 
-            <!-- Inner Sidebar Content (Fixed Width to prevent squashing) -->
             <div class="w-64 flex flex-col h-full pt-6 pb-4 flex-shrink-0">
-                <!-- Mobile Menu Header -->
                 <div class="flex items-center justify-between px-4 mb-6 lg:hidden">
                     <span class="text-sm font-bold text-white" x-text="$store.global.t('menu')">Menu</span>
                     <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white">
@@ -157,7 +143,6 @@
                     </button>
                 </div>
 
-                <!-- Desktop Header (Main) -->
                 <div class="px-4 mb-2 text-xs font-bold text-gray-600 uppercase tracking-widest hidden lg:block"
                     x-text="$store.global.t('main')">Main</div>
 
@@ -221,7 +206,6 @@
                     </button>
                 </nav>
 
-                <!-- Footer Info -->
                 <div class="mt-auto px-6 text-[10px] text-gray-700 font-mono">
                     <div class="flex justify-between">
                         <span x-text="'V ' + $store.global.version">V 1.0.0</span>
@@ -233,36 +217,25 @@
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="flex-1 overflow-auto bg-space-950 relative custom-scrollbar">
 
-            <!-- Views Container -->
-            <!-- Dashboard -->
             <div x-show="$store.global.activeTab === 'dashboard'" x-load-view="'dashboard'"
                 x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
-            <!-- Models -->
             <div x-show="$store.global.activeTab === 'models'" x-load-view="'models'"
                 x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
-            <!-- Logs -->
             <div x-show="$store.global.activeTab === 'logs'" x-load-view="'logs'" x-transition:enter="fade-enter-active"
                 x-transition:enter-start="fade-enter-from" class="w-full h-full"></div>
 
-            <!-- Accounts -->
             <div x-show="$store.global.activeTab === 'accounts'" x-load-view="'accounts'"
                 x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
 
-            <!-- Settings -->
             <div x-show="$store.global.activeTab === 'settings'" x-load-view="'settings'"
                 x-transition:enter="fade-enter-active" x-transition:enter-start="fade-enter-from" class="w-full"></div>
         </div>
     </div>
 
-    <!-- Add Account Modal -->
-    <dialog id="add_account_modal" class="modal backdrop-blur-sm">
-        <div
-            class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
     <dialog id="add_account_modal" class="modal backdrop-blur-sm" x-data="addAccountModal">
         <div class="modal-box max-w-lg w-full bg-space-900 border border-space-border text-gray-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-6">
             <h3 class="font-bold text-lg text-white mb-4" x-text="$store.global.t('addAccount')">Add New Account</h3>
@@ -294,7 +267,6 @@
                 <div class="text-center mt-2">
                     <p class="text-xs text-gray-500 mb-2" x-text="$store.global.t('or')">OR</p>
                     
-                    <!-- Manual Mode (collapsible) -->
                     <details class="group mb-2" @toggle="initManualAuth($event)">
                         <summary class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
                             <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,7 +305,6 @@
                         </div>
                     </details>
 
-                    <!-- CLI Command -->
                     <details class="group">
                         <summary
                             class="text-xs text-gray-400 hover:text-neon-cyan cursor-pointer transition-colors inline-flex items-center gap-1">
@@ -357,8 +328,6 @@
 
             <div class="modal-action mt-6">
                 <form method="dialog">
-                    <button type="submit" class="btn btn-ghost hover:bg-white/10"
-                        x-text="$store.global.t('close')">Close</button>
                     <button type="submit" class="btn btn-ghost hover:bg-white/10" @click="resetState()" x-text="$store.global.t('close')">Close</button>
                 </form>
             </div>
@@ -368,7 +337,6 @@
         </form>
     </dialog>
 
-    <!-- OAuth Progress Modal -->
     <dialog id="oauth_progress_modal" class="modal" :class="{ 'modal-open': $store.global.oauthProgress.active }">
         <div class="modal-box bg-space-900 border border-neon-purple/50">
             <h3 class="font-bold text-lg text-white flex items-center gap-2">
@@ -383,14 +351,12 @@
                 Please complete authentication in the popup window.
             </p>
 
-            <!-- Progress Bar -->
             <div class="w-full bg-space-800 rounded-full h-2 mb-4 overflow-hidden">
                 <div class="bg-neon-purple h-2 rounded-full transition-all duration-500"
                     :style="`width: ${($store.global.oauthProgress.current / $store.global.oauthProgress.max) * 100}%`">
                 </div>
             </div>
 
-            <!-- Progress Text -->
             <div class="flex justify-between text-xs text-gray-600 mb-4">
                 <span x-text="`${$store.global.oauthProgress.current} / ${$store.global.oauthProgress.max}s`"></span>
                 <span
@@ -407,26 +373,20 @@
         </div>
     </dialog>
 
-    <!-- Scripts - Loading Order Matters! -->
-    <!-- 1. Config & Utils (global helpers) -->
     <script src="js/config/constants.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/utils/error-handler.js"></script>
     <script src="js/utils/account-actions.js"></script>
     <script src="js/utils/validators.js"></script>
     <script src="js/utils/model-config.js"></script>
-    <!-- Translation files (must load before store.js) -->
     <script src="js/translations/en.js"></script>
     <script src="js/translations/zh.js"></script>
     <script src="js/translations/tr.js"></script>
     <script src="js/translations/id.js"></script>
     <script src="js/translations/pt.js"></script>
-    <!-- 2. Alpine Stores (register alpine:init listeners) -->
     <script src="js/store.js"></script>
     <script src="js/data-store.js"></script>
     <script src="js/settings-store.js"></script>
-    <!-- 3. Components (register to window.Components) -->
-    <!-- Dashboard modules (load before main dashboard) -->
     <script src="js/components/dashboard/stats.js"></script>
     <script src="js/components/dashboard/charts.js"></script>
     <script src="js/components/dashboard/filters.js"></script>
@@ -437,7 +397,6 @@
     <script src="js/components/logs-viewer.js"></script>
     <script src="js/components/server-config.js"></script>
     <script src="js/components/add-account-modal.js"></script>
-    <!-- 4. App (registers Alpine components from window.Components) -->
     <script src="app.js"></script>
 </body>
 
