@@ -41,15 +41,15 @@ window.Components.dashboard = () => ({
             }
         });
 
-        // Watch for data changes
+        // Watch for data changes with debounced updates
         this.$watch('$store.data.accounts', () => {
             if (this.$store.global.activeTab === 'dashboard') {
                 this.updateStats();
-                // Debounce chart updates to prevent rapid flickering
+                // Debounce chart updates to prevent rapid flickering (increased to 300ms)
                 if (this._debouncedUpdateCharts) {
                     this._debouncedUpdateCharts();
                 } else {
-                    this._debouncedUpdateCharts = window.utils.debounce(() => this.updateCharts(), 100);
+                    this._debouncedUpdateCharts = window.utils.debounce(() => this.updateCharts(), 300);
                     this._debouncedUpdateCharts();
                 }
             }
