@@ -273,6 +273,8 @@ export function mountWebUI(app, dirname, accountManager) {
             logger.info('[WebUI] Shutting down process...');
             process.exit(0);
         }, 500);
+    });
+    /**
      * GET /api/accounts/export - Export accounts
      */
     app.get('/api/accounts/export', async (req, res) => {
