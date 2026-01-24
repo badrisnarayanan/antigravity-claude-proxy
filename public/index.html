@@ -18,7 +18,7 @@
 
 <body
     class="bg-space-950 text-gray-300 font-sans antialiased min-h-screen overflow-hidden selection:bg-neon-purple selection:text-white"
-    x-cloak x-data="app" x-init="console.log('App initialized')">
+    x-cloak x-data="app" x-init="if(window.UILogger) window.UILogger.debug('App initialized')">
 
     <!-- Toast Notification -->
     <div class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
@@ -389,6 +389,7 @@
     <!-- Scripts - Loading Order Matters! -->
     <!-- 1. Config & Utils (global helpers) -->
     <script src="js/config/constants.js"></script>
+    <script src="js/utils/ui-logger.js"></script><!-- Issue #183: Conditional logging utility -->
     <script src="js/utils.js"></script>
     <script src="js/utils/error-handler.js"></script>
     <script src="js/utils/account-actions.js"></script>

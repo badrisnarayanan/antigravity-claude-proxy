@@ -50,7 +50,7 @@ window.DashboardFilters.loadPreferences = function(component) {
             component.selectedModels = prefs.selectedModels || {};
         }
     } catch (e) {
-        console.error('Failed to load dashboard preferences:', e);
+        if (window.UILogger) window.UILogger.debug('Failed to load dashboard preferences:', e.message);
     }
 };
 
@@ -67,7 +67,7 @@ window.DashboardFilters.savePreferences = function(component) {
             selectedModels: component.selectedModels
         }));
     } catch (e) {
-        console.error('Failed to save dashboard preferences:', e);
+        if (window.UILogger) window.UILogger.debug('Failed to save dashboard preferences:', e.message);
     }
 };
 

@@ -55,7 +55,7 @@ document.addEventListener('alpine:init', () => {
 
                     // Check TTL
                     if (data.timestamp && (Date.now() - data.timestamp > CACHE_TTL)) {
-                        console.log('Cache expired, skipping restoration');
+                        if (window.UILogger) window.UILogger.debug('Cache expired, skipping restoration');
                         localStorage.removeItem('ag_data_cache');
                         return;
                     }
@@ -70,11 +70,11 @@ document.addEventListener('alpine:init', () => {
                         // Don't show loading on initial load if we have cache
                         this.initialLoad = false;
                         this.computeQuotaRows();
-                        console.log('Restored data from cache');
+                        if (window.UILogger) window.UILogger.debug('Restored data from cache');
                     }
                 }
             } catch (e) {
-                console.warn('Failed to load cache', e);
+                if (window.UILogger) window.UILogger.debug('Failed to load cache', e.message);
             }
         },
 
@@ -89,7 +89,7 @@ document.addEventListener('alpine:init', () => {
                 };
                 localStorage.setItem('ag_data_cache', JSON.stringify(cacheData));
             } catch (e) {
-                console.warn('Failed to save cache', e);
+                if (window.UILogger) window.UILogger.debug('Failed to save cache', e.message);
             }
         },
 
@@ -127,6 +127,7 @@ document.addEventListener('alpine:init', () => {
 
                 this.lastUpdated = new Date().toLocaleTimeString();
             } catch (error) {
+                // Keep error logging for actual fetch failures
                 console.error('Fetch error:', error);
                 const store = Alpine.store('global');
                 store.showToast(store.t('connectionLost'), 'error');

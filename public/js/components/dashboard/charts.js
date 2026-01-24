@@ -106,7 +106,7 @@ window.DashboardCharts.createDataset = function (label, data, color, canvas) {
       }
     }
   } catch (e) {
-    console.warn("Failed to create gradient, using solid color fallback:", e);
+    if (window.UILogger) window.UILogger.debug("Gradient fallback:", e.message);
     gradient = null;
   }
 
@@ -149,7 +149,7 @@ window.DashboardCharts.updateCharts = function (component) {
     console.debug("Destroying existing quota chart from canvas property");
     try {
         canvas._chartInstance.destroy();
-    } catch(e) { console.warn(e); }
+    } catch(e) { if (window.UILogger) window.UILogger.debug(e); }
     canvas._chartInstance = null;
   }
   
@@ -170,11 +170,11 @@ window.DashboardCharts.updateCharts = function (component) {
   }
 
   if (typeof Chart === "undefined") {
-    console.warn("Chart.js not loaded");
+    if (window.UILogger) window.UILogger.warn("Chart.js not loaded");
     return;
   }
   if (!isCanvasReady(canvas)) {
-    console.debug("quotaChart canvas not ready, skipping update");
+    if (window.UILogger) window.UILogger.debug("quotaChart canvas not ready, skipping update");
     return;
   }
 
@@ -319,12 +319,13 @@ window.DashboardCharts.updateCharts = function (component) {
 window.DashboardCharts.updateTrendChart = function (component) {
   // Prevent concurrent updates (fixes race condition on rapid toggling)
   if (_trendChartUpdateLock) {
-    console.log("[updateTrendChart] Update already in progress, skipping");
+    if (window.UILogger) window.UILogger.debug("[updateTrendChart] Update already in progress, skipping");
     return;
   }
   _trendChartUpdateLock = true;
 
-  console.log("[updateTrendChart] Starting update...");
+  const logger = window.UILogger || console;
+  logger.debug("[updateTrendChart] Starting update...");
 
   const canvas = document.getElementById("usageTrendChart");
   
@@ -335,7 +336,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
         try {
             canvas._chartInstance.stop();
             canvas._chartInstance.destroy();
-        } catch(e) { console.warn(e); }
+        } catch(e) { if (window.UILogger) window.UILogger.debug(e); }
         canvas._chartInstance = null;
       }
       
@@ -359,17 +360,17 @@ window.DashboardCharts.updateTrendChart = function (component) {
 
   // Safety checks
   if (!canvas) {
-    console.error("[updateTrendChart] Canvas not found in DOM!");
-    _trendChartUpdateLock = false; // Release lock!
+    if (window.UILogger) window.UILogger.debug("[updateTrendChart] Canvas not found in DOM");
+    _trendChartUpdateLock = false;
     return;
   }
   if (typeof Chart === "undefined") {
-    console.error("[updateTrendChart] Chart.js not loaded");
-    _trendChartUpdateLock = false; // Release lock!
+    if (window.UILogger) window.UILogger.warn("[updateTrendChart] Chart.js not loaded");
+    _trendChartUpdateLock = false;
     return;
   }
 
-  console.log("[updateTrendChart] Canvas element:", {
+  if (window.UILogger) window.UILogger.debug("[updateTrendChart] Canvas element:", {
     exists: !!canvas,
     isConnected: canvas.isConnected,
     width: canvas.offsetWidth,
@@ -378,7 +379,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
   });
 
   if (!isCanvasReady(canvas)) {
-    console.error("[updateTrendChart] Canvas not ready!", {
+    if (window.UILogger) window.UILogger.debug("[updateTrendChart] Canvas not ready", {
       isConnected: canvas.isConnected,
       width: canvas.offsetWidth,
       height: canvas.offsetHeight,
@@ -394,17 +395,17 @@ window.DashboardCharts.updateTrendChart = function (component) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   } catch (e) {
-    console.warn("[updateTrendChart] Failed to clear canvas:", e);
+    if (window.UILogger) window.UILogger.debug("[updateTrendChart] Failed to clear canvas:", e.message);
   }
 
-  console.log(
+  if (window.UILogger) window.UILogger.debug(
     "[updateTrendChart] Canvas is ready, proceeding with chart creation"
   );
 
   // Use filtered history data based on time range
   const history = window.DashboardFilters.getFilteredHistoryData(component);
   if (!history || Object.keys(history).length === 0) {
-    console.warn("No history data available for trend chart (after filtering)");
+    if (window.UILogger) window.UILogger.debug("No history data available for trend chart (after filtering)");
     component.hasFilteredTrendData = false;
     _trendChartUpdateLock = false;
     return;

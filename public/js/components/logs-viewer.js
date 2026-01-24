@@ -79,12 +79,12 @@ window.Components.logsViewer = () => ({
                     this.$nextTick(() => this.scrollToBottom());
                 }
             } catch (e) {
-                console.error('Log parse error:', e);
+                if (window.UILogger) window.UILogger.debug('Log parse error:', e.message);
             }
         };
 
         this.eventSource.onerror = () => {
-            console.warn('Log stream disconnected, reconnecting...');
+            if (window.UILogger) window.UILogger.debug('Log stream disconnected, reconnecting...');
             setTimeout(() => this.startLogStream(), 3000);
         };
     },
