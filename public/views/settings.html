@@ -911,6 +911,25 @@
                         </div>
                     </div>
 
+                    <!-- Thinking Mode -->
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-cyan/50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1 flex-1">
+                                <span class="text-sm font-medium text-gray-200">Thinking Mode</span>
+                                <span class="text-[11px] text-gray-500">How thinking blocks are handled in responses (for Zed use "Inline Tags")</span>
+                            </div>
+                            <select
+                                class="select bg-space-800 border-space-border text-gray-200 focus:border-neon-cyan focus:ring-neon-cyan/20 w-48 min-w-fit"
+                                :value="serverConfig.thinkingMode || 'default'"
+                                @change="toggleThinkingMode($el.value)"
+                                aria-label="Thinking mode">
+                                <option value="default">Default</option>
+                                <option value="inline">Inline Tags</option>
+                                <option value="strip">Strip</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Token Cache -->
                     <div
                         class="form-control view-card border-space-border/50 hover:border-neon-green/50">

@@ -5,11 +5,15 @@
  * Handles thinking blocks, text blocks, and tool use blocks.
  */
 
-import crypto from 'crypto';
-import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
-import { EmptyResponseError } from '../errors.js';
-import { cacheSignature, cacheThinkingSignature } from '../format/signature-cache.js';
-import { logger } from '../utils/logger.js';
+import crypto from "crypto";
+import { MIN_SIGNATURE_LENGTH, getModelFamily } from "../constants.js";
+import { EmptyResponseError } from "../errors.js";
+import {
+	cacheSignature,
+	cacheThinkingSignature,
+} from "../format/signature-cache.js";
+import { logger } from "../utils/logger.js";
+import { config } from "../config.js";
 
 /**
  * Stream SSE response and yield Anthropic-format events
@@ -19,275 +23,368 @@ import { logger } from '../utils/logger.js';
  * @yields {Object} Anthropic-format SSE events
  */
 export async function* streamSSEResponse(response, originalModel) {
-    const messageId = `msg_${crypto.randomBytes(16).toString('hex')}`;
-    let hasEmittedStart = false;
-    let blockIndex = 0;
-    let currentBlockType = null;
-    let currentThinkingSignature = '';
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let cacheReadTokens = 0;
-    let stopReason = null;
+	const messageId = `msg_${crypto.randomBytes(16).toString("hex")}`;
+	let hasEmittedStart = false;
+	let blockIndex = 0;
+	let currentBlockType = null;
+	let currentThinkingSignature = "";
+	let inputTokens = 0;
+	let outputTokens = 0;
+	let cacheReadTokens = 0;
+	let stopReason = null;
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+	const thinkingMode = config.thinkingMode || "default";
+	let accumulatedThinkingText = "";
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
 
-        for (const line of lines) {
-            if (!line.startsWith('data:')) continue;
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split("\n");
+		buffer = lines.pop() || "";
 
-            const jsonText = line.slice(5).trim();
-            if (!jsonText) continue;
+		for (const line of lines) {
+			if (!line.startsWith("data:")) continue;
 
-            try {
-                const data = JSON.parse(jsonText);
-                const innerResponse = data.response || data;
+			const jsonText = line.slice(5).trim();
+			if (!jsonText) continue;
 
-                // Extract usage metadata (including cache tokens)
-                const usage = innerResponse.usageMetadata;
-                if (usage) {
-                    inputTokens = usage.promptTokenCount || inputTokens;
-                    outputTokens = usage.candidatesTokenCount || outputTokens;
-                    cacheReadTokens = usage.cachedContentTokenCount || cacheReadTokens;
-                }
+			try {
+				const data = JSON.parse(jsonText);
+				const innerResponse = data.response || data;
 
-                const candidates = innerResponse.candidates || [];
-                const firstCandidate = candidates[0] || {};
-                const content = firstCandidate.content || {};
-                const parts = content.parts || [];
+				// Extract usage metadata (including cache tokens)
+				const usage = innerResponse.usageMetadata;
+				if (usage) {
+					inputTokens = usage.promptTokenCount || inputTokens;
+					outputTokens = usage.candidatesTokenCount || outputTokens;
+					cacheReadTokens =
+						usage.cachedContentTokenCount || cacheReadTokens;
+				}
 
-                // Emit message_start on first data
-                // Note: input_tokens = promptTokenCount - cachedContentTokenCount (Antigravity includes cached in total)
-                if (!hasEmittedStart && parts.length > 0) {
-                    hasEmittedStart = true;
-                    yield {
-                        type: 'message_start',
-                        message: {
-                            id: messageId,
-                            type: 'message',
-                            role: 'assistant',
-                            content: [],
-                            model: originalModel,
-                            stop_reason: null,
-                            stop_sequence: null,
-                            usage: {
-                                input_tokens: inputTokens - cacheReadTokens,
-                                output_tokens: 0,
-                                cache_read_input_tokens: cacheReadTokens,
-                                cache_creation_input_tokens: 0
-                            }
-                        }
-                    };
-                }
+				const candidates = innerResponse.candidates || [];
+				const firstCandidate = candidates[0] || {};
+				const content = firstCandidate.content || {};
+				const parts = content.parts || [];
 
-                // Process each part
-                for (const part of parts) {
-                    if (part.thought === true) {
-                        // Handle thinking block
-                        const text = part.text || '';
-                        const signature = part.thoughtSignature || '';
+				// Emit message_start on first data
+				// Note: input_tokens = promptTokenCount - cachedContentTokenCount (Antigravity includes cached in total)
+				if (!hasEmittedStart && parts.length > 0) {
+					hasEmittedStart = true;
+					yield {
+						type: "message_start",
+						message: {
+							id: messageId,
+							type: "message",
+							role: "assistant",
+							content: [],
+							model: originalModel,
+							stop_reason: null,
+							stop_sequence: null,
+							usage: {
+								input_tokens: inputTokens - cacheReadTokens,
+								output_tokens: 0,
+								cache_read_input_tokens: cacheReadTokens,
+								cache_creation_input_tokens: 0,
+							},
+						},
+					};
+				}
 
-                        if (currentBlockType !== 'thinking') {
-                            if (currentBlockType !== null) {
-                                yield { type: 'content_block_stop', index: blockIndex };
-                                blockIndex++;
-                            }
-                            currentBlockType = 'thinking';
-                            currentThinkingSignature = '';
-                            yield {
-                                type: 'content_block_start',
-                                index: blockIndex,
-                                content_block: { type: 'thinking', thinking: '' }
-                            };
-                        }
+				// Process each part
+				for (const part of parts) {
+					if (part.thought === true) {
+						// Handle thinking block based on thinkingMode
+						const text = part.text || "";
+						const signature = part.thoughtSignature || "";
 
-                        if (signature && signature.length >= MIN_SIGNATURE_LENGTH) {
-                            currentThinkingSignature = signature;
-                            // Cache thinking signature with model family for cross-model compatibility
-                            const modelFamily = getModelFamily(originalModel);
-                            cacheThinkingSignature(signature, modelFamily);
-                        }
+						if (thinkingMode === "strip") {
+							// Strip mode: skip thinking blocks entirely
+							continue;
+						}
 
-                        yield {
-                            type: 'content_block_delta',
-                            index: blockIndex,
-                            delta: { type: 'thinking_delta', thinking: text }
-                        };
+						if (thinkingMode === "inline") {
+							// Inline mode: convert thinking to text with <thinking> tags
+							accumulatedThinkingText += text;
 
-                    } else if (part.text !== undefined) {
-                        // Skip empty text parts (but preserve whitespace-only chunks for proper spacing)
-                        if (part.text === '') {
-                            continue;
-                        }
+							if (
+								signature &&
+								signature.length >= MIN_SIGNATURE_LENGTH
+							) {
+								currentThinkingSignature = signature;
+								const modelFamily =
+									getModelFamily(originalModel);
+								cacheThinkingSignature(signature, modelFamily);
+							}
+							continue;
+						}
 
-                        // Handle regular text
-                        if (currentBlockType !== 'text') {
-                            if (currentBlockType === 'thinking' && currentThinkingSignature) {
-                                yield {
-                                    type: 'content_block_delta',
-                                    index: blockIndex,
-                                    delta: { type: 'signature_delta', signature: currentThinkingSignature }
-                                };
-                                currentThinkingSignature = '';
-                            }
-                            if (currentBlockType !== null) {
-                                yield { type: 'content_block_stop', index: blockIndex };
-                                blockIndex++;
-                            }
-                            currentBlockType = 'text';
-                            yield {
-                                type: 'content_block_start',
-                                index: blockIndex,
-                                content_block: { type: 'text', text: '' }
-                            };
-                        }
+						// Default mode: emit as thinking blocks
+						if (currentBlockType !== "thinking") {
+							if (currentBlockType !== null) {
+								yield {
+									type: "content_block_stop",
+									index: blockIndex,
+								};
+								blockIndex++;
+							}
+							currentBlockType = "thinking";
+							currentThinkingSignature = "";
+							yield {
+								type: "content_block_start",
+								index: blockIndex,
+								content_block: {
+									type: "thinking",
+									thinking: "",
+								},
+							};
+						}
 
-                        yield {
-                            type: 'content_block_delta',
-                            index: blockIndex,
-                            delta: { type: 'text_delta', text: part.text }
-                        };
+						if (
+							signature &&
+							signature.length >= MIN_SIGNATURE_LENGTH
+						) {
+							currentThinkingSignature = signature;
+							// Cache thinking signature with model family for cross-model compatibility
+							const modelFamily = getModelFamily(originalModel);
+							cacheThinkingSignature(signature, modelFamily);
+						}
 
-                    } else if (part.functionCall) {
-                        // Handle tool use
-                        // For Gemini 3+, capture thoughtSignature from the functionCall part
-                        // The signature is a sibling to functionCall, not inside it
-                        const functionCallSignature = part.thoughtSignature || '';
+						yield {
+							type: "content_block_delta",
+							index: blockIndex,
+							delta: { type: "thinking_delta", thinking: text },
+						};
+					} else if (part.text !== undefined) {
+						// Skip empty text parts (but preserve whitespace-only chunks for proper spacing)
+						if (part.text === "") {
+							continue;
+						}
 
-                        if (currentBlockType === 'thinking' && currentThinkingSignature) {
-                            yield {
-                                type: 'content_block_delta',
-                                index: blockIndex,
-                                delta: { type: 'signature_delta', signature: currentThinkingSignature }
-                            };
-                            currentThinkingSignature = '';
-                        }
-                        if (currentBlockType !== null) {
-                            yield { type: 'content_block_stop', index: blockIndex };
-                            blockIndex++;
-                        }
-                        currentBlockType = 'tool_use';
-                        stopReason = 'tool_use';
+						// Handle regular text
+						if (currentBlockType !== "text") {
+							if (
+								currentBlockType === "thinking" &&
+								currentThinkingSignature &&
+								thinkingMode === "default"
+							) {
+								yield {
+									type: "content_block_delta",
+									index: blockIndex,
+									delta: {
+										type: "signature_delta",
+										signature: currentThinkingSignature,
+									},
+								};
+								currentThinkingSignature = "";
+							}
+							if (currentBlockType !== null) {
+								yield {
+									type: "content_block_stop",
+									index: blockIndex,
+								};
+								blockIndex++;
+							}
+							currentBlockType = "text";
+							yield {
+								type: "content_block_start",
+								index: blockIndex,
+								content_block: { type: "text", text: "" },
+							};
 
-                        const toolId = part.functionCall.id || `toolu_${crypto.randomBytes(12).toString('hex')}`;
+							// In inline mode, prepend accumulated thinking as <thinking> tags
+							if (
+								thinkingMode === "inline" &&
+								accumulatedThinkingText
+							) {
+								yield {
+									type: "content_block_delta",
+									index: blockIndex,
+									delta: {
+										type: "text_delta",
+										text:
+											"<thinking>\n" +
+											accumulatedThinkingText +
+											"\n</thinking>\n\n",
+									},
+								};
+								accumulatedThinkingText = "";
+							}
+						}
 
-                        // For Gemini, include the thoughtSignature in the tool_use block
-                        // so it can be sent back in subsequent requests
-                        const toolUseBlock = {
-                            type: 'tool_use',
-                            id: toolId,
-                            name: part.functionCall.name,
-                            input: {}
-                        };
+						yield {
+							type: "content_block_delta",
+							index: blockIndex,
+							delta: { type: "text_delta", text: part.text },
+						};
+					} else if (part.functionCall) {
+						// Handle tool use
+						// For Gemini 3+, capture thoughtSignature from the functionCall part
+						// The signature is a sibling to functionCall, not inside it
+						const functionCallSignature =
+							part.thoughtSignature || "";
 
-                        // Store the signature in the tool_use block for later retrieval
-                        if (functionCallSignature && functionCallSignature.length >= MIN_SIGNATURE_LENGTH) {
-                            toolUseBlock.thoughtSignature = functionCallSignature;
-                            // Cache for future requests (Claude Code may strip this field)
-                            cacheSignature(toolId, functionCallSignature);
-                        }
+						if (
+							currentBlockType === "thinking" &&
+							currentThinkingSignature
+						) {
+							yield {
+								type: "content_block_delta",
+								index: blockIndex,
+								delta: {
+									type: "signature_delta",
+									signature: currentThinkingSignature,
+								},
+							};
+							currentThinkingSignature = "";
+						}
+						if (currentBlockType !== null) {
+							yield {
+								type: "content_block_stop",
+								index: blockIndex,
+							};
+							blockIndex++;
+						}
+						currentBlockType = "tool_use";
+						stopReason = "tool_use";
 
-                        yield {
-                            type: 'content_block_start',
-                            index: blockIndex,
-                            content_block: toolUseBlock
-                        };
+						const toolId =
+							part.functionCall.id ||
+							`toolu_${crypto.randomBytes(12).toString("hex")}`;
 
-                        yield {
-                            type: 'content_block_delta',
-                            index: blockIndex,
-                            delta: {
-                                type: 'input_json_delta',
-                                partial_json: JSON.stringify(part.functionCall.args || {})
-                            }
-                        };
-                    } else if (part.inlineData) {
-                        // Handle image content from Google format
-                        if (currentBlockType === 'thinking' && currentThinkingSignature) {
-                            yield {
-                                type: 'content_block_delta',
-                                index: blockIndex,
-                                delta: { type: 'signature_delta', signature: currentThinkingSignature }
-                            };
-                            currentThinkingSignature = '';
-                        }
-                        if (currentBlockType !== null) {
-                            yield { type: 'content_block_stop', index: blockIndex };
-                            blockIndex++;
-                        }
-                        currentBlockType = 'image';
+						// For Gemini, include the thoughtSignature in the tool_use block
+						// so it can be sent back in subsequent requests
+						const toolUseBlock = {
+							type: "tool_use",
+							id: toolId,
+							name: part.functionCall.name,
+							input: {},
+						};
 
-                        // Emit image block as a complete block
-                        yield {
-                            type: 'content_block_start',
-                            index: blockIndex,
-                            content_block: {
-                                type: 'image',
-                                source: {
-                                    type: 'base64',
-                                    media_type: part.inlineData.mimeType,
-                                    data: part.inlineData.data
-                                }
-                            }
-                        };
+						// Store the signature in the tool_use block for later retrieval
+						if (
+							functionCallSignature &&
+							functionCallSignature.length >= MIN_SIGNATURE_LENGTH
+						) {
+							toolUseBlock.thoughtSignature =
+								functionCallSignature;
+							// Cache for future requests (Claude Code may strip this field)
+							cacheSignature(toolId, functionCallSignature);
+						}
 
-                        yield { type: 'content_block_stop', index: blockIndex };
-                        blockIndex++;
-                        currentBlockType = null;
-                    }
-                }
+						yield {
+							type: "content_block_start",
+							index: blockIndex,
+							content_block: toolUseBlock,
+						};
 
-                // Check finish reason (only if not already set by tool_use)
-                if (firstCandidate.finishReason && !stopReason) {
-                    if (firstCandidate.finishReason === 'MAX_TOKENS') {
-                        stopReason = 'max_tokens';
-                    } else if (firstCandidate.finishReason === 'STOP') {
-                        stopReason = 'end_turn';
-                    }
-                }
+						yield {
+							type: "content_block_delta",
+							index: blockIndex,
+							delta: {
+								type: "input_json_delta",
+								partial_json: JSON.stringify(
+									part.functionCall.args || {},
+								),
+							},
+						};
+					} else if (part.inlineData) {
+						// Handle image content from Google format
+						if (
+							currentBlockType === "thinking" &&
+							currentThinkingSignature
+						) {
+							yield {
+								type: "content_block_delta",
+								index: blockIndex,
+								delta: {
+									type: "signature_delta",
+									signature: currentThinkingSignature,
+								},
+							};
+							currentThinkingSignature = "";
+						}
+						if (currentBlockType !== null) {
+							yield {
+								type: "content_block_stop",
+								index: blockIndex,
+							};
+							blockIndex++;
+						}
+						currentBlockType = "image";
 
-            } catch (parseError) {
-                logger.warn('[CloudCode] SSE parse error:', parseError.message);
-            }
-        }
-    }
+						// Emit image block as a complete block
+						yield {
+							type: "content_block_start",
+							index: blockIndex,
+							content_block: {
+								type: "image",
+								source: {
+									type: "base64",
+									media_type: part.inlineData.mimeType,
+									data: part.inlineData.data,
+								},
+							},
+						};
 
-    // Handle no content received - throw error to trigger retry in streaming-handler
-    if (!hasEmittedStart) {
-        logger.warn('[CloudCode] No content parts received, throwing for retry');
-        throw new EmptyResponseError('No content parts received from API');
-    } else {
-        // Close any open block
-        if (currentBlockType !== null) {
-            if (currentBlockType === 'thinking' && currentThinkingSignature) {
-                yield {
-                    type: 'content_block_delta',
-                    index: blockIndex,
-                    delta: { type: 'signature_delta', signature: currentThinkingSignature }
-                };
-            }
-            yield { type: 'content_block_stop', index: blockIndex };
-        }
-    }
+						yield { type: "content_block_stop", index: blockIndex };
+						blockIndex++;
+						currentBlockType = null;
+					}
+				}
 
-    // Emit message_delta and message_stop
-    yield {
-        type: 'message_delta',
-        delta: { stop_reason: stopReason || 'end_turn', stop_sequence: null },
-        usage: {
-            output_tokens: outputTokens,
-            cache_read_input_tokens: cacheReadTokens,
-            cache_creation_input_tokens: 0
-        }
-    };
+				// Check finish reason (only if not already set by tool_use)
+				if (firstCandidate.finishReason && !stopReason) {
+					if (firstCandidate.finishReason === "MAX_TOKENS") {
+						stopReason = "max_tokens";
+					} else if (firstCandidate.finishReason === "STOP") {
+						stopReason = "end_turn";
+					}
+				}
+			} catch (parseError) {
+				logger.warn("[CloudCode] SSE parse error:", parseError.message);
+			}
+		}
+	}
 
-    yield { type: 'message_stop' };
+	// Handle no content received - throw error to trigger retry in streaming-handler
+	if (!hasEmittedStart) {
+		logger.warn(
+			"[CloudCode] No content parts received, throwing for retry",
+		);
+		throw new EmptyResponseError("No content parts received from API");
+	} else {
+		// Close any open block
+		if (currentBlockType !== null) {
+			if (currentBlockType === "thinking" && currentThinkingSignature) {
+				yield {
+					type: "content_block_delta",
+					index: blockIndex,
+					delta: {
+						type: "signature_delta",
+						signature: currentThinkingSignature,
+					},
+				};
+			}
+			yield { type: "content_block_stop", index: blockIndex };
+		}
+	}
+
+	// Emit message_delta and message_stop
+	yield {
+		type: "message_delta",
+		delta: { stop_reason: stopReason || "end_turn", stop_sequence: null },
+		usage: {
+			output_tokens: outputTokens,
+			cache_read_input_tokens: cacheReadTokens,
+			cache_creation_input_tokens: 0,
+		},
+	};
+
+	yield { type: "message_stop" };
 }
