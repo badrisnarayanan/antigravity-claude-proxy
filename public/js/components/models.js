@@ -34,3 +34,27 @@ window.Components.models = () => ({
         return window.ModelConfigUtils.updateModelConfig(modelId, configUpdates);
     }
 });
+
+/**
+ * Model Manager Component (Settings Tab)
+ * Handles model mapping and configuration editing
+ */
+window.Components.modelManager = () => ({
+    editingId: null,
+
+    isEditing(modelId) {
+        return this.editingId === modelId;
+    },
+
+    startEditing(modelId) {
+        this.editingId = modelId;
+    },
+
+    stopEditing() {
+        this.editingId = null;
+    },
+
+    async updateModelConfig(modelId, configUpdates) {
+        return window.ModelConfigUtils.updateModelConfig(modelId, configUpdates);
+    }
+});

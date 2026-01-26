@@ -243,7 +243,7 @@
                             <span x-show="deletingPreset" class="loading loading-spinner loading-xs"></span>
                         </button>
                     </div>
-                    <p class="text-[10px] text-gray-600 mt-2" x-text="$store.global.t('presetHint') || 'Select a preset to load it. Click \"Apply to Claude CLI\" to save changes.'">Select a preset to load it. Click "Apply to Claude CLI" to save changes.</p>
+                    <p class="text-[10px] text-gray-600 mt-2" x-text="$store.global.t('presetHint') || 'Select a preset to load it. Click &quot;Apply to Claude CLI&quot; to save changes.'">Select a preset to load it. Click "Apply to Claude CLI" to save changes.</p>
                 </div>
 
                 <!-- Base URL -->
@@ -625,7 +625,7 @@
                         <p class="py-4 text-gray-300">
                             <span x-text="$store.global.t('unsavedChangesMessage') || 'Your current configuration doesn\'t match any saved preset.'">Your current configuration doesn't match any saved preset.</span>
                             <br><br>
-                            <span class="text-yellow-400/80" x-text="'Load \"' + pendingPresetName + '\" and lose current changes?'"></span>
+                            <span class="text-yellow-400/80" x-text="'Load &quot;' + pendingPresetName + '&quot; and lose current changes?'"></span>
                         </p>
                         <div class="modal-action">
                             <button class="btn btn-ghost text-gray-400" @click="cancelLoadPreset()"
