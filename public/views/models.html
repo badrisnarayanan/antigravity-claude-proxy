@@ -194,23 +194,27 @@
                                     <progress class="progress w-full h-1.5 bg-space-800"
                                         :class="row.avgQuota > 50 ? 'progress-gradient-success' : (row.avgQuota > 0 ? 'progress-gradient-warning' : 'progress-gradient-error')"
                                         :value="row.avgQuota" max="100"></progress>
-                                    <!-- Per-account quota threshold markers -->
-                                    <template x-for="(q, qIdx) in row.quotaInfo.filter(q => q.thresholdPct > 0)" :key="q.fullEmail + '-threshold'">
-                                        <div class="absolute -top-1 -bottom-1 cursor-help group/marker"
-                                             :style="'left: calc(' + q.thresholdPct + '% - 4px); width: 9px;'"
-                                             :title="q.email + ' min: ' + q.thresholdPct + '%'">
+                                    <!-- Per-account draggable quota threshold markers -->
+                                    <template x-for="(q, qIdx) in row.quotaInfo.filter(q => q.thresholdPct > 0 || isDragging(q, row))" :key="q.fullEmail + '-threshold'">
+                                        <div class="absolute -top-1 -bottom-1 group/marker"
+                                             :class="isDragging(q, row) ? 'cursor-grabbing z-30' : 'cursor-grab'"
+                                             :style="'left: calc(' + getMarkerPct(q, row) + '% - 4px); width: 9px;'"
+                                             :title="q.email + ' min: ' + getMarkerPct(q, row) + '%'"
+                                             @mousedown.prevent="startDrag($event, q, row)"
+                                             @touchstart.prevent="startDrag($event, q, row)">
                                             <!-- Visible marker line -->
-                                            <div class="absolute top-1 bottom-1 left-1 w-[3px] rounded-full transition-all
-                                                        group-hover/marker:scale-y-150 group-hover/marker:brightness-125"
-                                                 :style="'background-color: ' + getThresholdColor(qIdx).bg + '; box-shadow: 0 0 6px ' + getThresholdColor(qIdx).shadow"></div>
-                                            <!-- Hover tooltip popup -->
-                                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover/marker:flex items-center gap-1.5
+                                            <div class="absolute top-1 bottom-1 left-1 w-[3px] rounded-full"
+                                                 :class="isDragging(q, row) ? 'scale-y-150 brightness-150' : 'transition-all group-hover/marker:scale-y-150 group-hover/marker:brightness-125'"
+                                                 :style="'background-color: ' + getThresholdColor(qIdx).bg + '; box-shadow: 0 0 ' + (isDragging(q, row) ? '10px' : '6px') + ' ' + getThresholdColor(qIdx).shadow"></div>
+                                            <!-- Tooltip popup (visible on hover or during drag) -->
+                                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 items-center gap-1.5
                                                          whitespace-nowrap text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-space-900 border border-space-border shadow-xl shadow-black/40 z-20"
+                                                 :class="isDragging(q, row) ? 'flex' : 'hidden group-hover/marker:flex'"
                                                  :style="'color: ' + getThresholdColor(qIdx).bg + '; border-color: ' + getThresholdColor(qIdx).bg + '40'">
                                                 <span class="w-2 h-2 rounded-full flex-shrink-0" :style="'background-color: ' + getThresholdColor(qIdx).bg"></span>
                                                 <span x-text="q.email"></span>
                                                 <span class="text-gray-500">min</span>
-                                                <span x-text="q.thresholdPct + '%'"></span>
+                                                <span x-text="getMarkerPct(q, row) + '%'"></span>
                                             </div>
                                         </div>
                                     </template>
