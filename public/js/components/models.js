@@ -6,6 +6,21 @@
 window.Components = window.Components || {};
 
 window.Components.models = () => ({
+    editingModelId: null,
+    newMapping: '',
+
+    isEditing(modelId) {
+        return this.editingModelId === modelId;
+    },
+
+    startEditing(modelId) {
+        this.editingModelId = modelId;
+    },
+
+    stopEditing() {
+        this.editingModelId = null;
+    },
+
     init() {
         // Ensure data is fetched when this tab becomes active (skip initial trigger)
         this.$watch('$store.global.activeTab', (val, oldVal) => {
