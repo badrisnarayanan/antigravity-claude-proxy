@@ -215,6 +215,11 @@ window.translations.pt = {
     defaultCooldownDesc: "Resfriamento de fallback quando a API não fornece tempo de reset.",
     maxWaitThreshold: "Limiar Máximo de Espera (Sticky)",
     maxWaitDesc: "Tempo máximo para aguardar uma conta sticky resetar antes de trocar.",
+    // Proteção de Cota
+    quotaProtection: "Proteção de Cota",
+    minimumQuotaLevel: "Nível Mínimo de Cota",
+    minimumQuotaLevelDesc: "Trocar de conta quando a cota cair abaixo deste nível. Configurações por conta têm prioridade.",
+    quotaDisabled: "Desativado",
     // Ajuste de Tratamento de Erros
     errorHandlingTuning: "Ajuste de Tratamento de Erros",
     rateLimitDedupWindow: "Janela de Deduplicação de Rate Limit",

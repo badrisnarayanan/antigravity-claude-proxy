@@ -219,6 +219,11 @@ window.translations.tr = {
     defaultCooldownDesc: "API sıfırlama zamanı sağlamadığında yedek soğuma süresi.",
     maxWaitThreshold: "Maksimum Bekleme Eşiği (Yapışkan)",
     maxWaitDesc: "Yapışkan bir hesabın değiştirmeden önce sıfırlanması için beklenecek maksimum süre.",
+    // Kota Koruması
+    quotaProtection: "Kota Koruması",
+    minimumQuotaLevel: "Minimum Kota Seviyesi",
+    minimumQuotaLevelDesc: "Kota bu seviyenin altına düştüğünde hesap değiştir. Hesap bazlı ayarlar önceliklidir.",
+    quotaDisabled: "Devre Dışı",
     // Hata İşleme Ayarları
     errorHandlingTuning: "Hata İşleme Ayarları",
     rateLimitDedupWindow: "Hız Sınırı Tekilleştirme Penceresi",

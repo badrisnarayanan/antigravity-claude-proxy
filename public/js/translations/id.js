@@ -270,6 +270,11 @@ window.translations.id = {
     defaultCooldownDesc: "Cooldown bawaan jika API tidak memberikan waktu reset.",
     maxWaitThreshold: "Batas Tunggu Maksimal",
     maxWaitDesc: "Jika semua akun terkena rate limit lebih lama dari ini, langsung gagal.",
+    // Perlindungan Kuota
+    quotaProtection: "Perlindungan Kuota",
+    minimumQuotaLevel: "Level Kuota Minimum",
+    minimumQuotaLevelDesc: "Ganti akun ketika kuota turun di bawah level ini. Pengaturan per-akun lebih diutamakan.",
+    quotaDisabled: "Nonaktif",
     // Error Handling Tuning
     errorHandlingTuning: "Penyetelan Penanganan Error",
     rateLimitDedupWindow: "Jendela Deduplikasi Rate Limit",

@@ -237,6 +237,11 @@ window.translations.en = {
     defaultCooldownDesc: "Fallback cooldown when API doesn't provide a reset time.",
     maxWaitThreshold: "Max Wait Before Error",
     maxWaitDesc: "If all accounts are rate-limited longer than this, error immediately instead of waiting.",
+    // Quota Protection
+    quotaProtection: "Quota Protection",
+    minimumQuotaLevel: "Minimum Quota Level",
+    minimumQuotaLevelDesc: "Switch accounts when quota drops below this level. Per-account overrides take priority.",
+    quotaDisabled: "Disabled",
     // Error Handling Tuning
     errorHandlingTuning: "Error Handling Tuning",
     rateLimitDedupWindow: "Rate Limit Dedup Window",
