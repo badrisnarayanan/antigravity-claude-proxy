@@ -1147,7 +1147,39 @@
                             </div>
                         </div>
 
-<!-- Error Handling Tuning -->
+<!-- Quota Protection -->
+                        <div class="space-y-4 pt-2 border-t border-space-border/10">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                    x-text="$store.global.t('quotaProtection')">Quota Protection</span>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label pt-0">
+                                    <span class="label-text text-gray-400 text-xs"
+                                        x-text="$store.global.t('minimumQuotaLevel')">Minimum Quota Level</span>
+                                    <span class="label-text-alt font-mono text-neon-green text-xs font-semibold"
+                                        x-text="Math.round((serverConfig.globalQuotaThreshold || 0) * 100) > 0 ? Math.round((serverConfig.globalQuotaThreshold || 0) * 100) + '%' : $store.global.t('quotaDisabled')"></span>
+                                </label>
+                                <div class="flex gap-3 items-center">
+                                    <input type="range" min="0" max="99" step="1"
+                                        class="custom-range custom-range-green flex-1"
+                                        :value="Math.round((serverConfig.globalQuotaThreshold || 0) * 100)"
+                                        :style="`background-size: ${Math.round((serverConfig.globalQuotaThreshold || 0) * 100) / 99 * 100}% 100%`"
+                                        @input="toggleGlobalQuotaThreshold($event.target.value)"
+                                        aria-label="Minimum quota level slider">
+                                    <input type="number" min="0" max="99"
+                                        class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
+                                        :value="Math.round((serverConfig.globalQuotaThreshold || 0) * 100)"
+                                        @change="toggleGlobalQuotaThreshold($event.target.value)"
+                                        aria-label="Minimum quota level value">
+                                </div>
+                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                    x-text="$store.global.t('minimumQuotaLevelDesc')">Switch accounts when quota drops below this level. Per-account overrides take priority.</p>
+                            </div>
+                        </div>
+
+                        <!-- Error Handling Tuning -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"

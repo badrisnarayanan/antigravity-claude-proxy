@@ -69,7 +69,7 @@ window.AppConstants.VALIDATION = {
     MAX_WAIT_MIN: 60000,
     MAX_WAIT_MAX: 1800000,
 
-// Max accounts range (1 - 100)
+    // Max accounts range (1 - 100)
     MAX_ACCOUNTS_MIN: 1,
     MAX_ACCOUNTS_MAX: 100,
 
@@ -87,7 +87,11 @@ window.AppConstants.VALIDATION = {
 
     // Capacity retries (1 - 10)
     MAX_CAPACITY_RETRIES_MIN: 1,
-    MAX_CAPACITY_RETRIES_MAX: 10
+    MAX_CAPACITY_RETRIES_MAX: 10,
+
+    // Global quota threshold (0 - 99%)
+    GLOBAL_QUOTA_THRESHOLD_MIN: 0,
+    GLOBAL_QUOTA_THRESHOLD_MAX: 99
 };
 
 /**

@@ -250,7 +250,47 @@ window.Components.serverConfig = () => ({
             (v) => window.Validators.validateTimeout(v, MAX_WAIT_MIN, MAX_WAIT_MAX));
     },
 
-toggleMaxAccounts(value) {
+    toggleGlobalQuotaThreshold(value) {
+        const { GLOBAL_QUOTA_THRESHOLD_MIN, GLOBAL_QUOTA_THRESHOLD_MAX } = window.AppConstants.VALIDATION;
+        const store = Alpine.store('global');
+        const pct = parseInt(value);
+        if (isNaN(pct) || pct < GLOBAL_QUOTA_THRESHOLD_MIN || pct > GLOBAL_QUOTA_THRESHOLD_MAX) return;
+
+        // Store as percentage in UI, convert to fraction for backend
+        const fraction = pct / 100;
+
+        if (this.debounceTimers['globalQuotaThreshold']) {
+            clearTimeout(this.debounceTimers['globalQuotaThreshold']);
+        }
+
+        const previousValue = this.serverConfig.globalQuotaThreshold;
+        this.serverConfig.globalQuotaThreshold = fraction;
+
+        this.debounceTimers['globalQuotaThreshold'] = setTimeout(async () => {
+            try {
+                const { response, newPassword } = await window.utils.request('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ globalQuotaThreshold: fraction })
+                }, store.webuiPassword);
+
+                if (newPassword) store.webuiPassword = newPassword;
+
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    store.showToast(store.t('fieldUpdated', { displayName: 'Minimum Quota Level', value: pct + '%' }), 'success');
+                    await this.fetchServerConfig();
+                } else {
+                    throw new Error(data.error || store.t('failedToUpdateField', { displayName: 'Minimum Quota Level' }));
+                }
+            } catch (e) {
+                this.serverConfig.globalQuotaThreshold = previousValue;
+                store.showToast(store.t('failedToUpdateField', { displayName: 'Minimum Quota Level' }) + ': ' + e.message, 'error');
+            }
+        }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE);
+    },
+
+        toggleMaxAccounts(value) {
         const { MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxAccounts', value, 'Max Accounts',
             (v) => window.Validators.validateRange(v, MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX, 'Max Accounts'));
