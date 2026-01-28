@@ -190,9 +190,37 @@
                                     <span class="text-gray-500 text-[10px]"
                                           x-text="row.quotaInfo.filter(q => q.pct > 0).length + '/' + row.quotaInfo.length"></span>
                                 </div>
-                                <progress class="progress w-full h-1 bg-space-800"
-                                    :class="row.avgQuota > 50 ? 'progress-gradient-success' : (row.avgQuota > 0 ? 'progress-gradient-warning' : 'progress-gradient-error')"
-                                    :value="row.avgQuota" max="100"></progress>
+                                <div class="relative">
+                                    <progress class="progress w-full h-1.5 bg-space-800"
+                                        :class="row.avgQuota > 50 ? 'progress-gradient-success' : (row.avgQuota > 0 ? 'progress-gradient-warning' : 'progress-gradient-error')"
+                                        :value="row.avgQuota" max="100"></progress>
+                                    <!-- Per-account quota threshold markers -->
+                                    <template x-for="(q, qIdx) in row.quotaInfo.filter(q => q.thresholdPct > 0)" :key="q.fullEmail + '-threshold'">
+                                        <div class="absolute -top-1 -bottom-1 cursor-help group/marker"
+                                             :style="'left: calc(' + q.thresholdPct + '% - 4px); width: 9px;'"
+                                             :title="q.email + ' min: ' + q.thresholdPct + '%'">
+                                            <!-- Visible marker line -->
+                                            <div class="absolute top-1 bottom-1 left-1 w-[3px] rounded-full transition-all
+                                                        group-hover/marker:scale-y-150 group-hover/marker:brightness-125"
+                                                 :style="'background-color: ' + getThresholdColor(qIdx).bg + '; box-shadow: 0 0 6px ' + getThresholdColor(qIdx).shadow"></div>
+                                            <!-- Hover tooltip popup -->
+                                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover/marker:flex items-center gap-1.5
+                                                         whitespace-nowrap text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-space-900 border border-space-border shadow-xl shadow-black/40 z-20"
+                                                 :style="'color: ' + getThresholdColor(qIdx).bg + '; border-color: ' + getThresholdColor(qIdx).bg + '40'">
+                                                <span class="w-2 h-2 rounded-full flex-shrink-0" :style="'background-color: ' + getThresholdColor(qIdx).bg"></span>
+                                                <span x-text="q.email"></span>
+                                                <span class="text-gray-500">min</span>
+                                                <span x-text="q.thresholdPct + '%'"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <!-- Threshold text under bar -->
+                                <div x-show="row.effectiveThresholdPct > 0"
+                                     class="text-[10px] font-mono text-gray-500 -mt-0.5"
+                                     x-text="row.hasVariedThresholds
+                                         ? 'min: ' + Math.min(...row.quotaInfo.map(q => q.thresholdPct).filter(t => t > 0)) + '–' + row.effectiveThresholdPct + '%'
+                                         : 'min: ' + row.effectiveThresholdPct + '%'"></div>
                             </div>
                         </td>
                         <td class="font-mono text-xs">
@@ -219,7 +247,8 @@
                                         <div class="flex flex-wrap gap-1 justify-start">
                                             <!-- Visible accounts (limited to maxVisible) -->
                                             <template x-for="(q, idx) in row.quotaInfo.slice(0, maxVisible)" :key="q.fullEmail">
-                                                <div class="tooltip tooltip-left" :data-tip="`${q.fullEmail} (${q.pct}%)`">
+                                                <div class="tooltip tooltip-left"
+                                                     :data-tip="`${q.fullEmail} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')">
                                                     <div class="w-3 h-3 rounded-[2px] transition-all hover:scale-125 cursor-help"
                                                         :class="q.pct > 50 ? 'bg-neon-green opacity-80' : (q.pct > 0 ? 'bg-yellow-500 opacity-80' : 'bg-red-900 opacity-50')">
                                                     </div>
@@ -228,7 +257,7 @@
                                             <!-- Overflow indicator -->
                                             <template x-if="row.quotaInfo.length > maxVisible">
                                                 <div class="tooltip tooltip-left"
-                                                     :data-tip="row.quotaInfo.slice(maxVisible).map(q => `${q.fullEmail} (${q.pct}%)`).join('\n')">
+                                                     :data-tip="row.quotaInfo.slice(maxVisible).map(q => `${q.fullEmail} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')).join('\n')">
                                                     <div class="w-3 h-3 rounded-[2px] bg-gray-700/50 border border-gray-600 flex items-center justify-center cursor-help hover:bg-gray-600/70 transition-colors">
                                                         <span class="text-[8px] text-gray-400 font-bold leading-none" x-text="`+${row.quotaInfo.length - maxVisible}`"></span>
                                                     </div>
