@@ -248,6 +248,93 @@ Then run `claude` for official API or `claude-antigravity` for this proxy.
 
 ---
 
+## Using with Clawdbot / Moltbot
+
+[Clawdbot/Moltbot](https://docs.molt.bot/) is an AI agent platform that can connect to messaging apps like Telegram, WhatsApp, Discord, and more. You can configure it to use this proxy for Claude models.
+
+### Configure Clawdbot
+
+Edit your Clawdbot config file at `~/.clawdbot/clawdbot.json` (macOS/Linux) or `%USERPROFILE%\.clawdbot\clawdbot.json` (Windows):
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "antigravity-proxy/claude-opus-4-5-thinking"
+      },
+      "models": {
+        "antigravity-proxy/claude-opus-4-5-thinking": {}
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "antigravity-proxy": {
+        "baseUrl": "http://localhost:8080",
+        "apiKey": "test",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "claude-opus-4-5-thinking",
+            "name": "Claude Opus 4.5 Thinking",
+            "contextWindow": 200000,
+            "maxTokens": 32000
+          },
+          {
+            "id": "claude-sonnet-4-5-thinking",
+            "name": "Claude Sonnet 4.5 Thinking",
+            "contextWindow": 200000,
+            "maxTokens": 32000
+          },
+          {
+            "id": "claude-sonnet-4-5",
+            "name": "Claude Sonnet 4.5",
+            "contextWindow": 200000,
+            "maxTokens": 32000
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### Start Both Services
+
+```bash
+# Terminal 1: Start the proxy
+antigravity-claude-proxy start
+
+# Terminal 2: Start Clawdbot gateway
+clawdbot gateway
+```
+
+### Verify Configuration
+
+```bash
+# Check available models
+clawdbot models list
+
+# Check status
+clawdbot status
+```
+
+You should see `antigravity-proxy/claude-opus-4-5-thinking` as the configured model.
+
+### Switch Models
+
+To use a different model:
+
+```bash
+clawdbot models set antigravity-proxy/claude-sonnet-4-5-thinking
+```
+
+> **Note:** Make sure the proxy is running before starting Clawdbot. The proxy must be accessible at `http://localhost:8080` (or your configured port).
+
+---
+
 ## Available Models
 
 ### Claude Models
