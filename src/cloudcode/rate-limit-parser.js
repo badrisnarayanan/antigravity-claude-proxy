@@ -167,15 +167,69 @@ export function parseResetTime(responseOrError, errorText = '') {
         }
     }
 
-    // SANITY CHECK: Enforce strict minimums for found rate limits
-    // If we found a reset time, but it's very small (e.g. < 1s) or negative,
-    // explicitly bump it up to avoid "Available in 0s" loops.
+    // SANITY CHECK: Handle very small or negative reset times
+    // For sub-second rate limits (common with per-second quotas), add a small buffer
+    // For negative or zero, use a reasonable minimum
     if (resetMs !== null) {
-        if (resetMs < 1000) {
-            logger.debug(`[CloudCode] Reset time too small (${resetMs}ms), enforcing 2s buffer`);
-            resetMs = 2000;
+        if (resetMs <= 0) {
+            logger.debug(`[CloudCode] Reset time invalid (${resetMs}ms), using 500ms default`);
+            resetMs = 500;
+        } else if (resetMs < 500) {
+            // Very short reset - add 200ms buffer for network latency
+            logger.debug(`[CloudCode] Short reset time (${resetMs}ms), adding 200ms buffer`);
+            resetMs = resetMs + 200;
         }
+        // Note: No longer enforcing 2s minimum - this was causing cascading failures
+        // when all accounts had short rate limits simultaneously
     }
 
     return resetMs;
+}
+
+/**
+ * Parse the rate limit reason from error text
+ * Used for smart backoff by error type (matches opencode-antigravity-auth)
+ *
+ * @param {string} errorText - Error message/body text
+ * @returns {'RATE_LIMIT_EXCEEDED' | 'QUOTA_EXHAUSTED' | 'MODEL_CAPACITY_EXHAUSTED' | 'SERVER_ERROR' | 'UNKNOWN'} Error reason
+ */
+export function parseRateLimitReason(errorText) {
+    const lower = (errorText || '').toLowerCase();
+
+    // Check for quota exhaustion (daily/hourly limits)
+    if (lower.includes('quota_exhausted') ||
+        lower.includes('quotaresetdelay') ||
+        lower.includes('quotaresettimestamp') ||
+        lower.includes('resource_exhausted') ||
+        lower.includes('daily limit') ||
+        lower.includes('quota exceeded')) {
+        return 'QUOTA_EXHAUSTED';
+    }
+
+    // Check for model capacity issues (temporary, retry quickly)
+    if (lower.includes('model_capacity_exhausted') ||
+        lower.includes('capacity_exhausted') ||
+        lower.includes('model is currently overloaded') ||
+        lower.includes('service temporarily unavailable')) {
+        return 'MODEL_CAPACITY_EXHAUSTED';
+    }
+
+    // Check for rate limiting (per-minute limits)
+    if (lower.includes('rate_limit_exceeded') ||
+        lower.includes('rate limit') ||
+        lower.includes('too many requests') ||
+        lower.includes('throttl')) {
+        return 'RATE_LIMIT_EXCEEDED';
+    }
+
+    // Check for server errors
+    if (lower.includes('internal server error') ||
+        lower.includes('server error') ||
+        lower.includes('503') ||
+        lower.includes('502') ||
+        lower.includes('504')) {
+        return 'SERVER_ERROR';
+    }
+
+    return 'UNKNOWN';
 }

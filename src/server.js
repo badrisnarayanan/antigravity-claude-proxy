@@ -734,6 +734,11 @@ app.post('/v1/messages', async (req, res) => {
             });
         }
 
+        // Filter out "count" requests (often automated background checks)
+        if (messages.length === 1 && messages[0].content === 'count') {
+            return res.json({});
+        }
+
         // Build the request object
         const request = {
             model: modelId,

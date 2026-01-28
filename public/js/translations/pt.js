@@ -223,8 +223,6 @@ window.translations.pt = {
     maxConsecutiveFailuresDesc: "Número de falhas consecutivas antes de aplicar resfriamento estendido.",
     extendedCooldown: "Resfriamento Estendido",
     extendedCooldownDesc: "Duração do resfriamento aplicado após atingir máx. de falhas consecutivas.",
-    capacityRetryDelay: "Atraso de Retry de Capacidade",
-    capacityRetryDelayDesc: "Atraso antes de tentar novamente quando capacidade do modelo está esgotada (não quota).",
     maxCapacityRetries: "Máx. Retries de Capacidade",
     maxCapacityRetriesDesc: "Máximo de retries para esgotamento de capacidade antes de trocar conta.",
     saveConfigServer: "Salvar Configuração",
@@ -271,6 +269,29 @@ window.translations.pt = {
     gemini1mDesc: "Adiciona sufixo [1m] aos modelos Gemini para suporte a janela de contexto de 1M.",
     gemini1mWarning: "⚠ Contexto grande pode reduzir o desempenho do Gemini-3-Pro.",
     clickToSet: "Clique para configurar...",
+    none: "Nenhum",
+    // Quota Distribution
+    quotaDistribution: "Distribuição de Quota",
+    resetsIn: "Reseta em {time}",
+    noQuotaData: "Dados de quota ainda não disponíveis para esta conta.",
+    // Manual OAuth Mode
+    manualMode: "Modo Manual",
+    manualModeDesc: "(para ambientes onde callback não consegue alcançar)",
+    authLinkLabel: "Link de Autorização:",
+    linkCopied: "Link copiado para a área de transferência",
+    pasteCallbackLabel: "Cole a URL de callback ou código:",
+    pasteCallbackPlaceholder: "http://localhost:51121/oauth-callback?code=... ou 4/0xxx...",
+    completeAuth: "Completar Autorização",
+    authFailed: "Falha na autorização",
+    // Import/Export
+    export: "Exportar",
+    import: "Importar",
+    exportAccounts: "Exportar Contas",
+    importAccounts: "Importar Contas",
+    exportSuccess: "Exportadas {count} contas",
+    exportFailed: "Falha ao exportar",
+    importSuccess: "Importação concluída:",
+    importFailed: "Falha ao importar",
 
     // Account Selection Strategy translations
     accountSelectionStrategy: "Estratégia de Seleção de Conta",

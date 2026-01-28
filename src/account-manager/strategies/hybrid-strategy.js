@@ -65,11 +65,13 @@ export class HybridStrategy extends BaseStrategy {
         }
 
         // Get candidates that pass all filters
-        const candidates = this.#getCandidates(accounts, modelId);
+        const { candidates, fallbackLevel } = this.#getCandidates(accounts, modelId);
 
         if (candidates.length === 0) {
-            logger.debug('[HybridStrategy] No candidates available');
-            return { account: null, index: 0, waitMs: 0 };
+            // Diagnose why no candidates are available and compute wait time
+            const { reason, waitMs } = this.#diagnoseNoCandidates(accounts, modelId);
+            logger.warn(`[HybridStrategy] No candidates available: ${reason}`);
+            return { account: null, index: 0, waitMs };
         }
 
         // Score and sort candidates
@@ -85,16 +87,30 @@ export class HybridStrategy extends BaseStrategy {
         const best = scored[0];
         best.account.lastUsed = Date.now();
 
-        // Consume a token from the bucket
-        this.#tokenBucketTracker.consume(best.account.email);
+        // Consume a token from the bucket (unless in lastResort mode where we bypassed token check)
+        if (fallbackLevel !== 'lastResort') {
+            this.#tokenBucketTracker.consume(best.account.email);
+        }
 
         if (onSave) onSave();
 
+        // Calculate throttle wait time based on fallback level
+        // This prevents overwhelming the API when all accounts are stressed
+        let waitMs = 0;
+        if (fallbackLevel === 'lastResort') {
+            // All accounts exhausted - add significant delay to allow rate limits to clear
+            waitMs = 500;
+        } else if (fallbackLevel === 'emergency') {
+            // All accounts unhealthy - add moderate delay
+            waitMs = 250;
+        }
+
         const position = best.index + 1;
         const total = accounts.length;
-        logger.info(`[HybridStrategy] Using account: ${best.account.email} (${position}/${total}, score: ${best.score.toFixed(1)})`);
+        const fallbackInfo = fallbackLevel !== 'normal' ? `, fallback: ${fallbackLevel}` : '';
+        logger.info(`[HybridStrategy] Using account: ${best.account.email} (${position}/${total}, score: ${best.score.toFixed(1)}${fallbackInfo})`);
 
-        return { account: best.account, index: best.index, waitMs: 0 };
+        return { account: best.account, index: best.index, waitMs };
     }
 
     /**
@@ -129,6 +145,8 @@ export class HybridStrategy extends BaseStrategy {
     /**
      * Get candidates that pass all filters
      * @private
+     * @returns {{candidates: Array, fallbackLevel: string}} Candidates and fallback level used
+     *   fallbackLevel: 'normal' | 'quota' | 'emergency' | 'lastResort'
      */
     #getCandidates(accounts, modelId) {
         const candidates = accounts
@@ -158,24 +176,56 @@ export class HybridStrategy extends BaseStrategy {
                 return true;
             });
 
-        // If no candidates after quota filter, fall back to all usable accounts
-        // (better to use critical quota than fail entirely)
-        if (candidates.length === 0) {
-            const fallback = accounts
-                .map((account, index) => ({ account, index }))
-                .filter(({ account }) => {
-                    if (!this.isAccountUsable(account, modelId)) return false;
-                    if (!this.#healthTracker.isUsable(account.email)) return false;
-                    if (!this.#tokenBucketTracker.hasTokens(account.email)) return false;
-                    return true;
-                });
-            if (fallback.length > 0) {
-                logger.warn('[HybridStrategy] All accounts have critical quota, using fallback');
-                return fallback;
-            }
+        if (candidates.length > 0) {
+            return { candidates, fallbackLevel: 'normal' };
         }
 
-        return candidates;
+        // If no candidates after quota filter, fall back to all usable accounts
+        // (better to use critical quota than fail entirely)
+        const fallback = accounts
+            .map((account, index) => ({ account, index }))
+            .filter(({ account }) => {
+                if (!this.isAccountUsable(account, modelId)) return false;
+                if (!this.#healthTracker.isUsable(account.email)) return false;
+                if (!this.#tokenBucketTracker.hasTokens(account.email)) return false;
+                return true;
+            });
+        if (fallback.length > 0) {
+            logger.warn('[HybridStrategy] All accounts have critical quota, using fallback');
+            return { candidates: fallback, fallbackLevel: 'quota' };
+        }
+
+        // Emergency fallback: bypass health check when ALL accounts are unhealthy
+        // This prevents "Max retries exceeded" when health scores are too low
+        const emergency = accounts
+            .map((account, index) => ({ account, index }))
+            .filter(({ account }) => {
+                if (!this.isAccountUsable(account, modelId)) return false;
+                if (!this.#tokenBucketTracker.hasTokens(account.email)) return false;
+                // Skip health check - use "least bad" account
+                return true;
+            });
+        if (emergency.length > 0) {
+            logger.warn('[HybridStrategy] EMERGENCY: All accounts unhealthy, using least bad account');
+            return { candidates: emergency, fallbackLevel: 'emergency' };
+        }
+
+        // Last resort: bypass BOTH health AND token bucket checks
+        // Only check basic usability (not rate-limited, not disabled)
+        const lastResort = accounts
+            .map((account, index) => ({ account, index }))
+            .filter(({ account }) => {
+                // Only check if account is usable (not rate-limited, not disabled)
+                if (!this.isAccountUsable(account, modelId)) return false;
+                // Skip health and token bucket checks entirely
+                return true;
+            });
+        if (lastResort.length > 0) {
+            logger.warn('[HybridStrategy] LAST RESORT: All accounts exhausted, using any usable account');
+            return { candidates: lastResort, fallbackLevel: 'lastResort' };
+        }
+
+        return { candidates: [], fallbackLevel: 'normal' };
     }
 
     /**
@@ -200,11 +250,11 @@ export class HybridStrategy extends BaseStrategy {
         const quotaComponent = quotaScore * this.#weights.quota;
 
         // LRU component (older = higher score)
-        // Use time since last use, capped at 1 hour for scoring
+        // Use time since last use in seconds, capped at 1 hour (matches opencode-antigravity-auth)
         const lastUsed = account.lastUsed || 0;
         const timeSinceLastUse = Math.min(Date.now() - lastUsed, 3600000); // Cap at 1 hour
-        const lruMinutes = timeSinceLastUse / 60000;
-        const lruComponent = lruMinutes * this.#weights.lru;
+        const lruSeconds = timeSinceLastUse / 1000;
+        const lruComponent = lruSeconds * this.#weights.lru; // 0-3600 * 0.1 = 0-360 max
 
         return healthComponent + tokenComponent + quotaComponent + lruComponent;
     }
@@ -231,6 +281,58 @@ export class HybridStrategy extends BaseStrategy {
      */
     getQuotaTracker() {
         return this.#quotaTracker;
+    }
+
+    /**
+     * Diagnose why no candidates are available and compute wait time
+     * @private
+     * @param {Array} accounts - Array of account objects
+     * @param {string} modelId - The model ID
+     * @returns {{reason: string, waitMs: number}} Diagnosis result
+     */
+    #diagnoseNoCandidates(accounts, modelId) {
+        let unusableCount = 0;
+        let unhealthyCount = 0;
+        let noTokensCount = 0;
+        let criticalQuotaCount = 0;
+        const accountsWithoutTokens = [];
+
+        for (const account of accounts) {
+            if (!this.isAccountUsable(account, modelId)) {
+                unusableCount++;
+                continue;
+            }
+            if (!this.#healthTracker.isUsable(account.email)) {
+                unhealthyCount++;
+                continue;
+            }
+            if (!this.#tokenBucketTracker.hasTokens(account.email)) {
+                noTokensCount++;
+                accountsWithoutTokens.push(account.email);
+                continue;
+            }
+            if (this.#quotaTracker.isQuotaCritical(account, modelId)) {
+                criticalQuotaCount++;
+                continue;
+            }
+        }
+
+        // If all accounts are blocked by token bucket, calculate wait time
+        if (noTokensCount > 0 && unusableCount === 0 && unhealthyCount === 0) {
+            const waitMs = this.#tokenBucketTracker.getMinTimeUntilToken(accountsWithoutTokens);
+            const reason = `all ${noTokensCount} account(s) exhausted token bucket, waiting for refill`;
+            return { reason, waitMs };
+        }
+
+        // Build reason string
+        const parts = [];
+        if (unusableCount > 0) parts.push(`${unusableCount} unusable/disabled`);
+        if (unhealthyCount > 0) parts.push(`${unhealthyCount} unhealthy`);
+        if (noTokensCount > 0) parts.push(`${noTokensCount} no tokens`);
+        if (criticalQuotaCount > 0) parts.push(`${criticalQuotaCount} critical quota`);
+
+        const reason = parts.length > 0 ? parts.join(', ') : 'unknown';
+        return { reason, waitMs: 0 };
     }
 }
 

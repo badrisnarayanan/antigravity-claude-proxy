@@ -15,7 +15,12 @@ const DEFAULT_CONFIG = {
     persistTokenCache: false,
     defaultCooldownMs: 10000,  // 10 seconds
     maxWaitBeforeErrorMs: 120000, // 2 minutes
-maxAccounts: 10, // Maximum number of accounts allowed
+    maxAccounts: 10, // Maximum number of accounts allowed
+    // Rate limit handling (matches opencode-antigravity-auth)
+    rateLimitDedupWindowMs: 2000,  // 2 seconds - prevents concurrent retry storms
+    maxConsecutiveFailures: 3,     // Before applying extended cooldown
+    extendedCooldownMs: 60000,     // 1 minute extended cooldown
+    maxCapacityRetries: 5,         // Max retries for capacity exhaustion
     modelMapping: {},
     // Account selection strategy configuration
     accountSelection: {
@@ -93,7 +98,14 @@ function loadConfig() {
 loadConfig();
 
 export function getPublicConfig() {
-    return { ...config };
+    // Create a deep copy and redact sensitive fields
+    const publicConfig = JSON.parse(JSON.stringify(config));
+
+    // Redact sensitive values
+    if (publicConfig.webuiPassword) publicConfig.webuiPassword = '********';
+    if (publicConfig.apiKey) publicConfig.apiKey = '********';
+
+    return publicConfig;
 }
 
 export function saveConfig(updates) {

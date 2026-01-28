@@ -360,5 +360,90 @@ window.Components.accountManager = () => ({
             percent: Math.round(val * 100),
             model: bestModel
         };
+    },
+
+    /**
+     * Export accounts to JSON file
+     */
+    async exportAccounts() {
+        const store = Alpine.store('global');
+        try {
+            const { response, newPassword } = await window.utils.request(
+                '/api/accounts/export',
+                {},
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            // API returns plain array directly
+            if (Array.isArray(data)) {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `antigravity-accounts-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                store.showToast(store.t('exportSuccess', { count: data.length }), 'success');
+            } else if (data.error) {
+                throw new Error(data.error);
+            }
+        } catch (e) {
+            store.showToast(store.t('exportFailed') + ': ' + e.message, 'error');
+        }
+    },
+
+    /**
+     * Import accounts from JSON file
+     * @param {Event} event - file input change event
+     */
+    async importAccounts(event) {
+        const store = Alpine.store('global');
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const importData = JSON.parse(text);
+
+            // Support both plain array and wrapped format
+            const accounts = Array.isArray(importData) ? importData : (importData.accounts || []);
+            if (!Array.isArray(accounts) || accounts.length === 0) {
+                throw new Error('Invalid file format: expected accounts array');
+            }
+
+            const { response, newPassword } = await window.utils.request(
+                '/api/accounts/import',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(accounts)
+                },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                const { added, updated, failed } = data.results;
+                let msg = store.t('importSuccess') + ` ${added.length} added, ${updated.length} updated`;
+                if (failed.length > 0) {
+                    msg += `, ${failed.length} failed`;
+                }
+                store.showToast(msg, failed.length > 0 ? 'info' : 'success');
+                Alpine.store('data').fetchData();
+            } else {
+                throw new Error(data.error || 'Import failed');
+            }
+        } catch (e) {
+            store.showToast(store.t('importFailed') + ': ' + e.message, 'error');
+        } finally {
+            // Reset file input
+            event.target.value = '';
+        }
     }
 });

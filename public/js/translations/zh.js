@@ -245,8 +245,6 @@ window.translations.zh = {
     maxConsecutiveFailuresDesc: "触发扩展冷却前允许的连续失败次数。",
     extendedCooldown: "扩展冷却时间",
     extendedCooldownDesc: "达到最大连续失败后应用的冷却时长。",
-    capacityRetryDelay: "容量重试延迟",
-    capacityRetryDelayDesc: "模型容量耗尽（非配额）时重试前的延迟。",
     maxCapacityRetries: "最大容量重试次数",
     maxCapacityRetriesDesc: "容量耗尽时在切换账号前的最大重试次数。",
     saveConfigServer: "保存配置",
@@ -298,6 +296,24 @@ window.translations.zh = {
     quotaDistribution: "配额分布",
     resetsIn: "{time} 后重置",
     noQuotaData: "暂无此账号的配额数据。",
+    // Manual OAuth Mode
+    manualMode: "手动模式",
+    manualModeDesc: "(当回调无法到达时使用)",
+    authLinkLabel: "授权链接：",
+    linkCopied: "链接已复制到剪贴板",
+    pasteCallbackLabel: "粘贴回调 URL 或授权码：",
+    pasteCallbackPlaceholder: "http://localhost:51121/oauth-callback?code=... 或 4/0xxx...",
+    completeAuth: "完成授权",
+    authFailed: "授权失败",
+    // Import/Export
+    export: "导出",
+    import: "导入",
+    exportAccounts: "导出账号",
+    importAccounts: "导入账号",
+    exportSuccess: "已导出 {count} 个账号",
+    exportFailed: "导出失败",
+    importSuccess: "导入完成：",
+    importFailed: "导入失败",
 
     // TODO: Missing translations - Hardcoded strings from HTML
     // pageTitle: "Antigravity Console",

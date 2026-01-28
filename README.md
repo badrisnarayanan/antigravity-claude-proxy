@@ -84,6 +84,8 @@ Choose one of the following methods to authorize the proxy:
 2. Navigate to the **Accounts** tab and click **Add Account**.
 3. Complete the Google OAuth authorization in the popup window.
 
+> **Headless/Remote Servers**: If running on a server without a browser, the WebUI supports a "Manual Authorization" mode. After clicking "Add Account", you can copy the OAuth URL, complete authorization on your local machine, and paste the authorization code back.
+
 #### **Method B: CLI (Desktop or Headless)**
 
 If you prefer the terminal or are on a remote server:
@@ -152,14 +154,12 @@ Add this configuration:
     "ANTHROPIC_MODEL": "claude-opus-4-5-thinking",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-5-thinking",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-thinking",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-2.5-flash-lite[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-5",
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-5-thinking",
     "ENABLE_EXPERIMENTAL_MCP_CLI": "true"
   }
 }
 ```
-
-(Please use **gemini-2.5-flash-lite** as the default haiku model, even if others are claude, as claude code makes several calls via the haiku model for background tasks. If you use claude model for it, you may use you claude usage sooner)
 
 Or to use Gemini models:
 
@@ -171,7 +171,7 @@ Or to use Gemini models:
     "ANTHROPIC_MODEL": "gemini-3-pro-high[1m]",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "gemini-3-pro-high[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gemini-3-flash[1m]",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-2.5-flash-lite[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-3-flash[1m]",
     "CLAUDE_CODE_SUBAGENT_MODEL": "gemini-3-flash[1m]",
     "ENABLE_EXPERIMENTAL_MCP_CLI": "true"
   }
@@ -280,7 +280,7 @@ Choose a strategy based on your needs:
 
 | Strategy | Best For | Description |
 | --- | --- | --- |
-| **Hybrid** (Default) | Most users | Smart selection combining health score, token bucket rate limiting, and LRU freshness |
+| **Hybrid** (Default) | Most users | Smart selection combining health score, token bucket rate limiting, quota awareness, and LRU freshness |
 | **Sticky** | Prompt caching | Stays on the same account to maximize cache hits, switches only when rate-limited |
 | **Round-Robin** | Even distribution | Cycles through accounts sequentially for balanced load |
 
@@ -298,6 +298,8 @@ antigravity-claude-proxy start --strategy=round-robin  # Load-balanced
 
 - **Health Score Tracking**: Accounts earn points for successful requests and lose points for failures/rate-limits
 - **Token Bucket Rate Limiting**: Client-side throttling with regenerating tokens (50 max, 6/minute)
+- **Quota Awareness**: Accounts with critical quota (<5%) are deprioritized; exhausted accounts trigger emergency fallback
+- **Emergency Fallback**: When all accounts appear exhausted, bypasses checks with throttle delays (250-500ms)
 - **Automatic Cooldown**: Rate-limited accounts recover automatically after reset time expires
 - **Invalid Account Detection**: Accounts needing re-authentication are marked and skipped
 - **Prompt Caching Support**: Session IDs derived from conversation enable cache hits across turns
@@ -340,13 +342,14 @@ The proxy includes a built-in, modern web interface for real-time monitoring and
 - **Real-time Dashboard**: Monitor request volume, active accounts, model health, and subscription tier distribution.
 - **Visual Model Quota**: Track per-model usage and next reset times with color-coded progress indicators.
 - **Account Management**: Add/remove Google accounts via OAuth, view subscription tiers (Free/Pro/Ultra) and quota status at a glance.
+- **Manual OAuth Mode**: Add accounts on headless servers by copying the OAuth URL and pasting the authorization code.
 - **Claude CLI Configuration**: Edit your `~/.claude/settings.json` directly from the browser.
 - **Persistent History**: Tracks request volume by model family for 30 days, persisting across server restarts.
 - **Time Range Filtering**: Analyze usage trends over 1H, 6H, 24H, 7D, or All Time periods.
 - **Smart Analysis**: Auto-select top 5 most used models or toggle between Family/Model views.
 - **Live Logs**: Stream server logs with level-based filtering and search.
 - **Advanced Tuning**: Configure retries, timeouts, and debug mode on the fly.
-- **Bilingual Interface**: Full support for English and Chinese (switch via Settings).
+- **Multi-language Interface**: Full support for English, Chinese (中文), Indonesian (Bahasa), and Portuguese (PT-BR).
 
 ---
 
@@ -360,9 +363,11 @@ While most users can use the default settings, you can tune the proxy behavior v
 - **WebUI Password**: Secure your dashboard with `WEBUI_PASSWORD` env var or in config.
 - **Custom Port**: Change the default `8080` port.
 - **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.
+- **Rate Limit Handling**: Comprehensive rate limit detection from headers and error messages with intelligent retry-after parsing.
 - **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
 - **Max Accounts**: Set `maxAccounts` (1-100) to limit the number of Google accounts. Default: 10.
+- **Endpoint Fallback**: Automatic 403/404 endpoint fallback for API compatibility.
 
 Refer to `config.example.json` for a complete list of fields and documentation.
 
@@ -421,11 +426,70 @@ npm run test:interleaved   # Interleaved thinking
 npm run test:images        # Image processing
 npm run test:caching       # Prompt caching
 npm run test:strategies    # Account selection strategies
+npm run test:cache-control # Cache control field stripping
 ```
 
 ---
 
 ## Troubleshooting
+
+### Windows: OAuth Port Error (EACCES)
+
+On Windows, the default OAuth callback port (51121) may be reserved by Hyper-V, WSL2, or Docker. If you see:
+
+```
+Error: listen EACCES: permission denied 0.0.0.0:51121
+```
+
+The proxy will automatically try fallback ports (51122-51126). If all ports fail, try these solutions:
+
+#### Option 1: Use a Custom Port (Recommended)
+
+Set a custom port outside the reserved range:
+
+```bash
+# Windows PowerShell
+$env:OAUTH_CALLBACK_PORT = "3456"
+antigravity-claude-proxy start
+
+# Windows CMD
+set OAUTH_CALLBACK_PORT=3456
+antigravity-claude-proxy start
+
+# Or add to your .env file
+OAUTH_CALLBACK_PORT=3456
+```
+
+#### Option 2: Reset Windows NAT
+
+Run as Administrator:
+
+```powershell
+net stop winnat
+net start winnat
+```
+
+#### Option 3: Check Reserved Ports
+
+See which ports are reserved:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+If 51121 is in a reserved range, use Option 1 with a port outside those ranges.
+
+#### Option 4: Permanently Exclude Port (Admin)
+
+Reserve the port before Hyper-V claims it (run as Administrator):
+
+```powershell
+netsh int ipv4 add excludedportrange protocol=tcp startport=51121 numberofports=1
+```
+
+> **Note:** The server automatically tries fallback ports (51122-51126) if the primary port fails.
+
+---
 
 ### "Could not extract token from Antigravity"
 

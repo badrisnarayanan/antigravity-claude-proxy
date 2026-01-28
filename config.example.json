@@ -36,6 +36,9 @@
   "maxAccounts": 10,
   "_maxAccounts_comment": "Maximum number of Google accounts allowed (1-100). Default: 10.",
 
+  "_oauthCallbackPort_comment": "OAuth callback server port. Change if you get EACCES errors on Windows. Can also use OAUTH_CALLBACK_PORT env var. Default: 51121.",
+  "_oauthCallbackPort_env": "OAUTH_CALLBACK_PORT=3456",
+
   "_profiles": {
     "development": {
       "debug": true,

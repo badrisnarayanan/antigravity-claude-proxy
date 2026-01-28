@@ -133,6 +133,9 @@ export function markRateLimited(accounts, email, resetMs = null, modelId) {
         actualResetMs: actualResetMs             // Original duration from API
     };
 
+    // Track consecutive failures for progressive backoff (matches opencode-antigravity-auth)
+    account.consecutiveFailures = (account.consecutiveFailures || 0) + 1;
+
     // Log appropriately based on duration
     if (actualResetMs > DEFAULT_COOLDOWN_MS) {
         logger.warn(
@@ -234,4 +237,133 @@ export function getRateLimitInfo(accounts, email, modelId) {
         actualResetMs: limit.actualResetMs || null,
         waitMs
     };
+}
+
+/**
+ * Get the consecutive failure count for an account
+ * Used for progressive backoff calculation (matches opencode-antigravity-auth)
+ *
+ * @param {Array} accounts - Array of account objects
+ * @param {string} email - Email of the account
+ * @returns {number} Number of consecutive failures
+ */
+export function getConsecutiveFailures(accounts, email) {
+    const account = accounts.find(a => a.email === email);
+    return account?.consecutiveFailures || 0;
+}
+
+/**
+ * Reset the consecutive failure count for an account
+ * Called on successful request (matches opencode-antigravity-auth)
+ *
+ * @param {Array} accounts - Array of account objects
+ * @param {string} email - Email of the account
+ * @returns {boolean} True if account was found and reset
+ */
+export function resetConsecutiveFailures(accounts, email) {
+    const account = accounts.find(a => a.email === email);
+    if (!account) return false;
+    account.consecutiveFailures = 0;
+    return true;
+}
+
+/**
+ * Increment the consecutive failure count for an account WITHOUT marking as rate limited
+ * Used for quick retries where we want to track failures but not skip the account
+ * (matches opencode-antigravity-auth behavior of always incrementing on 429)
+ *
+ * @param {Array} accounts - Array of account objects
+ * @param {string} email - Email of the account
+ * @returns {number} New consecutive failure count
+ */
+export function incrementConsecutiveFailures(accounts, email) {
+    const account = accounts.find(a => a.email === email);
+    if (!account) return 0;
+    account.consecutiveFailures = (account.consecutiveFailures || 0) + 1;
+    return account.consecutiveFailures;
+}
+
+// ============================================================================
+// Cooldown Mechanism (matches opencode-antigravity-auth)
+// Separate from rate limits - used for temporary backoff after failures
+// ============================================================================
+
+/**
+ * Cooldown reasons for debugging/logging
+ */
+export const CooldownReason = {
+    RATE_LIMIT: 'rate_limit',
+    AUTH_FAILURE: 'auth_failure',
+    CONSECUTIVE_FAILURES: 'consecutive_failures',
+    SERVER_ERROR: 'server_error'
+};
+
+/**
+ * Mark an account as cooling down for a specified duration
+ * Used for temporary backoff separate from rate limits
+ *
+ * @param {Array} accounts - Array of account objects
+ * @param {string} email - Email of the account
+ * @param {number} cooldownMs - Duration of cooldown in milliseconds
+ * @param {string} [reason] - Reason for the cooldown
+ * @returns {boolean} True if account was found and marked
+ */
+export function markAccountCoolingDown(accounts, email, cooldownMs, reason = CooldownReason.RATE_LIMIT) {
+    const account = accounts.find(a => a.email === email);
+    if (!account) return false;
+
+    account.coolingDownUntil = Date.now() + cooldownMs;
+    account.cooldownReason = reason;
+
+    logger.debug(`[AccountManager] Account ${email} cooling down for ${formatDuration(cooldownMs)} (reason: ${reason})`);
+    return true;
+}
+
+/**
+ * Check if an account is currently cooling down
+ * Automatically clears expired cooldowns
+ *
+ * @param {Object} account - Account object
+ * @returns {boolean} True if account is cooling down
+ */
+export function isAccountCoolingDown(account) {
+    if (!account || account.coolingDownUntil === undefined) {
+        return false;
+    }
+
+    const now = Date.now();
+    if (now >= account.coolingDownUntil) {
+        // Cooldown expired - clear it
+        clearAccountCooldown(account);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Clear the cooldown for an account
+ *
+ * @param {Object} account - Account object
+ */
+export function clearAccountCooldown(account) {
+    if (account) {
+        delete account.coolingDownUntil;
+        delete account.cooldownReason;
+    }
+}
+
+/**
+ * Get time remaining until cooldown expires for an account
+ *
+ * @param {Object} account - Account object
+ * @returns {number} Milliseconds until cooldown expires, 0 if not cooling down
+ */
+export function getCooldownRemaining(account) {
+    if (!account || account.coolingDownUntil === undefined) {
+        return 0;
+    }
+
+    const remaining = account.coolingDownUntil - Date.now();
+    return remaining > 0 ? remaining : 0;
 }

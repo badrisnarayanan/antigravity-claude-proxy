@@ -200,7 +200,9 @@ async function addAccount(existingAccounts) {
     console.log('Waiting for authentication (timeout: 2 minutes)...\n');
 
     try {
-        const code = await startCallbackServer(state);
+        // startCallbackServer now returns { promise, abort }
+        const { promise } = startCallbackServer(state);
+        const code = await promise;
 
         console.log('Received authorization code. Exchanging for tokens...');
         const result = await completeOAuthFlow(code, verifier);

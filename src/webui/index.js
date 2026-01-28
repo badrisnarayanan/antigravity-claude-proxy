@@ -127,8 +127,9 @@ function createAuthMiddleware() {
 
         // Determine if this path should be protected
         const isApiRoute = req.path.startsWith('/api/');
-        const isException = req.path === '/api/auth/url' || req.path === '/api/config';
-        const isProtected = (isApiRoute && !isException) || req.path === '/account-limits' || req.path === '/health';
+        const isAuthUrl = req.path === '/api/auth/url';
+        const isConfigGet = req.path === '/api/config' && req.method === 'GET';
+        const isProtected = (isApiRoute && !isAuthUrl && !isConfigGet) || req.path === '/account-limits' || req.path === '/health';
 
         if (isProtected) {
             const providedPassword = req.headers['x-webui-password'] || req.query.password;
@@ -330,6 +331,115 @@ export function mountWebUI(app, dirname, accountManager) {
         }
     });
 
+    /**
+     * GET /api/accounts/export - Export accounts
+     */
+    app.get('/api/accounts/export', async (req, res) => {
+        try {
+            const { accounts } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+
+            // Export only essential fields for portability
+            const exportData = accounts
+                .filter(acc => acc.source !== 'database')
+                .map(acc => {
+                    const essential = { email: acc.email };
+                    // Use snake_case for compatibility
+                    if (acc.refreshToken) {
+                        essential.refresh_token = acc.refreshToken;
+                    }
+                    if (acc.apiKey) {
+                        essential.api_key = acc.apiKey;
+                    }
+                    return essential;
+                });
+
+            // Return plain array for simpler format
+            res.json(exportData);
+        } catch (error) {
+            logger.error('[WebUI] Export accounts error:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/accounts/import - Batch import accounts
+     */
+    app.post('/api/accounts/import', async (req, res) => {
+        try {
+            // Support both wrapped format { accounts: [...] } and plain array [...]
+            let importAccounts = req.body;
+            if (req.body.accounts && Array.isArray(req.body.accounts)) {
+                importAccounts = req.body.accounts;
+            }
+
+            if (!Array.isArray(importAccounts) || importAccounts.length === 0) {
+                return res.status(400).json({
+                    status: 'error',
+                    error: 'accounts must be a non-empty array'
+                });
+            }
+
+            const results = { added: [], updated: [], failed: [] };
+
+            // Load existing accounts once before the loop
+            const { accounts: existingAccounts } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+            const existingEmails = new Set(existingAccounts.map(a => a.email));
+
+            for (const acc of importAccounts) {
+                try {
+                    // Validate required fields
+                    if (!acc.email) {
+                        results.failed.push({ email: acc.email || 'unknown', reason: 'Missing email' });
+                        continue;
+                    }
+
+                    // Support both snake_case and camelCase
+                    const refreshToken = acc.refresh_token || acc.refreshToken;
+                    const apiKey = acc.api_key || acc.apiKey;
+
+                    // Must have at least one credential
+                    if (!refreshToken && !apiKey) {
+                        results.failed.push({ email: acc.email, reason: 'Missing refresh_token or api_key' });
+                        continue;
+                    }
+
+                    // Check if account already exists
+                    const exists = existingEmails.has(acc.email);
+
+                    // Add account
+                    await addAccount({
+                        email: acc.email,
+                        source: apiKey ? 'manual' : 'oauth',
+                        refreshToken: refreshToken,
+                        apiKey: apiKey
+                    });
+
+                    if (exists) {
+                        results.updated.push(acc.email);
+                    } else {
+                        results.added.push(acc.email);
+                    }
+                } catch (err) {
+                    results.failed.push({ email: acc.email, reason: err.message });
+                }
+            }
+
+            // Reload AccountManager
+            await accountManager.reload();
+
+            logger.info(`[WebUI] Import complete: ${results.added.length} added, ${results.updated.length} updated, ${results.failed.length} failed`);
+
+            res.json({
+                status: 'ok',
+                results,
+                message: `Imported ${results.added.length + results.updated.length} accounts`
+            });
+        } catch (error) {
+            logger.error('[WebUI] Import accounts error:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
     // ==========================================
     // Configuration API
     // ==========================================
@@ -357,7 +467,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -385,6 +495,18 @@ const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache,
             }
 if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
                 updates.maxAccounts = maxAccounts;
+            }
+            if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
+                updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;
+            }
+            if (typeof maxConsecutiveFailures === 'number' && maxConsecutiveFailures >= 1 && maxConsecutiveFailures <= 10) {
+                updates.maxConsecutiveFailures = maxConsecutiveFailures;
+            }
+            if (typeof extendedCooldownMs === 'number' && extendedCooldownMs >= 10000 && extendedCooldownMs <= 300000) {
+                updates.extendedCooldownMs = extendedCooldownMs;
+            }
+            if (typeof maxCapacityRetries === 'number' && maxCapacityRetries >= 1 && maxCapacityRetries <= 10) {
+                updates.maxCapacityRetries = maxCapacityRetries;
             }
             // Account selection strategy validation
             if (accountSelection && typeof accountSelection === 'object') {
@@ -728,11 +850,12 @@ if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
             const { url, verifier, state } = getAuthorizationUrl();
 
             // Start callback server on port 51121 (same as CLI)
-            const serverPromise = startCallbackServer(state, 120000); // 2 min timeout
+            const { promise: serverPromise, abort: abortServer } = startCallbackServer(state, 120000); // 2 min timeout
 
             // Store the flow data
             pendingOAuthFlows.set(state, {
                 serverPromise,
+                abortServer,
                 verifier,
                 state,
                 timestamp: Date.now()
@@ -765,13 +888,81 @@ if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
                     }
                 })
                 .catch((err) => {
-                    logger.error('[WebUI] OAuth callback server error:', err);
+                    // Only log if not aborted (manual completion causes this)
+                    if (!err.message?.includes('aborted')) {
+                        logger.error('[WebUI] OAuth callback server error:', err);
+                    }
                     pendingOAuthFlows.delete(state);
                 });
 
-            res.json({ status: 'ok', url });
+            res.json({ status: 'ok', url, state });
         } catch (error) {
             logger.error('[WebUI] Error generating auth URL:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/auth/complete - Complete OAuth with manually submitted callback URL/code
+     * Used when auto-callback cannot reach the local server
+     */
+    app.post('/api/auth/complete', async (req, res) => {
+        try {
+            const { callbackInput, state } = req.body;
+
+            if (!callbackInput || !state) {
+                return res.status(400).json({ 
+                    status: 'error', 
+                    error: 'Missing callbackInput or state' 
+                });
+            }
+
+            // Find the pending flow
+            const flowData = pendingOAuthFlows.get(state);
+            if (!flowData) {
+                return res.status(400).json({ 
+                    status: 'error', 
+                    error: 'OAuth flow not found. The account may have been already added via auto-callback. Please refresh the account list.' 
+                });
+            }
+
+            const { verifier, abortServer } = flowData;
+
+            // Extract code from input (URL or raw code)
+            const { extractCodeFromInput, completeOAuthFlow } = await import('../auth/oauth.js');
+            const { code } = extractCodeFromInput(callbackInput);
+
+            // Complete the OAuth flow
+            const accountData = await completeOAuthFlow(code, verifier);
+
+            // Add or update the account
+            await addAccount({
+                email: accountData.email,
+                refreshToken: accountData.refreshToken,
+                projectId: accountData.projectId,
+                source: 'oauth'
+            });
+
+            // Reload AccountManager to pick up the new account
+            await accountManager.reload();
+
+            // Abort the callback server since manual completion succeeded
+            if (abortServer) {
+                abortServer();
+            }
+
+            // Clean up
+            pendingOAuthFlows.delete(state);
+
+            logger.success(`[WebUI] Account ${accountData.email} added via manual callback`);
+
+            res.json({ 
+                status: 'ok', 
+                email: accountData.email,
+                message: `Account ${accountData.email} added successfully` 
+            });
+        } catch (error) {
+            logger.error('[WebUI] Manual OAuth completion error:', error);
             res.status(500).json({ status: 'error', error: error.message });
         }
     });

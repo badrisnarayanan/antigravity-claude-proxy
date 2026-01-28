@@ -7,6 +7,62 @@ import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { getCachedSignatureFamily } from './signature-cache.js';
 import { logger } from '../utils/logger.js';
 
+// ============================================================================
+// Cache Control Cleaning (Issue #189)
+// ============================================================================
+
+/**
+ * Remove cache_control fields from all content blocks in messages.
+ * This is a critical fix for Issue #189 where Claude Code CLI sends cache_control
+ * fields that the Cloud Code API rejects with "Extra inputs are not permitted".
+ *
+ * Inspired by Antigravity-Manager's clean_cache_control_from_messages() approach,
+ * this function proactively strips cache_control from ALL block types at the
+ * entry point of the conversion pipeline.
+ *
+ * @param {Array<Object>} messages - Array of messages in Anthropic format
+ * @returns {Array<Object>} Messages with cache_control fields removed
+ */
+export function cleanCacheControl(messages) {
+    if (!Array.isArray(messages)) return messages;
+
+    let removedCount = 0;
+
+    const cleaned = messages.map(message => {
+        if (!message || typeof message !== 'object') return message;
+
+        // Handle string content (no cache_control possible)
+        if (typeof message.content === 'string') return message;
+
+        // Handle array content
+        if (!Array.isArray(message.content)) return message;
+
+        const cleanedContent = message.content.map(block => {
+            if (!block || typeof block !== 'object') return block;
+
+            // Check if cache_control exists before destructuring
+            if (block.cache_control === undefined) return block;
+
+            // Create a shallow copy without cache_control
+            const { cache_control, ...cleanBlock } = block;
+            removedCount++;
+
+            return cleanBlock;
+        });
+
+        return {
+            ...message,
+            content: cleanedContent
+        };
+    });
+
+    if (removedCount > 0) {
+        logger.debug(`[ThinkingUtils] Removed cache_control from ${removedCount} block(s)`);
+    }
+
+    return cleaned;
+}
+
 /**
  * Check if a part is a thinking block
  * @param {Object} part - Content part to check
@@ -102,6 +158,38 @@ function sanitizeAnthropicThinkingBlock(block) {
     }
 
     return block;
+}
+
+/**
+ * Sanitize a text block by removing extra fields like cache_control.
+ * Only keeps: type, text
+ * @param {Object} block - Text block to sanitize
+ * @returns {Object} Sanitized text block
+ */
+function sanitizeTextBlock(block) {
+    if (!block || block.type !== 'text') return block;
+
+    const sanitized = { type: 'text' };
+    if (block.text !== undefined) sanitized.text = block.text;
+    return sanitized;
+}
+
+/**
+ * Sanitize a tool_use block by removing extra fields like cache_control.
+ * Only keeps: type, id, name, input, thoughtSignature (for Gemini)
+ * @param {Object} block - Tool_use block to sanitize
+ * @returns {Object} Sanitized tool_use block
+ */
+function sanitizeToolUseBlock(block) {
+    if (!block || block.type !== 'tool_use') return block;
+
+    const sanitized = { type: 'tool_use' };
+    if (block.id !== undefined) sanitized.id = block.id;
+    if (block.name !== undefined) sanitized.name = block.name;
+    if (block.input !== undefined) sanitized.input = block.input;
+    // Preserve thoughtSignature for Gemini models
+    if (block.thoughtSignature !== undefined) sanitized.thoughtSignature = block.thoughtSignature;
+    return sanitized;
 }
 
 /**
@@ -259,11 +347,13 @@ export function reorderAssistantContent(content) {
             // Sanitize thinking blocks to remove cache_control and other extra fields
             thinkingBlocks.push(sanitizeAnthropicThinkingBlock(block));
         } else if (block.type === 'tool_use') {
-            toolUseBlocks.push(block);
+            // Sanitize tool_use blocks to remove cache_control and other extra fields
+            toolUseBlocks.push(sanitizeToolUseBlock(block));
         } else if (block.type === 'text') {
             // Only keep text blocks with meaningful content
             if (block.text && block.text.trim().length > 0) {
-                textBlocks.push(block);
+                // Sanitize text blocks to remove cache_control and other extra fields
+                textBlocks.push(sanitizeTextBlock(block));
             } else {
                 droppedEmptyBlocks++;
             }

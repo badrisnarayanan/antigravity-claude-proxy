@@ -116,6 +116,40 @@ export class TokenBucketTracker {
     clear() {
         this.#buckets.clear();
     }
+
+    /**
+     * Get time in milliseconds until next token is available for an account
+     * @param {string} email - Account email
+     * @returns {number} Milliseconds until next token, 0 if tokens available now
+     */
+    getTimeUntilNextToken(email) {
+        const currentTokens = this.getTokens(email);
+        if (currentTokens >= 1) {
+            return 0;
+        }
+
+        // Calculate time to regenerate 1 token
+        const tokensNeeded = 1 - currentTokens;
+        const minutesNeeded = tokensNeeded / this.#config.tokensPerMinute;
+        return Math.ceil(minutesNeeded * 60 * 1000);
+    }
+
+    /**
+     * Get the minimum time until any account in the list has a token
+     * @param {Array<string>} emails - List of account emails
+     * @returns {number} Minimum milliseconds until any account has a token
+     */
+    getMinTimeUntilToken(emails) {
+        if (emails.length === 0) return 0;
+
+        let minWait = Infinity;
+        for (const email of emails) {
+            const wait = this.getTimeUntilNextToken(email);
+            if (wait === 0) return 0;
+            minWait = Math.min(minWait, wait);
+        }
+        return minWait === Infinity ? 0 : minWait;
+    }
 }
 
 export default TokenBucketTracker;

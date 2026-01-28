@@ -274,12 +274,6 @@ toggleMaxAccounts(value) {
             (v) => window.Validators.validateTimeout(v, EXTENDED_COOLDOWN_MIN, EXTENDED_COOLDOWN_MAX));
     },
 
-    toggleCapacityRetryDelayMs(value) {
-        const { CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX } = window.AppConstants.VALIDATION;
-        this.saveConfigField('capacityRetryDelayMs', value, 'Capacity Retry Delay',
-            (v) => window.Validators.validateTimeout(v, CAPACITY_RETRY_DELAY_MIN, CAPACITY_RETRY_DELAY_MAX));
-    },
-
     toggleMaxCapacityRetries(value) {
         const { MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxCapacityRetries', value, 'Max Capacity Retries',

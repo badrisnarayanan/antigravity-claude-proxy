@@ -12,7 +12,7 @@ const DEFAULT_CONFIG = {
     successReward: 1,      // Points on successful request
     rateLimitPenalty: -10, // Points on rate limit
     failurePenalty: -20,   // Points on other failures
-    recoveryPerHour: 2,    // Passive recovery rate
+    recoveryPerHour: 10,   // Passive recovery rate (increased from 2 for faster recovery)
     minUsable: 50,         // Minimum score to be selected
     maxScore: 100          // Maximum score cap
 };

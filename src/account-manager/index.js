@@ -16,7 +16,15 @@ import {
     markRateLimited as markLimited,
     markInvalid as markAccountInvalid,
     getMinWaitTimeMs as getMinWait,
-    getRateLimitInfo as getLimitInfo
+    getRateLimitInfo as getLimitInfo,
+    getConsecutiveFailures as getFailures,
+    resetConsecutiveFailures as resetFailures,
+    incrementConsecutiveFailures as incrementFailures,
+    markAccountCoolingDown as markCoolingDown,
+    isAccountCoolingDown as checkCoolingDown,
+    clearAccountCooldown as clearCooldown,
+    getCooldownRemaining as getCooldownMs,
+    CooldownReason
 } from './rate-limits.js';
 import {
     getTokenForAccount as fetchToken,
@@ -182,6 +190,10 @@ export class AccountManager {
         if (this.#strategy) {
             this.#strategy.onSuccess(account, modelId);
         }
+        // Reset consecutive failures on success (matches opencode-antigravity-auth)
+        if (account?.email) {
+            resetFailures(this.#accounts, account.email);
+        }
     }
 
     /**
@@ -204,6 +216,26 @@ export class AccountManager {
         if (this.#strategy) {
             this.#strategy.onFailure(account, modelId);
         }
+    }
+
+    /**
+     * Get the consecutive failure count for an account
+     * Used for progressive backoff calculation
+     * @param {string} email - Account email
+     * @returns {number} Number of consecutive failures
+     */
+    getConsecutiveFailures(email) {
+        return getFailures(this.#accounts, email);
+    }
+
+    /**
+     * Increment the consecutive failure count without marking as rate limited
+     * Used for quick retries to track failures while staying on same account
+     * @param {string} email - Account email
+     * @returns {number} New consecutive failure count
+     */
+    incrementConsecutiveFailures(email) {
+        return incrementFailures(this.#accounts, email);
     }
 
     /**
@@ -273,6 +305,52 @@ export class AccountManager {
      */
     getRateLimitInfo(email, modelId) {
         return getLimitInfo(this.#accounts, email, modelId);
+    }
+
+    // ============================================================================
+    // Cooldown Methods (matches opencode-antigravity-auth)
+    // ============================================================================
+
+    /**
+     * Mark an account as cooling down for a specified duration
+     * Used for temporary backoff separate from rate limits
+     * @param {string} email - Email of the account
+     * @param {number} cooldownMs - Duration of cooldown in milliseconds
+     * @param {string} [reason] - Reason for the cooldown (use CooldownReason constants)
+     */
+    markAccountCoolingDown(email, cooldownMs, reason = CooldownReason.RATE_LIMIT) {
+        markCoolingDown(this.#accounts, email, cooldownMs, reason);
+    }
+
+    /**
+     * Check if an account is currently cooling down
+     * @param {string} email - Email of the account
+     * @returns {boolean} True if account is cooling down
+     */
+    isAccountCoolingDown(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        return account ? checkCoolingDown(account) : false;
+    }
+
+    /**
+     * Clear the cooldown for an account
+     * @param {string} email - Email of the account
+     */
+    clearAccountCooldown(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (account) {
+            clearCooldown(account);
+        }
+    }
+
+    /**
+     * Get time remaining until cooldown expires for an account
+     * @param {string} email - Email of the account
+     * @returns {number} Milliseconds until cooldown expires, 0 if not cooling down
+     */
+    getCooldownRemaining(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        return account ? getCooldownMs(account) : 0;
     }
 
     /**
@@ -380,5 +458,8 @@ export class AccountManager {
         return this.#accounts;
     }
 }
+
+// Re-export CooldownReason for use by handlers
+export { CooldownReason };
 
 export default AccountManager;

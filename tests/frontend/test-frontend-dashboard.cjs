@@ -91,11 +91,12 @@ const tests = [
             const res = await request('/views/dashboard.html');
             const html = res.data;
 
+            // Dashboard uses dropdown-based filters for time range, display mode, and model selection
             const filterElements = [
-                'filters.account',    // Account filter
-                'filters.family',     // Model family filter
-                'filters.search',     // Search input
-                'computeQuotaRows'    // Filter action
+                'showTimeRangeDropdown',  // Time range dropdown toggle
+                'showDisplayModeDropdown', // Display mode dropdown toggle
+                'showModelFilter',         // Model/family filter dropdown toggle
+                'setTimeRange'             // Time range action
             ];
 
             const missing = filterElements.filter(el => !html.includes(el));
@@ -106,23 +107,24 @@ const tests = [
         }
     },
     {
-        name: 'Dashboard table has required columns',
+        name: 'Dashboard has chart and visualization elements',
         async run() {
             const res = await request('/views/dashboard.html');
             const html = res.data;
 
-            const columns = [
-                'modelIdentity',      // Model name column
-                'globalQuota',        // Quota column
-                'nextReset',          // Reset time column
-                'distribution'        // Account distribution column
+            // Dashboard now uses charts instead of tables
+            const visualElements = [
+                'quotaChart',           // Quota distribution pie chart
+                'usageTrendChart',      // Usage trend line chart
+                'usageStats.total',     // Total usage stat
+                'selectedFamilies'      // Family selection for chart
             ];
 
-            const missing = columns.filter(col => !html.includes(col));
+            const missing = visualElements.filter(col => !html.includes(col));
             if (missing.length > 0) {
-                throw new Error(`Missing table columns: ${missing.join(', ')}`);
+                throw new Error(`Missing visualization elements: ${missing.join(', ')}`);
             }
-            return 'All table columns present';
+            return 'All chart and visualization elements present';
         }
     }
 ];

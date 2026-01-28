@@ -278,8 +278,6 @@ window.translations.id = {
     maxConsecutiveFailuresDesc: "Jumlah kegagalan berturut-turut sebelum menerapkan cooldown diperpanjang.",
     extendedCooldown: "Cooldown Diperpanjang",
     extendedCooldownDesc: "Durasi cooldown setelah mencapai maks. kegagalan berturut-turut.",
-    capacityRetryDelay: "Jeda Retry Kapasitas",
-    capacityRetryDelayDesc: "Jeda sebelum retry saat kapasitas model habis (bukan kuota).",
     maxCapacityRetries: "Maks. Retry Kapasitas",
     maxCapacityRetriesDesc: "Maksimum retry untuk kehabisan kapasitas sebelum ganti akun.",
     saveConfigServer: "Simpan Konfigurasi",
@@ -337,6 +335,24 @@ window.translations.id = {
     quotaDistribution: "Distribusi Kuota",
     resetsIn: "Reset dalam {time}",
     noQuotaData: "Data kuota belum tersedia untuk akun ini.",
+    // Manual OAuth Mode
+    manualMode: "Mode Manual",
+    manualModeDesc: "(untuk lingkungan di mana callback tidak bisa dicapai)",
+    authLinkLabel: "Link Otorisasi:",
+    linkCopied: "Link disalin ke clipboard",
+    pasteCallbackLabel: "Tempel callback URL atau kode:",
+    pasteCallbackPlaceholder: "http://localhost:51121/oauth-callback?code=... atau 4/0xxx...",
+    completeAuth: "Selesaikan Otorisasi",
+    authFailed: "Otorisasi gagal",
+    // Import/Export
+    export: "Ekspor",
+    import: "Impor",
+    exportAccounts: "Ekspor Akun",
+    importAccounts: "Impor Akun",
+    exportSuccess: "Berhasil mengekspor {count} akun",
+    exportFailed: "Gagal mengekspor",
+    importSuccess: "Impor selesai:",
+    importFailed: "Gagal mengimpor",
 
     // Completed TODOs
     pageTitle: "Antigravity Console",

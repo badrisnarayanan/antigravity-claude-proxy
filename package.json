@@ -35,7 +35,8 @@
     "test:oauth": "node tests/test-oauth-no-browser.cjs",
     "test:emptyretry": "node tests/test-empty-response-retry.cjs",
     "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
-    "test:strategies": "node tests/test-strategies.cjs"
+    "test:strategies": "node tests/test-strategies.cjs",
+    "test:cache-control": "node tests/test-cache-control.cjs"
   },
   "keywords": [
     "claude",

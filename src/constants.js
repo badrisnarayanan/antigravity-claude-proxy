@@ -103,16 +103,33 @@ export const MAX_ACCOUNTS = config?.maxAccounts || 10; // From config or 10
 // Rate limit wait thresholds
 export const MAX_WAIT_BEFORE_ERROR_MS = config?.maxWaitBeforeErrorMs || 120000; // From config or 2 minutes
 
-// Gap 1: Retry deduplication - prevents thundering herd on concurrent rate limits
-export const RATE_LIMIT_DEDUP_WINDOW_MS = config?.rateLimitDedupWindowMs || 5000; // 5 seconds
+// Retry deduplication - prevents thundering herd on concurrent rate limits
+export const RATE_LIMIT_DEDUP_WINDOW_MS = config?.rateLimitDedupWindowMs || 2000; // 2 seconds
+export const RATE_LIMIT_STATE_RESET_MS = config?.rateLimitStateResetMs || 120000; // 2 minutes - reset consecutive429 after inactivity
+export const FIRST_RETRY_DELAY_MS = config?.firstRetryDelayMs || 1000; // Quick 1s retry on first 429
+export const SWITCH_ACCOUNT_DELAY_MS = config?.switchAccountDelayMs || 5000; // Delay before switching accounts
 
-// Gap 2: Consecutive failure tracking - extended cooldown after repeated failures
+// Consecutive failure tracking - extended cooldown after repeated failures
 export const MAX_CONSECUTIVE_FAILURES = config?.maxConsecutiveFailures || 3;
 export const EXTENDED_COOLDOWN_MS = config?.extendedCooldownMs || 60000; // 1 minute
 
-// Gap 4: Capacity exhaustion - shorter retry for model capacity issues (not quota)
-export const CAPACITY_RETRY_DELAY_MS = config?.capacityRetryDelayMs || 2000; // 2 seconds
-export const MAX_CAPACITY_RETRIES = config?.maxCapacityRetries || 3;
+// Capacity exhaustion - progressive backoff tiers for model capacity issues
+export const CAPACITY_BACKOFF_TIERS_MS = config?.capacityBackoffTiersMs || [5000, 10000, 20000, 30000, 60000];
+export const MAX_CAPACITY_RETRIES = config?.maxCapacityRetries || 5;
+
+// Smart backoff by error type
+export const BACKOFF_BY_ERROR_TYPE = {
+    RATE_LIMIT_EXCEEDED: 30000,      // 30 seconds
+    MODEL_CAPACITY_EXHAUSTED: 15000, // 15 seconds
+    SERVER_ERROR: 20000,             // 20 seconds
+    UNKNOWN: 60000                   // 1 minute
+};
+
+// Progressive backoff tiers for QUOTA_EXHAUSTED (60s, 5m, 30m, 2h)
+export const QUOTA_EXHAUSTED_BACKOFF_TIERS_MS = [60000, 300000, 1800000, 7200000];
+
+// Minimum backoff floor to prevent "Available in 0s" loops (matches opencode-antigravity-auth)
+export const MIN_BACKOFF_MS = 2000;
 
 // Thinking model constants
 export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature length
@@ -171,13 +188,19 @@ export function isThinkingModel(modelName) {
 }
 
 // Google OAuth configuration (from opencode-antigravity-auth)
+// OAuth callback port - configurable via environment variable for Windows compatibility (issue #176)
+// Windows may reserve ports in range 49152-65535 for Hyper-V/WSL2/Docker, causing EACCES errors
+const OAUTH_CALLBACK_PORT = parseInt(process.env.OAUTH_CALLBACK_PORT || '51121', 10);
+const OAUTH_CALLBACK_FALLBACK_PORTS = [51122, 51123, 51124, 51125, 51126];
+
 export const OAUTH_CONFIG = {
     clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
     clientSecret: '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',
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     userInfoUrl: 'https://www.googleapis.com/oauth2/v1/userinfo',
-    callbackPort: 51121,
+    callbackPort: OAUTH_CALLBACK_PORT,
+    callbackFallbackPorts: OAUTH_CALLBACK_FALLBACK_PORTS,
     scopes: [
         'https://www.googleapis.com/auth/cloud-platform',
         'https://www.googleapis.com/auth/userinfo.email',
@@ -219,7 +242,7 @@ export const DEFAULT_PRESETS = [
             ANTHROPIC_MODEL: 'claude-opus-4-5-thinking',
             ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-5-thinking',
             ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-5-thinking',
-            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-2.5-flash-lite[1m]',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-sonnet-4-5',
             CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-4-5-thinking',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
         }
@@ -232,7 +255,7 @@ export const DEFAULT_PRESETS = [
             ANTHROPIC_MODEL: 'gemini-3-pro-high[1m]',
             ANTHROPIC_DEFAULT_OPUS_MODEL: 'gemini-3-pro-high[1m]',
             ANTHROPIC_DEFAULT_SONNET_MODEL: 'gemini-3-flash[1m]',
-            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-2.5-flash-lite[1m]',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-3-flash[1m]',
             CLAUDE_CODE_SUBAGENT_MODEL: 'gemini-3-flash[1m]',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
         }
@@ -258,10 +281,16 @@ export default {
     MAX_ACCOUNTS,
     MAX_WAIT_BEFORE_ERROR_MS,
     RATE_LIMIT_DEDUP_WINDOW_MS,
+    RATE_LIMIT_STATE_RESET_MS,
+    FIRST_RETRY_DELAY_MS,
+    SWITCH_ACCOUNT_DELAY_MS,
     MAX_CONSECUTIVE_FAILURES,
     EXTENDED_COOLDOWN_MS,
-    CAPACITY_RETRY_DELAY_MS,
+    CAPACITY_BACKOFF_TIERS_MS,
     MAX_CAPACITY_RETRIES,
+    BACKOFF_BY_ERROR_TYPE,
+    QUOTA_EXHAUSTED_BACKOFF_TIERS_MS,
+    MIN_BACKOFF_MS,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,

@@ -55,6 +55,7 @@ npm run test:images        # Image processing
 npm run test:caching       # Prompt caching
 npm run test:crossmodel    # Cross-model thinking signatures
 npm run test:oauth         # OAuth no-browser mode
+npm run test:cache-control # Cache control field stripping
 
 # Run strategy unit tests (no server required)
 node tests/test-strategies.cjs
@@ -102,7 +103,8 @@ src/
 │       └── trackers/           # State trackers for hybrid strategy
 │           ├── index.js        # Re-exports trackers
 │           ├── health-tracker.js    # Account health scores
-│           └── token-bucket-tracker.js  # Client-side rate limiting
+│           ├── token-bucket-tracker.js  # Client-side rate limiting
+│           └── quota-tracker.js     # Quota-aware account selection
 │
 ├── auth/                       # Authentication
 │   ├── oauth.js                # Google OAuth with PKCE
@@ -211,11 +213,15 @@ public/
    - Maximizes concurrent request distribution
 
 3. **Hybrid Strategy** (default, smart distribution):
-   - Uses health scores, token buckets, and LRU for selection
-   - Scoring formula: `score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (LRU × 0.1)`
+   - Uses health scores, token buckets, quota awareness, and LRU for selection
+   - Scoring formula: `score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (Quota × 1) + (LRU × 0.1)`
    - Health scores: Track success/failure patterns with passive recovery
    - Token buckets: Client-side rate limiting (50 tokens, 6 per minute regeneration)
+   - Quota awareness: Accounts with critical quota (<5%) are deprioritized
    - LRU freshness: Prefer accounts that have rested longer
+   - **Emergency/Last Resort Fallback**: When all accounts are exhausted:
+     - Emergency fallback: Bypasses health check, adds 250ms throttle delay
+     - Last resort fallback: Bypasses both health and token checks, adds 500ms throttle delay
    - Configuration in `src/config.js` under `accountSelection`
 
 **Account Data Model:**
@@ -251,6 +257,14 @@ Each account object in `accounts.json` contains:
 - For Gemini targets: strict validation - drops unknown or mismatched signatures
 - For Claude targets: lenient - lets Claude validate its own signatures
 
+**Cache Control Handling (Issue #189):**
+- Claude Code CLI sends `cache_control` fields on content blocks for prompt caching
+- Cloud Code API rejects these with "Extra inputs are not permitted"
+- `cleanCacheControl(messages)` strips cache_control from ALL block types at pipeline entry
+- Called at the START of `convertAnthropicToGoogle()` before any other processing
+- Additional sanitizers (`sanitizeTextBlock`, `sanitizeToolUseBlock`) provide defense-in-depth
+- Pattern inspired by Antigravity-Manager's `clean_cache_control_from_messages()`
+
 **Native Module Auto-Rebuild:**
 - When Node.js is updated, native modules like `better-sqlite3` may become incompatible
 - The proxy automatically detects `NODE_MODULE_VERSION` mismatch errors
@@ -284,7 +298,9 @@ Each account object in `accounts.json` contains:
   - ARIA labels on search inputs and icon buttons
   - Keyboard navigation support (Escape to clear search)
 - **Security**: Optional password protection via `WEBUI_PASSWORD` env var
+- **Config Redaction**: Sensitive values (passwords, tokens) are redacted in API responses
 - **Smart Refresh**: Client-side polling with ±20% jitter and tab visibility detection (3x slower when hidden)
+- **i18n Support**: English, Chinese (中文), Indonesian (Bahasa), Portuguese (PT-BR)
 
 ## Testing Notes
 

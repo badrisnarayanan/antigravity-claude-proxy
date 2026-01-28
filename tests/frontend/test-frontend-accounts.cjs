@@ -66,7 +66,8 @@ const tests = [
         name: 'Accounts view has table with required columns',
         async run() {
             const res = await request('/views/accounts.html');
-            const columns = ['enabled', 'identity', 'projectId', 'health', 'operations'];
+            // Updated column names to match current HTML: enabled, accountEmail, source, tier, quota, health, operations
+            const columns = ['enabled', 'accountEmail', 'source', 'tier', 'health', 'operations'];
 
             const missing = columns.filter(col => !res.data.includes(col));
             if (missing.length > 0) {
@@ -102,7 +103,8 @@ const tests = [
         name: 'Accounts view has delete button',
         async run() {
             const res = await request('/views/accounts.html');
-            if (!res.data.includes('deleteAccount')) {
+            // Function is now confirmDeleteAccount (opens confirmation modal)
+            if (!res.data.includes('confirmDeleteAccount')) {
                 throw new Error('Delete account function not found');
             }
             return 'Delete button present';
@@ -126,6 +128,81 @@ const tests = [
                 throw new Error('Add account button not found');
             }
             return 'Add Node button present';
+        }
+    },
+    {
+        name: 'Main page has addAccountModal component',
+        async run() {
+            // The modal lives in index.html, not accounts.html
+            const res = await request('/index.html');
+            if (!res.data.includes('addAccountModal')) {
+                throw new Error('addAccountModal component not found');
+            }
+            return 'addAccountModal component present';
+        }
+    },
+    {
+        name: 'Main page has manual auth UI elements',
+        async run() {
+            // Manual auth elements are in the modal in index.html
+            const res = await request('/index.html');
+            const elements = ['initManualAuth', 'completeManualAuth', 'callbackInput'];
+            const missing = elements.filter(el => !res.data.includes(el));
+            if (missing.length > 0) {
+                throw new Error(`Missing manual auth elements: ${missing.join(', ')}`);
+            }
+            return 'All manual auth UI elements present';
+        }
+    },
+    {
+        name: 'Auth URL API endpoint works',
+        async run() {
+            const res = await request('/api/auth/url');
+            if (res.status !== 200) {
+                throw new Error(`Expected 200, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (data.status !== 'ok') {
+                throw new Error(`API returned status: ${data.status}`);
+            }
+            if (!data.url || !data.state) {
+                throw new Error('Missing url or state in response');
+            }
+            return `Auth URL generated with state: ${data.state.substring(0, 8)}...`;
+        }
+    },
+    {
+        name: 'Auth complete API validates required fields',
+        async run() {
+            const res = await request('/api/auth/complete', {
+                method: 'POST',
+                body: {}
+            });
+            if (res.status !== 400) {
+                throw new Error(`Expected 400 for missing fields, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (!data.error || !data.error.includes('Missing')) {
+                throw new Error('Expected error about missing fields');
+            }
+            return 'API validates required fields';
+        }
+    },
+    {
+        name: 'Auth complete API rejects invalid state',
+        async run() {
+            const res = await request('/api/auth/complete', {
+                method: 'POST',
+                body: { callbackInput: 'fake-code', state: 'invalid-state' }
+            });
+            if (res.status !== 400) {
+                throw new Error(`Expected 400 for invalid state, got ${res.status}`);
+            }
+            const data = JSON.parse(res.data);
+            if (!data.error || !data.error.includes('not found')) {
+                throw new Error('Expected error about flow not found');
+            }
+            return 'API rejects invalid state';
         }
     },
     {

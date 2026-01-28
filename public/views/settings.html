@@ -1229,44 +1229,20 @@
                             <div class="form-control">
                                 <label class="label pt-0">
                                     <span class="label-text text-gray-400 text-xs"
-                                        x-text="$store.global.t('capacityRetryDelay')">Capacity Retry Delay</span>
-                                    <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
-                                        x-text="Math.round((serverConfig.capacityRetryDelayMs || 2000) / 1000) + 's'"></span>
-                                </label>
-                                <div class="flex gap-3 items-center">
-                                    <input type="range" min="500" max="10000" step="500"
-                                        class="custom-range custom-range-cyan flex-1"
-                                        :value="serverConfig.capacityRetryDelayMs || 2000"
-                                        :style="`background-size: ${((serverConfig.capacityRetryDelayMs || 2000) - 500) / 95}% 100%`"
-                                        @input="toggleCapacityRetryDelayMs($event.target.value)"
-                                        aria-label="Capacity retry delay slider">
-                                    <input type="number" min="500" max="10000" step="500"
-                                        class="input input-xs input-bordered w-20 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.capacityRetryDelayMs || 2000"
-                                        @change="toggleCapacityRetryDelayMs($event.target.value)"
-                                        aria-label="Capacity retry delay value">
-                                </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
-                                    x-text="$store.global.t('capacityRetryDelayDesc')">Delay for capacity (not quota) issues.</p>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label pt-0">
-                                    <span class="label-text text-gray-400 text-xs"
                                         x-text="$store.global.t('maxCapacityRetries')">Max Capacity Retries</span>
                                     <span class="label-text-alt font-mono text-neon-cyan text-xs font-semibold"
-                                        x-text="serverConfig.maxCapacityRetries || 3"></span>
+                                        x-text="serverConfig.maxCapacityRetries || 5"></span>
                                 </label>
                                 <div class="flex gap-3 items-center">
                                     <input type="range" min="1" max="10" step="1"
                                         class="custom-range custom-range-cyan flex-1"
-                                        :value="serverConfig.maxCapacityRetries || 3"
-                                        :style="`background-size: ${((serverConfig.maxCapacityRetries || 3) - 1) / 0.09}% 100%`"
+                                        :value="serverConfig.maxCapacityRetries || 5"
+                                        :style="`background-size: ${((serverConfig.maxCapacityRetries || 5) - 1) / 0.09}% 100%`"
                                         @input="toggleMaxCapacityRetries($event.target.value)"
                                         aria-label="Max capacity retries slider">
                                     <input type="number" min="1" max="10" step="1"
                                         class="input input-xs input-bordered w-16 bg-space-800 border-space-border text-white font-mono text-center"
-                                        :value="serverConfig.maxCapacityRetries || 3"
+                                        :value="serverConfig.maxCapacityRetries || 5"
                                         @change="toggleMaxCapacityRetries($event.target.value)"
                                         aria-label="Max capacity retries value">
                                 </div>

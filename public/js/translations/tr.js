@@ -227,8 +227,6 @@ window.translations.tr = {
     maxConsecutiveFailuresDesc: "Uzatılmış soğuma uygulamadan önce ardışık başarısızlık sayısı.",
     extendedCooldown: "Uzatılmış Soğuma",
     extendedCooldownDesc: "Maks. ardışık başarısızlık sonrası uygulanan soğuma süresi.",
-    capacityRetryDelay: "Kapasite Yeniden Deneme Gecikmesi",
-    capacityRetryDelayDesc: "Model kapasitesi tükendiğinde (kota değil) yeniden denemeden önceki gecikme.",
     maxCapacityRetries: "Maks. Kapasite Yeniden Denemesi",
     maxCapacityRetriesDesc: "Hesap değiştirmeden önce kapasite tükenmesi için maksimum yeniden deneme.",
     saveConfigServer: "Yapılandırmayı Kaydet",
@@ -280,6 +278,24 @@ window.translations.tr = {
     quotaDistribution: "Kota Dağılımı",
     resetsIn: "{time} içinde sıfırlanır",
     noQuotaData: "Bu hesap için henüz kota verisi yok.",
+    // Manual OAuth Mode
+    manualMode: "Manuel Mod",
+    manualModeDesc: "(callback ulaşamadığında kullan)",
+    authLinkLabel: "Yetkilendirme Linki:",
+    linkCopied: "Link panoya kopyalandı",
+    pasteCallbackLabel: "Callback URL veya kodu yapıştır:",
+    pasteCallbackPlaceholder: "http://localhost:51121/oauth-callback?code=... veya 4/0xxx...",
+    completeAuth: "Yetkilendirmeyi Tamamla",
+    authFailed: "Yetkilendirme başarısız",
+    // Import/Export
+    export: "Dışa Aktar",
+    import: "İçe Aktar",
+    exportAccounts: "Hesapları Dışa Aktar",
+    importAccounts: "Hesapları İçe Aktar",
+    exportSuccess: "{count} hesap dışa aktarıldı",
+    exportFailed: "Dışa aktarma başarısız",
+    importSuccess: "İçe aktarma tamamlandı:",
+    importFailed: "İçe aktarma başarısız",
 
     // TODO: Missing translations - Hardcoded strings from HTML
     // pageTitle: "Antigravity Console",

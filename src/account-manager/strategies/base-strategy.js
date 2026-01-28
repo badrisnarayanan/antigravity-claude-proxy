@@ -5,6 +5,8 @@
  * All strategies must implement the selectAccount method.
  */
 
+import { isAccountCoolingDown } from '../rate-limits.js';
+
 /**
  * @typedef {Object} SelectionResult
  * @property {Object|null} account - The selected account or null if none available
@@ -76,6 +78,9 @@ export class BaseStrategy {
 
         // Skip disabled accounts
         if (account.enabled === false) return false;
+
+        // Check if account is cooling down (matches opencode-antigravity-auth)
+        if (isAccountCoolingDown(account)) return false;
 
         // Check model-specific rate limit
         if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {

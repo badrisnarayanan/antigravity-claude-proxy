@@ -138,17 +138,49 @@ export function extractCodeFromInput(input) {
 }
 
 /**
+ * Attempt to bind server to a specific port
+ * @param {http.Server} server - HTTP server instance
+ * @param {number} port - Port to bind to
+ * @returns {Promise<number>} Resolves with port on success, rejects on error
+ */
+function tryBindPort(server, port) {
+    return new Promise((resolve, reject) => {
+        const onError = (err) => {
+            server.removeListener('listening', onSuccess);
+            reject(err);
+        };
+        const onSuccess = () => {
+            server.removeListener('error', onError);
+            resolve(port);
+        };
+        server.once('error', onError);
+        server.once('listening', onSuccess);
+        server.listen(port);
+    });
+}
+
+/**
  * Start a local server to receive the OAuth callback
- * Returns a promise that resolves with the authorization code
+ * Implements automatic port fallback for Windows compatibility (issue #176)
+ * Returns an object with a promise and an abort function
  *
  * @param {string} expectedState - Expected state parameter for CSRF protection
  * @param {number} timeoutMs - Timeout in milliseconds (default 120000)
- * @returns {Promise<string>} Authorization code from OAuth callback
+ * @returns {{promise: Promise<string>, abort: Function, getPort: Function}} Object with promise, abort, and getPort functions
  */
 export function startCallbackServer(expectedState, timeoutMs = 120000) {
-    return new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
-            const url = new URL(req.url, `http://localhost:${OAUTH_CONFIG.callbackPort}`);
+    let server = null;
+    let timeoutId = null;
+    let isAborted = false;
+    let actualPort = OAUTH_CONFIG.callbackPort;
+
+    const promise = new Promise(async (resolve, reject) => {
+        // Build list of ports to try: primary + fallbacks
+        const portsToTry = [OAUTH_CONFIG.callbackPort, ...(OAUTH_CONFIG.callbackFallbackPorts || [])];
+        const errors = [];
+
+        server = http.createServer((req, res) => {
+            const url = new URL(req.url, `http://localhost:${actualPort}`);
 
             if (url.pathname !== '/oauth-callback') {
                 res.writeHead(404);
@@ -228,24 +260,87 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
             resolve(code);
         });
 
-        server.on('error', (err) => {
-            if (err.code === 'EADDRINUSE') {
-                reject(new Error(`Port ${OAUTH_CONFIG.callbackPort} is already in use. Close any other OAuth flows and try again.`));
-            } else {
-                reject(err);
-            }
-        });
+        // Try ports with fallback logic (issue #176 - Windows EACCES fix)
+        let boundSuccessfully = false;
+        for (const port of portsToTry) {
+            try {
+                await tryBindPort(server, port);
+                actualPort = port;
+                boundSuccessfully = true;
 
-        server.listen(OAUTH_CONFIG.callbackPort, () => {
-            logger.info(`[OAuth] Callback server listening on port ${OAUTH_CONFIG.callbackPort}`);
-        });
+                if (port !== OAUTH_CONFIG.callbackPort) {
+                    logger.warn(`[OAuth] Primary port ${OAUTH_CONFIG.callbackPort} unavailable, using fallback port ${port}`);
+                } else {
+                    logger.info(`[OAuth] Callback server listening on port ${port}`);
+                }
+                break;
+            } catch (err) {
+                const errMsg = err.code === 'EACCES'
+                    ? `Permission denied on port ${port}`
+                    : err.code === 'EADDRINUSE'
+                    ? `Port ${port} already in use`
+                    : `Failed to bind port ${port}: ${err.message}`;
+                errors.push(errMsg);
+                logger.warn(`[OAuth] ${errMsg}`);
+            }
+        }
+
+        if (!boundSuccessfully) {
+            // All ports failed - provide helpful error message
+            const isWindows = process.platform === 'win32';
+            let errorMsg = `Failed to start OAuth callback server.\nTried ports: ${portsToTry.join(', ')}\n\nErrors:\n${errors.join('\n')}`;
+
+            if (isWindows) {
+                errorMsg += `\n
+================== WINDOWS TROUBLESHOOTING ==================
+The default port range may be reserved by Hyper-V/WSL2/Docker.
+
+Option 1: Use a custom port
+  Set OAUTH_CALLBACK_PORT=3456 in your environment or .env file
+
+Option 2: Reset Windows NAT (run as Administrator)
+  net stop winnat && net start winnat
+
+Option 3: Check reserved port ranges
+  netsh interface ipv4 show excludedportrange protocol=tcp
+
+Option 4: Exclude port from reservation (run as Administrator)
+  netsh int ipv4 add excludedportrange protocol=tcp startport=51121 numberofports=1
+==============================================================`;
+            } else {
+                errorMsg += `\n\nTry setting a custom port: OAUTH_CALLBACK_PORT=3456`;
+            }
+
+            reject(new Error(errorMsg));
+            return;
+        }
 
         // Timeout after specified duration
-        setTimeout(() => {
-            server.close();
-            reject(new Error('OAuth callback timeout - no response received'));
+        timeoutId = setTimeout(() => {
+            if (!isAborted) {
+                server.close();
+                reject(new Error('OAuth callback timeout - no response received'));
+            }
         }, timeoutMs);
     });
+
+    // Abort function to clean up server when manual completion happens
+    const abort = () => {
+        if (isAborted) return;
+        isAborted = true;
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        if (server) {
+            server.close();
+            logger.info('[OAuth] Callback server aborted (manual completion)');
+        }
+    };
+
+    // Get actual port (useful when fallback is used)
+    const getPort = () => actualPort;
+
+    return { promise, abort, getPort };
 }
 
 /**

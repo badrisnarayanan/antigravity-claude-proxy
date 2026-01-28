@@ -77,6 +77,12 @@ async function runTests() {
         }
     }
 
+    function assertNotNull(value, message = '') {
+        if (value === null || value === undefined) {
+            throw new Error(`${message}\nExpected non-null value but got: ${value}`);
+        }
+    }
+
     function assertWithin(actual, min, max, message = '') {
         if (actual < min || actual > max) {
             throw new Error(`${message}\nExpected value between ${min} and ${max}, got: ${actual}`);
@@ -691,7 +697,7 @@ async function runTests() {
         assertEqual(result.account.email, 'account3@example.com', 'Oldest account should be selected');
     });
 
-    test('HybridStrategy: filters out unhealthy accounts', () => {
+    test('HybridStrategy: uses emergency fallback for unhealthy accounts', () => {
         const strategy = new HybridStrategy({
             healthScore: { initial: 40, minUsable: 50 },
             tokenBucket: { initialTokens: 50, maxTokens: 50 }
@@ -699,19 +705,25 @@ async function runTests() {
         const accounts = createMockAccounts(3);
 
         // All accounts start with health 40, which is below minUsable 50
+        // But emergency fallback should still return an account
         const result = strategy.selectAccount(accounts, 'model');
-        assertNull(result.account, 'Should filter all accounts with low health');
+        assertNotNull(result.account, 'Emergency fallback should return an account');
+        // waitMs indicates fallback was used (250ms for emergency)
+        assertTrue(result.waitMs >= 250, 'Emergency fallback should add throttle delay');
     });
 
-    test('HybridStrategy: filters out accounts without tokens', () => {
+    test('HybridStrategy: uses last resort fallback for accounts without tokens', () => {
         const strategy = new HybridStrategy({
             healthScore: { initial: 70 },
             tokenBucket: { initialTokens: 0, maxTokens: 50 }
         });
         const accounts = createMockAccounts(3);
 
+        // No tokens, but last resort fallback should still return an account
         const result = strategy.selectAccount(accounts, 'model');
-        assertNull(result.account, 'Should filter all accounts without tokens');
+        assertNotNull(result.account, 'Last resort fallback should return an account');
+        // waitMs indicates fallback was used (500ms for lastResort)
+        assertTrue(result.waitMs >= 500, 'Last resort fallback should add throttle delay');
     });
 
     test('HybridStrategy: consumes token on selection', () => {
@@ -993,7 +1005,7 @@ async function runTests() {
         assertEqual(result.account.email, 'account2@example.com');
     });
 
-    test('Integration: Token consumption limits requests', () => {
+    test('Integration: Token exhaustion triggers last resort fallback', () => {
         const strategy = new HybridStrategy({
             tokenBucket: { initialTokens: 2, maxTokens: 10 }
         });
@@ -1003,9 +1015,11 @@ async function runTests() {
         strategy.selectAccount(accounts, 'model'); // 2 -> 1
         strategy.selectAccount(accounts, 'model'); // 1 -> 0
 
-        // Third request should fail (no tokens)
+        // Third request should use last resort fallback (not null)
         const result = strategy.selectAccount(accounts, 'model');
-        assertNull(result.account, 'Should return null when tokens exhausted');
+        assertNotNull(result.account, 'Last resort fallback should return an account');
+        // waitMs indicates fallback was used (500ms for lastResort)
+        assertTrue(result.waitMs >= 500, 'Last resort fallback should add throttle delay');
     });
 
     test('Integration: Multi-model rate limiting is independent', () => {

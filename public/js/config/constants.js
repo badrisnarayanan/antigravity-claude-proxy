@@ -85,10 +85,6 @@ window.AppConstants.VALIDATION = {
     EXTENDED_COOLDOWN_MIN: 10000,
     EXTENDED_COOLDOWN_MAX: 300000,
 
-    // Capacity retry delay (500ms - 10 seconds)
-    CAPACITY_RETRY_DELAY_MIN: 500,
-    CAPACITY_RETRY_DELAY_MAX: 10000,
-
     // Capacity retries (1 - 10)
     MAX_CAPACITY_RETRIES_MIN: 1,
     MAX_CAPACITY_RETRIES_MAX: 10
