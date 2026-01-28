@@ -94,10 +94,36 @@ window.Components.models = () => ({
 
         // Only save if value actually changed
         if (currentPct !== originalPct) {
+            // Optimistic in-place update: mutate existing quotaInfo entries directly
+            // to avoid full DOM rebuild from computeQuotaRows()
+            const dataStore = Alpine.store('data');
+            const account = dataStore.accounts.find(a => a.email === email);
+            if (account) {
+                if (!account.modelQuotaThresholds) account.modelQuotaThresholds = {};
+                if (currentPct === 0) {
+                    delete account.modelQuotaThresholds[modelId];
+                } else {
+                    account.modelQuotaThresholds[modelId] = currentPct / 100;
+                }
+            }
+            // Patch quotaRows in-place so Alpine updates without tearing down DOM
+            const rows = dataStore.quotaRows || [];
+            for (const row of rows) {
+                if (row.modelId !== modelId) continue;
+                for (const q of row.quotaInfo) {
+                    if (q.fullEmail !== email) continue;
+                    q.thresholdPct = currentPct;
+                }
+                // Recompute row-level threshold stats
+                const activePcts = row.quotaInfo.map(q => q.thresholdPct).filter(t => t > 0);
+                row.effectiveThresholdPct = activePcts.length > 0 ? Math.max(...activePcts) : 0;
+                row.hasVariedThresholds = new Set(activePcts).size > 1;
+            }
+            this.dragging.active = false;
             this.saveModelThreshold(email, modelId, currentPct);
+        } else {
+            this.dragging.active = false;
         }
-
-        this.dragging.active = false;
     },
 
     /**
@@ -105,19 +131,16 @@ window.Components.models = () => ({
      */
     async saveModelThreshold(email, modelId, pct) {
         const store = Alpine.store('global');
+        const dataStore = Alpine.store('data');
 
-        // Find the account to get existing thresholds
-        const account = Alpine.store('data').accounts.find(a => a.email === email);
+        const account = dataStore.accounts.find(a => a.email === email);
         if (!account) return;
 
-        // Build full modelQuotaThresholds (API does full replacement, not merge)
+        // Snapshot for rollback on failure
+        const previousModelThresholds = account.modelQuotaThresholds ? { ...account.modelQuotaThresholds } : {};
+
+        // Build full modelQuotaThresholds for API (full replacement, not merge)
         const existingModelThresholds = { ...(account.modelQuotaThresholds || {}) };
-        if (pct === 0) {
-            // Dragging to 0 removes the per-model override
-            delete existingModelThresholds[modelId];
-        } else {
-            existingModelThresholds[modelId] = pct / 100;
-        }
 
         // Preserve the account-level quotaThreshold
         const quotaThreshold = account.quotaThreshold !== undefined ? account.quotaThreshold : null;
@@ -138,14 +161,16 @@ window.Components.models = () => ({
             if (data.status === 'ok') {
                 const label = pct === 0 ? 'removed' : pct + '%';
                 store.showToast(`${email.split('@')[0]} ${modelId} threshold: ${label}`, 'success');
-                Alpine.store('data').fetchData();
+                // Skip fetchData() — optimistic update is already applied,
+                // next polling cycle will sync server state
             } else {
                 throw new Error(data.error || 'Failed to save threshold');
             }
         } catch (e) {
+            // Revert optimistic update on failure
+            account.modelQuotaThresholds = previousModelThresholds;
+            dataStore.computeQuotaRows();
             store.showToast('Failed to save threshold: ' + e.message, 'error');
-            // Refresh to revert visual state
-            Alpine.store('data').fetchData();
         }
     },
 
@@ -162,6 +187,31 @@ window.Components.models = () => ({
     getMarkerPct(q, row) {
         if (this.isDragging(q, row)) return this.dragging.currentPct;
         return q.thresholdPct;
+    },
+
+    /**
+     * Compute pixel offset for overlapping markers so stacked ones fan out.
+     * Markers within 2% of each other are considered overlapping.
+     * Returns a CSS pixel offset string (e.g., '6px' or '-6px').
+     */
+    getMarkerOffset(q, row, qIdx) {
+        const pct = this.getMarkerPct(q, row);
+        const visible = row.quotaInfo.filter(item => item.thresholdPct > 0 || this.isDragging(item, row));
+        // Find all markers within 2% of this one
+        const cluster = [];
+        visible.forEach((item, idx) => {
+            const itemPct = this.getMarkerPct(item, row);
+            if (Math.abs(itemPct - pct) <= 2) {
+                cluster.push({ item, idx });
+            }
+        });
+        if (cluster.length <= 1) return '0px';
+        // Find position of this marker within its cluster
+        const posInCluster = cluster.findIndex(c => c.item.fullEmail === q.fullEmail);
+        // Spread markers 10px apart, centered on the base position
+        const spread = 10;
+        const totalWidth = (cluster.length - 1) * spread;
+        return (posInCluster * spread - totalWidth / 2) + 'px';
     },
 
     init() {

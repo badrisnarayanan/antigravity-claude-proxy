@@ -198,7 +198,7 @@
                                     <template x-for="(q, qIdx) in row.quotaInfo.filter(q => q.thresholdPct > 0 || isDragging(q, row))" :key="q.fullEmail + '-threshold'">
                                         <div class="absolute -top-1 -bottom-1 group/marker"
                                              :class="isDragging(q, row) ? 'cursor-grabbing z-30' : 'cursor-grab'"
-                                             :style="'left: calc(' + getMarkerPct(q, row) + '% - 4px); width: 9px;'"
+                                             :style="'left: calc(' + getMarkerPct(q, row) + '% - 4px); width: 9px; transform: translateX(' + (isDragging(q, row) ? '0px' : getMarkerOffset(q, row, qIdx)) + ');'"
                                              :title="q.email + ' min: ' + getMarkerPct(q, row) + '%'"
                                              @mousedown.prevent="startDrag($event, q, row)"
                                              @touchstart.prevent="startDrag($event, q, row)">
