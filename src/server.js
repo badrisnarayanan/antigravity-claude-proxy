@@ -557,6 +557,7 @@ app.get('/account-limits', async (req, res) => {
             totalAccounts: allAccounts.length,
             models: sortedModels,
             modelConfig: config.modelMapping || {},
+            globalQuotaThreshold: config.globalQuotaThreshold || 0,
             accounts: accountLimits.map(acc => {
                 // Merge quota data with account metadata
                 const metadata = accountMetadataMap.get(acc.email) || {};
