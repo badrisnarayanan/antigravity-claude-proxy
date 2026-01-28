@@ -572,6 +572,9 @@ app.get('/account-limits', async (req, res) => {
                     invalidReason: metadata.invalidReason || null,
                     lastUsed: metadata.lastUsed || null,
                     modelRateLimits: metadata.modelRateLimits || {},
+                    // Quota threshold settings
+                    quotaThreshold: metadata.quotaThreshold,
+                    modelQuotaThresholds: metadata.modelQuotaThresholds || {},
                     // Subscription data (new)
                     subscription: acc.subscription || metadata.subscription || { tier: 'unknown', projectId: null },
                     // Quota limits
