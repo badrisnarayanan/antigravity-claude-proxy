@@ -51,15 +51,19 @@ export class QuotaTracker {
      * Check if an account has critically low quota for a model
      * @param {Object} account - Account object
      * @param {string} modelId - Model ID to check
+     * @param {number} [thresholdOverride] - Optional threshold to use instead of default criticalThreshold
      * @returns {boolean} True if quota is at or below critical threshold
      */
-    isQuotaCritical(account, modelId) {
+    isQuotaCritical(account, modelId, thresholdOverride) {
         const fraction = this.getQuotaFraction(account, modelId);
         // Unknown quota = not critical (assume OK)
         if (fraction === null) return false;
         // Only apply critical check if data is fresh
         if (!this.isQuotaFresh(account)) return false;
-        return fraction <= this.#config.criticalThreshold;
+        const threshold = (typeof thresholdOverride === 'number' && thresholdOverride > 0)
+            ? thresholdOverride
+            : this.#config.criticalThreshold;
+        return fraction <= threshold;
     }
 
     /**

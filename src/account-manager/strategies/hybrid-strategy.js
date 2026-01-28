@@ -18,6 +18,7 @@
 import { BaseStrategy } from './base-strategy.js';
 import { HealthTracker, TokenBucketTracker, QuotaTracker } from './trackers/index.js';
 import { logger } from '../../utils/logger.js';
+import { config } from '../../config.js';
 
 // Default weights for scoring
 const DEFAULT_WEIGHTS = {
@@ -168,8 +169,12 @@ export class HybridStrategy extends BaseStrategy {
                 }
 
                 // Quota availability check (exclude critically low quota)
-                if (this.#quotaTracker.isQuotaCritical(account, modelId)) {
-                    logger.debug(`[HybridStrategy] Excluding ${account.email}: quota critically low for ${modelId}`);
+                // Threshold priority: per-model > per-account > global > default
+                const effectiveThreshold = account.modelQuotaThresholds?.[modelId]
+                    ?? account.quotaThreshold
+                    ?? (config.globalQuotaThreshold || undefined);
+                if (this.#quotaTracker.isQuotaCritical(account, modelId, effectiveThreshold)) {
+                    logger.debug(`[HybridStrategy] Excluding ${account.email}: quota critically low for ${modelId} (threshold: ${effectiveThreshold ?? 'default'})`);
                     return false;
                 }
 
@@ -311,7 +316,10 @@ export class HybridStrategy extends BaseStrategy {
                 accountsWithoutTokens.push(account.email);
                 continue;
             }
-            if (this.#quotaTracker.isQuotaCritical(account, modelId)) {
+            const diagThreshold = account.modelQuotaThresholds?.[modelId]
+                ?? account.quotaThreshold
+                ?? (config.globalQuotaThreshold || undefined);
+            if (this.#quotaTracker.isQuotaCritical(account, modelId, diagThreshold)) {
                 criticalQuotaCount++;
                 continue;
             }
