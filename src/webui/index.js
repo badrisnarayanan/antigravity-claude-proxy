@@ -467,7 +467,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -493,8 +493,11 @@ export function mountWebUI(app, dirname, accountManager) {
             if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
                 updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
             }
-if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
+            if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
                 updates.maxAccounts = maxAccounts;
+            }
+            if (typeof globalQuotaThreshold === 'number' && globalQuotaThreshold >= 0 && globalQuotaThreshold < 1) {
+                updates.globalQuotaThreshold = globalQuotaThreshold;
             }
             if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
                 updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;
