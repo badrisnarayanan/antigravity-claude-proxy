@@ -496,7 +496,7 @@
                                 @click="thresholdDialog.addingModel = false">
                             Cancel
                         </button>
-                        <button class="btn btn-xs bg-neon-yellow text-black flex-1"
+                        <button class="btn btn-xs btn-warning text-black flex-1"
                                 @click="confirmAddModelThreshold()"
                                 :disabled="!thresholdDialog.newModelId">
                             Add Override
@@ -509,7 +509,7 @@
                 <form method="dialog">
                     <button class="btn btn-ghost hover:bg-white/10">Cancel</button>
                 </form>
-                <button class="btn bg-neon-yellow hover:bg-yellow-600 border-none text-black font-semibold"
+                <button class="btn btn-warning border-none text-black font-semibold"
                         @click="saveAccountThreshold()"
                         :disabled="thresholdDialog.saving"
                         :class="{ 'loading': thresholdDialog.saving }">
