@@ -69,32 +69,17 @@ export class AccountManager {
         this.#settings = settings;
         this.#currentIndex = activeIndex;
 
-        // Merge accounts from environment variable (PROXY_ACCOUNTS)
-        const envAccounts = loadAccountsFromEnv();
-        if (envAccounts.length > 0) {
-            const existingEmails = new Set(this.#accounts.map(a => a.email));
-            for (const envAcc of envAccounts) {
-                if (existingEmails.has(envAcc.email)) {
-                    // Update existing account with env data
-                    const existing = this.#accounts.find(a => a.email === envAcc.email);
-                    Object.assign(existing, {
-                        refreshToken: envAcc.refreshToken || existing.refreshToken,
-                        apiKey: envAcc.apiKey || existing.apiKey,
-                        source: envAcc.apiKey ? 'manual' : 'oauth',
-                        isInvalid: false,  // Reset invalid state
-                        invalidReason: null,
-                        fromEnv: true
-                    });
-                    logger.info(`[AccountManager] Updated account ${envAcc.email} from env`);
-                } else {
-                    this.#accounts.push(envAcc);
-                }
+        // If no accounts in config, try loading from environment variable
+        if (this.#accounts.length === 0) {
+            const envAccounts = loadAccountsFromEnv();
+            if (envAccounts.length > 0) {
+                this.#accounts = envAccounts;
             }
         }
 
-        // If config exists but has no accounts, fall back to Antigravity database
+        // If still no accounts, fall back to Antigravity database
         if (this.#accounts.length === 0) {
-            logger.warn('[AccountManager] No accounts in config. Falling back to Antigravity database');
+            logger.warn('[AccountManager] No accounts in config or env. Falling back to Antigravity database');
             const { accounts: defaultAccounts, tokenCache } = loadDefaultAccount();
             this.#accounts = defaultAccounts;
             this.#tokenCache = tokenCache;
