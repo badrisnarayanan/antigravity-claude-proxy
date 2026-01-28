@@ -180,6 +180,9 @@
                                 <template x-if="quota.percent === null">
                                     <span class="text-xs text-gray-600">-</span>
                                 </template>
+                                <div x-show="acc.quotaThreshold !== undefined"
+                                     class="text-[10px] font-mono text-neon-yellow/60 mt-0.5"
+                                     x-text="'min: ' + getEffectiveThreshold(acc)"></div>
                             </div>
                         </td>
                         <td class="py-4">
