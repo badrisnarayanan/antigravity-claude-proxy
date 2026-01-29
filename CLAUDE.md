@@ -153,7 +153,8 @@ public/
 │   ├── settings-store.js       # Settings management store
 │   ├── components/             # UI Components
 │   │   ├── dashboard.js        # Main dashboard orchestrator
-│   │   ├── account-manager.js  # Account list & OAuth handling
+│   │   ├── account-manager.js  # Account list, OAuth, & threshold settings
+│   │   ├── models.js           # Model list with draggable quota threshold markers
 │   │   ├── logs-viewer.js      # Live log streaming
 │   │   ├── claude-config.js    # CLI settings editor
 │   │   ├── server-config.js    # Server settings UI
@@ -184,6 +185,7 @@ public/
   - Strategies: `sticky` (cache-optimized), `round-robin` (load-balanced), `hybrid` (smart distribution)
 - **src/auth/**: Authentication including Google OAuth, token extraction, database access, and auto-rebuild of native modules
 - **src/format/**: Format conversion between Anthropic and Google Generative AI formats
+- **src/config.js**: Runtime configuration with defaults (`globalQuotaThreshold`, `maxAccounts`, `accountSelection`, etc.)
 - **src/constants.js**: API endpoints, model mappings, fallback config, OAuth config, and all configuration values
 - **src/modules/usage-stats.js**: Tracks request volume by model/family, persists 30-day history to JSON, and auto-prunes old data.
 - **src/fallback-config.js**: Model fallback mappings (`getFallbackModel()`, `hasFallback()`)
@@ -217,12 +219,23 @@ public/
    - Scoring formula: `score = (Health × 2) + ((Tokens / MaxTokens × 100) × 5) + (Quota × 1) + (LRU × 0.1)`
    - Health scores: Track success/failure patterns with passive recovery
    - Token buckets: Client-side rate limiting (50 tokens, 6 per minute regeneration)
-   - Quota awareness: Accounts with critical quota (<5%) are deprioritized
+   - Quota awareness: Accounts below configurable quota threshold are deprioritized
    - LRU freshness: Prefer accounts that have rested longer
    - **Emergency/Last Resort Fallback**: When all accounts are exhausted:
      - Emergency fallback: Bypasses health check, adds 250ms throttle delay
      - Last resort fallback: Bypasses both health and token checks, adds 500ms throttle delay
    - Configuration in `src/config.js` under `accountSelection`
+
+**Quota Threshold (Quota Protection):**
+- Configurable minimum quota level before the proxy switches to another account
+- Three-tier threshold resolution (highest priority first):
+  1. **Per-model**: `account.modelQuotaThresholds[modelId]` - override for specific models
+  2. **Per-account**: `account.quotaThreshold` - account-level default
+  3. **Global**: `config.globalQuotaThreshold` - server-wide default (0 = disabled)
+- All thresholds are stored as fractions (0-0.99), displayed as percentages (0-99%) in the UI
+- Global threshold configurable via WebUI Settings → Quota Protection
+- Per-account and per-model thresholds configurable via Account Settings modal or draggable markers on model quota bars
+- Used by `QuotaTracker.isQuotaCritical()` in the hybrid strategy to exclude low-quota accounts
 
 **Account Data Model:**
 Each account object in `accounts.json` contains:
@@ -232,6 +245,9 @@ Each account object in `accounts.json` contains:
   - `tier`: 'free' | 'pro' | 'ultra' (detected from `paidTier` or `currentTier`)
 - **Quota**: `{ models: {}, lastChecked }` - model-specific quota cache
   - `models[modelId]`: `{ remainingFraction, resetTime }` from `fetchAvailableModels` API
+- **Quota Thresholds**: Per-account quota protection settings
+  - `quotaThreshold`: Account-level minimum quota fraction (0-0.99, `undefined` = use global)
+  - `modelQuotaThresholds`: `{ [modelId]: fraction }` - per-model overrides (takes priority over account-level)
 - **Rate Limits**: `modelRateLimits[modelId]` - temporary rate limit state (in-memory during runtime)
 - **Validity**: `isInvalid`, `invalidReason` - tracks accounts needing re-authentication
 
@@ -287,7 +303,8 @@ Each account object in `accounts.json` contains:
   - Layered architecture: Service Layer (`account-actions.js`) → Component Layer → UI
 - **Features**:
   - Real-time dashboard with Chart.js visualization and subscription tier distribution
-  - Account list with tier badges (Ultra/Pro/Free) and quota progress bars
+  - Account list with tier badges (Ultra/Pro/Free), quota progress bars, and per-account threshold settings
+  - Model quota bars with draggable per-account threshold markers (color-coded, with overlap handling)
   - OAuth flow handling via popup window
   - Live log streaming via Server-Sent Events (SSE)
   - Config editor for both Proxy and Claude CLI (`~/.claude/settings.json`)
@@ -300,7 +317,7 @@ Each account object in `accounts.json` contains:
 - **Security**: Optional password protection via `WEBUI_PASSWORD` env var
 - **Config Redaction**: Sensitive values (passwords, tokens) are redacted in API responses
 - **Smart Refresh**: Client-side polling with ±20% jitter and tab visibility detection (3x slower when hidden)
-- **i18n Support**: English, Chinese (中文), Indonesian (Bahasa), Portuguese (PT-BR)
+- **i18n Support**: English, Chinese (中文), Indonesian (Bahasa), Portuguese (PT-BR), Turkish (Türkçe)
 
 ## Testing Notes
 
@@ -353,14 +370,15 @@ Each account object in `accounts.json` contains:
 
 **WebUI APIs:**
 
-- `/api/accounts/*` - Account management (list, add, remove, refresh)
-- `/api/config/*` - Server configuration (read/write)
+- `/api/accounts/*` - Account management (list, add, remove, refresh, threshold settings)
+  - `PATCH /api/accounts/:email` - Update account quota thresholds (`quotaThreshold`, `modelQuotaThresholds`)
+- `/api/config/*` - Server configuration (read/write, includes `globalQuotaThreshold`)
 - `/api/claude/config` - Claude CLI settings
 - `/api/logs/stream` - SSE endpoint for real-time logs
 - `/api/stats/history` - Retrieve 30-day request history (sorted chronologically)
 - `/api/auth/url` - Generate Google OAuth URL
 - `/account-limits` - Fetch account quotas and subscription data
-  - Returns: `{ accounts: [{ email, subscription: { tier, projectId }, limits: {...} }], models: [...] }`
+  - Returns: `{ accounts: [{ email, subscription, limits, quotaThreshold, modelQuotaThresholds, ... }], models: [...], globalQuotaThreshold }`
   - Query params: `?format=table` (ASCII table) or `?includeHistory=true` (adds usage stats)
 
 ## Frontend Development
