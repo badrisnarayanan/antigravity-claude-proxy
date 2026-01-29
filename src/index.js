@@ -8,8 +8,11 @@ import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
 import { config } from './config.js';
 import { getStrategyLabel, STRATEGY_NAMES, DEFAULT_STRATEGY } from './account-manager/strategies/index.js';
+import { getPackageVersion } from './utils/helpers.js';
 import path from 'path';
 import os from 'os';
+
+const packageVersion = getPackageVersion();
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -90,7 +93,7 @@ const server = app.listen(PORT, () => {
 
     logger.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║           Antigravity Claude Proxy Server                    ║
+║            Antigravity Claude Proxy Server v${packageVersion}            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
 ${border}  ${align(`Server and WebUI running at: http://localhost:${PORT}`)}${border}

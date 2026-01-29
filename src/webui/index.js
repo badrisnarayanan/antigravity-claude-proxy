@@ -13,8 +13,6 @@
  */
 
 import path from 'path';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS } from '../constants.js';
@@ -22,18 +20,10 @@ import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeCon
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
+import { getPackageVersion } from '../utils/helpers.js';
 
 // Get package version
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-let packageVersion = '1.0.0';
-try {
-    const packageJsonPath = path.join(__dirname, '../../package.json');
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-    packageVersion = packageJson.version;
-} catch (error) {
-    logger.warn('[WebUI] Could not read package.json version, using default');
-}
+const packageVersion = getPackageVersion();
 
 // OAuth state storage (state -> { server, verifier, state, timestamp })
 // Maps state ID to active OAuth flow data
