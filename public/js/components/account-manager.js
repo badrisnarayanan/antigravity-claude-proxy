@@ -297,7 +297,11 @@ window.Components.accountManager = () => ({
         if (account.quotaThreshold !== undefined) {
             return Math.round(account.quotaThreshold * 100) + '%';
         }
-        // If no per-account threshold, show that it uses global
+        // If no per-account threshold, show global value
+        const globalThreshold = Alpine.store('data').globalQuotaThreshold;
+        if (globalThreshold > 0) {
+            return Math.round(globalThreshold * 100) + '% (global)';
+        }
         return 'Global';
     },
 
