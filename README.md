@@ -298,7 +298,8 @@ antigravity-claude-proxy start --strategy=round-robin  # Load-balanced
 
 - **Health Score Tracking**: Accounts earn points for successful requests and lose points for failures/rate-limits
 - **Token Bucket Rate Limiting**: Client-side throttling with regenerating tokens (50 max, 6/minute)
-- **Quota Awareness**: Accounts with critical quota (<5%) are deprioritized; exhausted accounts trigger emergency fallback
+- **Quota Awareness**: Accounts below configurable quota thresholds are deprioritized; exhausted accounts trigger emergency fallback
+- **Quota Protection**: Set minimum quota levels globally, per-account, or per-model to switch accounts before quota runs out
 - **Emergency Fallback**: When all accounts appear exhausted, bypasses checks with throttle delays (250-500ms)
 - **Automatic Cooldown**: Rate-limited accounts recover automatically after reset time expires
 - **Invalid Account Detection**: Accounts needing re-authentication are marked and skipped
@@ -340,16 +341,17 @@ The proxy includes a built-in, modern web interface for real-time monitoring and
 ### Key Features
 
 - **Real-time Dashboard**: Monitor request volume, active accounts, model health, and subscription tier distribution.
-- **Visual Model Quota**: Track per-model usage and next reset times with color-coded progress indicators.
-- **Account Management**: Add/remove Google accounts via OAuth, view subscription tiers (Free/Pro/Ultra) and quota status at a glance.
+- **Visual Model Quota**: Track per-model usage and next reset times with color-coded progress indicators and draggable per-account threshold markers.
+- **Account Management**: Add/remove Google accounts via OAuth, view subscription tiers (Free/Pro/Ultra), quota status, and per-account threshold settings.
 - **Manual OAuth Mode**: Add accounts on headless servers by copying the OAuth URL and pasting the authorization code.
 - **Claude CLI Configuration**: Edit your `~/.claude/settings.json` directly from the browser.
 - **Persistent History**: Tracks request volume by model family for 30 days, persisting across server restarts.
 - **Time Range Filtering**: Analyze usage trends over 1H, 6H, 24H, 7D, or All Time periods.
 - **Smart Analysis**: Auto-select top 5 most used models or toggle between Family/Model views.
 - **Live Logs**: Stream server logs with level-based filtering and search.
+- **Quota Protection**: Set global or per-account minimum quota thresholds to proactively switch accounts before quota runs out.
 - **Advanced Tuning**: Configure retries, timeouts, and debug mode on the fly.
-- **Multi-language Interface**: Full support for English, Chinese (中文), Indonesian (Bahasa), and Portuguese (PT-BR).
+- **Multi-language Interface**: Full support for English, Chinese (中文), Indonesian (Bahasa), Portuguese (PT-BR), and Turkish (Türkçe).
 
 ---
 
@@ -367,6 +369,7 @@ While most users can use the default settings, you can tune the proxy behavior v
 - **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
 - **Max Accounts**: Set `maxAccounts` (1-100) to limit the number of Google accounts. Default: 10.
+- **Quota Threshold**: Set `globalQuotaThreshold` (0-0.99) to switch accounts before quota drops below a minimum level. Supports per-account and per-model overrides.
 - **Endpoint Fallback**: Automatic 403/404 endpoint fallback for API compatibility.
 
 Refer to `config.example.json` for a complete list of fields and documentation.
