@@ -33,7 +33,7 @@ function getAntigravityDbPath() {
 function getPlatformUserAgent() {
     const os = platform();
     const architecture = arch();
-    return `antigravity/1.11.5 ${os}/${architecture}`;
+    return `antigravity/1.15.8 ${os}/${architecture}`;
 }
 
 // Cloud Code API endpoints (in fallback order)
