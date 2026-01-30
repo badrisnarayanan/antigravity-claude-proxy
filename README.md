@@ -387,6 +387,7 @@ For macOS users who prefer a native experience, there's a companion menu bar app
 - **Status Indicator**: Menu bar icon shows server running state at a glance.
 - **WebUI Access**: Open the web management console directly from the menu.
 - **Port Configuration**: Customize the proxy server port (default: 8080).
+- **Account Selection Strategy**: Choose between Hybrid, Sticky, or Round-Robin load balancing strategies.
 - **Auto-Start Options**: Launch server on app start and launch app at login.
 - **Native Experience**: Clean, native SwiftUI interface designed for macOS.
 
