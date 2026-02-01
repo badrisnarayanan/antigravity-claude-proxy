@@ -178,27 +178,6 @@
                             </label>
                         </div>
                     </div>
-                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-cyan/50"
-                        :class="$store.settings.redactMode ? 'border-neon-cyan/50 bg-neon-cyan/5 shadow-[0_0_15px_rgba(34,211,238,0.1)]' : 'border-space-border/50'">
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col gap-1">
-                                <span class="label-text font-medium transition-colors"
-                                    :class="$store.settings.redactMode ? 'text-neon-cyan' : 'text-gray-300'"
-                                    x-text="$store.global.t('screenshotMode')">Screenshot Mode</span>
-                                <span class="text-xs text-gray-500"
-                                    x-text="$store.global.t('screenshotModeDesc')">Hide email addresses for safe screen sharing.</span>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer"
-                                    :checked="$store.settings.redactMode === true"
-                                    @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
-                                    aria-label="Screenshot mode toggle">
-                                <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
-                                </div>
-                            </label>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -989,23 +968,49 @@
                         <div class="h-px flex-1 bg-space-border/30"></div>
                     </div>
 
-                    <!-- Debug Mode -->
-                    <div class="form-control view-card border-space-border/50 hover:border-neon-purple/50">
+                    <!-- Developer Mode -->
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-purple/50"
+                        :class="serverConfig.devMode ? 'border-neon-purple/50 bg-neon-purple/5' : ''">
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium text-gray-200"
-                                    :class="serverConfig.debug ? 'text-neon-purple' : ''"
-                                    x-text="$store.global.t('debugMode')">Debug Mode</span>
-                                <span class="text-[11px] text-gray-500" x-text="$store.global.t('debugDesc')">Detailed
-                                    logging in the Logs tab</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium text-gray-200"
+                                        :class="serverConfig.devMode ? 'text-neon-purple' : ''"
+                                        x-text="$store.global.t('devMode')">Developer Mode</span>
+                                    <span x-show="serverConfig.devMode"
+                                        class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">DEV</span>
+                                </div>
+                                <span class="text-[11px] text-gray-500" x-text="$store.global.t('devModeDesc')">Enables debug logging, log export, and strategy health inspector</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" :checked="serverConfig.debug === true"
-                                    @change="toggleDebug($el.checked)" aria-label="Debug mode toggle">
+                                <input type="checkbox" class="sr-only peer" :checked="serverConfig.devMode === true"
+                                    @change="toggleDevMode($el.checked)" aria-label="Developer mode toggle">
                                 <div
                                     class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
+                        </div>
+
+                        <!-- Screenshot Mode (nested under Developer Mode) -->
+                        <div x-show="serverConfig.devMode" x-transition class="mt-3 pt-3 border-t border-neon-purple/20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.redactMode ? 'text-neon-cyan' : 'text-gray-400'"
+                                        x-text="$store.global.t('screenshotMode')">Screenshot Mode</span>
+                                    <span class="text-[10px] text-gray-600"
+                                        x-text="$store.global.t('screenshotModeDesc')">Hide email addresses for safe screen sharing.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.redactMode === true"
+                                        @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Screenshot mode toggle">
+                                    <div
+                                        class="w-8 h-4 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
