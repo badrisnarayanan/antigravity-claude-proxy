@@ -1008,7 +1008,7 @@
                                         @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
                                         aria-label="Screenshot mode toggle">
                                     <div
-                                        class="w-8 h-4 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
                                     </div>
                                 </label>
                             </div>
@@ -1029,7 +1029,7 @@
                                             @change="$store.data.setPlaceholderMode($event.target.checked, $store.data.placeholderIncludeReal)"
                                             aria-label="Placeholder data toggle">
                                         <div
-                                            class="w-8 h-4 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-yellow peer-checked:after:bg-white">
+                                            class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-yellow peer-checked:after:bg-white">
                                         </div>
                                     </label>
                                 </div>
@@ -1037,8 +1037,8 @@
                                 <!-- Include Real Accounts sub-toggle -->
                                 <div x-show="$store.data.placeholderMode" x-transition class="mt-2 ml-4 pl-3 border-l border-neon-yellow/20">
                                     <div class="flex items-center justify-between">
-                                        <div class="flex flex-col gap-0.5">
-                                            <span class="text-[11px] font-medium transition-colors"
+                                        <div class="flex flex-col gap-1">
+                                            <span class="text-xs font-medium transition-colors"
                                                 :class="$store.data.placeholderIncludeReal ? 'text-gray-300' : 'text-gray-500'"
                                                 x-text="$store.global.t('includeRealAccounts')">Include Real Accounts</span>
                                             <span class="text-[10px] text-gray-600"
@@ -1050,7 +1050,7 @@
                                                 @change="$store.data.setPlaceholderMode(true, $event.target.checked)"
                                                 aria-label="Include real accounts toggle">
                                             <div
-                                                class="w-7 h-3.5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-neon-yellow/70 peer-checked:after:bg-white">
+                                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-yellow/70 peer-checked:after:bg-white">
                                             </div>
                                         </label>
                                     </div>
