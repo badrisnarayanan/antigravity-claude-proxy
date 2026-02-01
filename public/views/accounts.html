@@ -274,7 +274,7 @@
     </div>
 
     <!-- Strategy Health Inspector (Developer Mode) -->
-    <div x-show="$store.data.devMode" class="mt-6" x-cloak>
+    <div x-show="$store.data.devMode && $store.settings.healthInspector" class="mt-6" x-cloak>
         <div class="view-card !p-0 border-neon-purple/30">
             <!-- Header -->
             <button class="w-full flex items-center justify-between px-6 py-3 bg-space-900/50 border-b border-space-border/50 hover:bg-space-900/70 transition-colors"
