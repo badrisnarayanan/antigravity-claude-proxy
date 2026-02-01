@@ -16,7 +16,7 @@ const packageVersion = getPackageVersion();
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
+const isDebug = args.includes('--debug') || args.includes('--dev-mode') || process.env.DEBUG === 'true' || process.env.DEV_MODE === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 // Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
@@ -34,11 +34,13 @@ if (strategyOverride && !STRATEGY_NAMES.includes(strategyOverride.toLowerCase())
     strategyOverride = null;
 }
 
-// Initialize logger
+// Initialize logger and devMode
 logger.setDebug(isDebug);
 
 if (isDebug) {
-    logger.debug('Debug mode enabled');
+    config.devMode = true;
+    config.debug = true;
+    logger.debug('Developer mode enabled');
 }
 
 if (isFallbackEnabled) {
@@ -80,7 +82,7 @@ const server = app.listen(PORT, HOST, () => {
     controlSection += '║    --strategy=<s>     Set account selection strategy         ║\n';
     controlSection += `${border}  ${align(strategyLine2)}${border}\n`;
     if (!isDebug) {
-        controlSection += '║    --debug            Enable debug logging                   ║\n';
+        controlSection += '║    --dev-mode         Enable developer mode                  ║\n';
     }
     if (!isFallbackEnabled) {
         controlSection += '║    --fallback         Enable model fallback on quota exhaust ║\n';
@@ -95,7 +97,7 @@ const server = app.listen(PORT, HOST, () => {
     statusSection += '║  Active Modes:                                               ║\n';
     statusSection += `${border}    ${align4(`✓ Strategy: ${strategyLabel}`)}${border}\n`;
     if (isDebug) {
-        statusSection += '║    ✓ Debug mode enabled                                      ║\n';
+        statusSection += '║    ✓ Developer mode enabled                                   ║\n';
     }
     if (isFallbackEnabled) {
         statusSection += '║    ✓ Model fallback enabled                                  ║\n';
@@ -138,7 +140,7 @@ ${border}    ${align4(`export ANTHROPIC_API_KEY=${config.apiKey || 'dummy'}`)}${
     
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
-        logger.warn('Running in DEBUG mode - verbose logs enabled');
+        logger.warn('Running in DEVELOPER mode - verbose logs enabled');
     }
 });
 
