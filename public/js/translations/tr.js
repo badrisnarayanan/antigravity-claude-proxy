@@ -360,4 +360,14 @@ window.translations.tr = {
     strategyUpdated: "Strateji şu şekilde güncellendi: {strategy}",
     failedToUpdateStrategy: "Strateji güncellenemedi",
     invalidStrategy: "Geçersiz strateji seçildi",
+    // Mode Toggle (Proxy/Paid)
+    connectionMode: "Bağlantı Modu",
+    proxyMode: "Proxy Modu",
+    paidMode: "Ücretli Mod",
+    usingLocalProxy: "Yerel proxy sunucusu kullanılıyor (localhost:{port})",
+    usingOfficialApi: "Resmi Anthropic API kullanılıyor (abonelik gerektirir)",
+    paidModeTitle: "Claude CLI resmi Anthropic API kullanıyor",
+    paidModeDesc: "Tüm proxy yapılandırması kaldırıldı. Claude CLI doğrudan Anthropic aboneliğinizi kullanır.",
+    paidModeHint: "Model yönlendirme ve ön ayarları yapılandırmak için Proxy moduna geçin.",
+    modeToggleFailed: "Mod değiştirilemedi",
 };

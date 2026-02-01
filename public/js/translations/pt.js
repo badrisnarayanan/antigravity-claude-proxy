@@ -310,4 +310,14 @@ window.translations.pt = {
     strategyUpdated: "Estratégia atualizada para: {strategy}",
     failedToUpdateStrategy: "Falha ao atualizar estratégia",
     invalidStrategy: "Estratégia inválida selecionada",
+    // Mode Toggle (Proxy/Paid)
+    connectionMode: "Modo de Conexão",
+    proxyMode: "Modo Proxy",
+    paidMode: "Modo Pago",
+    usingLocalProxy: "Usando servidor proxy local (localhost:{port})",
+    usingOfficialApi: "Usando API oficial da Anthropic (requer assinatura)",
+    paidModeTitle: "Claude CLI está usando a API oficial da Anthropic",
+    paidModeDesc: "Toda configuração de proxy foi removida. Claude CLI usa sua assinatura Anthropic diretamente.",
+    paidModeHint: "Mude para modo Proxy para configurar roteamento de modelos e presets.",
+    modeToggleFailed: "Falha ao alternar modo",
 };

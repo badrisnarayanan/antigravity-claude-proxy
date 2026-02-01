@@ -186,10 +186,10 @@ app.use((req, res, next) => {
     res.on('finish', () => {
         const duration = Date.now() - start;
         const status = res.statusCode;
-        const logMsg = `[${req.method}] ${req.path} ${status} (${duration}ms)`;
+        const logMsg = `[${req.method}] ${req.originalUrl} ${status} (${duration}ms)`;
 
         // Skip standard logging for event logging batch unless in debug mode
-        if (req.path === '/api/event_logging/batch' || req.path === '/v1/messages/count_tokens') {
+        if (req.originalUrl === '/api/event_logging/batch' || req.originalUrl.startsWith('/v1/messages/count_tokens') || req.originalUrl.startsWith('/.well-known/')) {
             if (logger.isDebugEnabled) {
                 logger.debug(logMsg);
             }

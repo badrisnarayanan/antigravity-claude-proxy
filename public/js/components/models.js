@@ -32,6 +32,22 @@ window.Components.models = () => ({
         originalPct: 0
     },
 
+    // Model editing state (from main)
+    editingModelId: null,
+    newMapping: '',
+
+    isEditing(modelId) {
+        return this.editingModelId === modelId;
+    },
+
+    startEditing(modelId) {
+        this.editingModelId = modelId;
+    },
+
+    stopEditing() {
+        this.editingModelId = null;
+    },
+
     /**
      * Start dragging a threshold marker
      */

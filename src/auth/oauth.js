@@ -141,9 +141,10 @@ export function extractCodeFromInput(input) {
  * Attempt to bind server to a specific port
  * @param {http.Server} server - HTTP server instance
  * @param {number} port - Port to bind to
+ * @param {string} host - Host to bind to
  * @returns {Promise<number>} Resolves with port on success, rejects on error
  */
-function tryBindPort(server, port) {
+function tryBindPort(server, port, host = '0.0.0.0') {
     return new Promise((resolve, reject) => {
         const onError = (err) => {
             server.removeListener('listening', onSuccess);
@@ -155,7 +156,7 @@ function tryBindPort(server, port) {
         };
         server.once('error', onError);
         server.once('listening', onSuccess);
-        server.listen(port);
+        server.listen(port, host);
     });
 }
 
@@ -173,6 +174,7 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
     let timeoutId = null;
     let isAborted = false;
     let actualPort = OAUTH_CONFIG.callbackPort;
+    const host = process.env.HOST || '0.0.0.0';
 
     const promise = new Promise(async (resolve, reject) => {
         // Build list of ports to try: primary + fallbacks
@@ -180,7 +182,7 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
         const errors = [];
 
         server = http.createServer((req, res) => {
-            const url = new URL(req.url, `http://localhost:${actualPort}`);
+            const url = new URL(req.url, `http://${host === '0.0.0.0' ? 'localhost' : host}:${actualPort}`);
 
             if (url.pathname !== '/oauth-callback') {
                 res.writeHead(404);
@@ -264,14 +266,14 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
         let boundSuccessfully = false;
         for (const port of portsToTry) {
             try {
-                await tryBindPort(server, port);
+                await tryBindPort(server, port, host);
                 actualPort = port;
                 boundSuccessfully = true;
 
                 if (port !== OAUTH_CONFIG.callbackPort) {
                     logger.warn(`[OAuth] Primary port ${OAUTH_CONFIG.callbackPort} unavailable, using fallback port ${port}`);
                 } else {
-                    logger.info(`[OAuth] Callback server listening on port ${port}`);
+                    logger.info(`[OAuth] Callback server listening on ${host}:${port}`);
                 }
                 break;
             } catch (err) {

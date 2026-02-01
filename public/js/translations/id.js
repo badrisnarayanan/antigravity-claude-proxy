@@ -414,4 +414,14 @@ window.translations.id = {
     strategyUpdated: "Strategi diubah ke: {strategy}",
     failedToUpdateStrategy: "Gagal memperbarui strategi",
     invalidStrategy: "Strategi tidak valid dipilih",
+    // Mode Toggle (Proxy/Paid)
+    connectionMode: "Mode Koneksi",
+    proxyMode: "Mode Proxy",
+    paidMode: "Mode Berbayar",
+    usingLocalProxy: "Menggunakan server proxy lokal (localhost:{port})",
+    usingOfficialApi: "Menggunakan API resmi Anthropic (memerlukan langganan)",
+    paidModeTitle: "Claude CLI menggunakan API resmi Anthropic",
+    paidModeDesc: "Semua konfigurasi proxy telah dihapus. Claude CLI menggunakan langganan Anthropic Anda secara langsung.",
+    paidModeHint: "Beralih ke mode Proxy untuk mengonfigurasi routing model dan preset.",
+    modeToggleFailed: "Gagal beralih mode",
 };

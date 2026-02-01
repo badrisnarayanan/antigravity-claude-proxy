@@ -132,7 +132,10 @@ You can configure these settings in two ways:
 
 1. Open the WebUI at `http://localhost:8080`.
 2. Go to **Settings** → **Claude CLI**.
-3. Select your preferred models and click **Apply to Claude CLI**.
+3. Use the **Connection Mode** toggle to switch between:
+   - **Proxy Mode**: Uses the local proxy server (Antigravity Cloud Code). Configure models, base URL, and presets here.
+   - **Paid Mode**: Uses the official Anthropic Credits directly (requires your own subscription). This hides proxy settings to prevent accidental misconfiguration.
+4. Click **Apply to Claude CLI** to save your changes.
 
 > [!TIP] > **Configuration Precedence**: System environment variables (set in shell profile like `.zshrc`) take precedence over the `settings.json` file. If you use the Web Console to manage settings, ensure you haven't manually exported conflicting variables in your terminal.
 
@@ -220,6 +223,18 @@ claude
 ```
 
 > **Note:** If Claude Code asks you to select a login method, add `"hasCompletedOnboarding": true` to `~/.claude.json` (macOS/Linux) or `%USERPROFILE%\.claude.json` (Windows), then restart your terminal and try again.
+
+### Proxy Mode vs. Paid Mode
+
+Toggle in **Settings** → **Claude CLI**:
+
+| Feature | 🔌 Proxy Mode | 💳 Paid Mode |
+| :--- | :--- | :--- |
+| **Backend** | Local Server (Antigravity) | Official Anthropic Credits |
+| **Cost** | Free (Google Cloud) | Paid (Anthropic Credits) |
+| **Models** | Claude + Gemini | Claude Only |
+
+**Paid Mode** automatically clears proxy settings so you can use your official Anthropic account directly.
 
 ### Multiple Claude Code Instances (Optional)
 
@@ -390,6 +405,7 @@ For macOS users who prefer a native experience, there's a companion menu bar app
 - **Status Indicator**: Menu bar icon shows server running state at a glance.
 - **WebUI Access**: Open the web management console directly from the menu.
 - **Port Configuration**: Customize the proxy server port (default: 8080).
+- **Account Selection Strategy**: Choose between Hybrid, Sticky, or Round-Robin load balancing strategies.
 - **Auto-Start Options**: Launch server on app start and launch app at login.
 - **Native Experience**: Clean, native SwiftUI interface designed for macOS.
 

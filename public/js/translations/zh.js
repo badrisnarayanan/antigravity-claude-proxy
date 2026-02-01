@@ -375,4 +375,14 @@ window.translations.zh = {
     strategyUpdated: "策略已更新为: {strategy}",
     failedToUpdateStrategy: "更新策略失败",
     invalidStrategy: "选择了无效的策略",
+    // Mode Toggle (Proxy/Paid)
+    connectionMode: "连接模式",
+    proxyMode: "代理模式",
+    paidMode: "付费模式",
+    usingLocalProxy: "使用本地代理服务器 (localhost:{port})",
+    usingOfficialApi: "使用官方 Anthropic API (需要订阅)",
+    paidModeTitle: "Claude CLI 正在使用官方 Anthropic API",
+    paidModeDesc: "所有代理配置已移除。Claude CLI 直接使用您的 Anthropic 订阅。",
+    paidModeHint: "切换到代理模式以配置模型路由和预设。",
+    modeToggleFailed: "切换模式失败",
 };

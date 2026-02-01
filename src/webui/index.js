@@ -13,27 +13,17 @@
  */
 
 import path from 'path';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS } from '../constants.js';
+import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
+import { getPackageVersion } from '../utils/helpers.js';
 
 // Get package version
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-let packageVersion = '1.0.0';
-try {
-    const packageJsonPath = path.join(__dirname, '../../package.json');
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-    packageVersion = packageJson.version;
-} catch (error) {
-    logger.warn('[WebUI] Could not read package.json version, using default');
-}
+const packageVersion = getPackageVersion();
 
 // OAuth state storage (state -> { server, verifier, state, timestamp })
 // Maps state ID to active OAuth flow data
@@ -698,8 +688,88 @@ export function mountWebUI(app, dirname, accountManager) {
     });
 
     // ==========================================
+    // Claude CLI Mode Toggle API (Proxy/Paid)
+    // ==========================================
+
+    /**
+     * GET /api/claude/mode - Get current mode (proxy or paid)
+     * Returns 'proxy' if ANTHROPIC_BASE_URL is set to localhost, 'paid' otherwise
+     */
+    app.get('/api/claude/mode', async (req, res) => {
+        try {
+            const claudeConfig = await readClaudeConfig();
+            const baseUrl = claudeConfig.env?.ANTHROPIC_BASE_URL || '';
+
+            // Determine mode based on ANTHROPIC_BASE_URL
+            const isProxy = baseUrl && (
+                baseUrl.includes('localhost') ||
+                baseUrl.includes('127.0.0.1') ||
+                baseUrl.includes('::1') ||
+                baseUrl.includes('0.0.0.0')
+            );
+
+            res.json({
+                status: 'ok',
+                mode: isProxy ? 'proxy' : 'paid'
+            });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/claude/mode - Switch between proxy and paid mode
+     * Body: { mode: 'proxy' | 'paid' }
+     * 
+     * When switching to 'paid' mode:
+     * - Removes the entire 'env' object from settings.json
+     * - Claude CLI uses its built-in defaults (official Anthropic API)
+     * 
+     * When switching to 'proxy' mode:
+     * - Sets 'env' to the first default preset config (from constants.js)
+     */
+    app.post('/api/claude/mode', async (req, res) => {
+        try {
+            const { mode } = req.body;
+
+            if (!mode || !['proxy', 'paid'].includes(mode)) {
+                return res.status(400).json({
+                    status: 'error',
+                    error: 'mode must be "proxy" or "paid"'
+                });
+            }
+
+            const claudeConfig = await readClaudeConfig();
+
+            if (mode === 'proxy') {
+                // Switch to proxy mode - use first default preset config (e.g., "Claude Thinking")
+                claudeConfig.env = { ...DEFAULT_PRESETS[0].config };
+            } else {
+                // Switch to paid mode - remove env entirely
+                delete claudeConfig.env;
+            }
+
+            // Save the updated config
+            const newConfig = await replaceClaudeConfig(claudeConfig);
+
+            logger.info(`[WebUI] Switched Claude CLI to ${mode} mode`);
+
+            res.json({
+                status: 'ok',
+                mode,
+                config: newConfig,
+                message: `Switched to ${mode === 'proxy' ? 'Proxy' : 'Paid (Anthropic API)'} mode. Restart Claude CLI to apply.`
+            });
+        } catch (error) {
+            logger.error('[WebUI] Error switching mode:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    // ==========================================
     // Claude CLI Presets API
     // ==========================================
+
 
     /**
      * GET /api/claude/presets - Get all saved presets
@@ -914,18 +984,18 @@ export function mountWebUI(app, dirname, accountManager) {
             const { callbackInput, state } = req.body;
 
             if (!callbackInput || !state) {
-                return res.status(400).json({ 
-                    status: 'error', 
-                    error: 'Missing callbackInput or state' 
+                return res.status(400).json({
+                    status: 'error',
+                    error: 'Missing callbackInput or state'
                 });
             }
 
             // Find the pending flow
             const flowData = pendingOAuthFlows.get(state);
             if (!flowData) {
-                return res.status(400).json({ 
-                    status: 'error', 
-                    error: 'OAuth flow not found. The account may have been already added via auto-callback. Please refresh the account list.' 
+                return res.status(400).json({
+                    status: 'error',
+                    error: 'OAuth flow not found. The account may have been already added via auto-callback. Please refresh the account list.'
                 });
             }
 
@@ -959,10 +1029,10 @@ export function mountWebUI(app, dirname, accountManager) {
 
             logger.success(`[WebUI] Account ${accountData.email} added via manual callback`);
 
-            res.json({ 
-                status: 'ok', 
+            res.json({
+                status: 'ok',
                 email: accountData.email,
-                message: `Account ${accountData.email} added successfully` 
+                message: `Account ${accountData.email} added successfully`
             });
         } catch (error) {
             logger.error('[WebUI] Manual OAuth completion error:', error);

@@ -374,6 +374,7 @@ Each account object in `accounts.json` contains:
   - `PATCH /api/accounts/:email` - Update account quota thresholds (`quotaThreshold`, `modelQuotaThresholds`)
 - `/api/config/*` - Server configuration (read/write, includes `globalQuotaThreshold`)
 - `/api/claude/config` - Claude CLI settings
+- `/api/claude/mode` - Switch between Proxy/Paid mode (updates settings.json)
 - `/api/logs/stream` - SSE endpoint for real-time logs
 - `/api/stats/history` - Retrieve 30-day request history (sorted chronologically)
 - `/api/auth/url` - Generate Google OAuth URL

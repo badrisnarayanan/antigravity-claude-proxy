@@ -8,8 +8,11 @@ import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
 import { config } from './config.js';
 import { getStrategyLabel, STRATEGY_NAMES, DEFAULT_STRATEGY } from './account-manager/strategies/index.js';
+import { getPackageVersion } from './utils/helpers.js';
 import path from 'path';
 import os from 'os';
+
+const packageVersion = getPackageVersion();
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -46,12 +49,22 @@ if (isFallbackEnabled) {
 export const FALLBACK_ENABLED = isFallbackEnabled;
 
 const PORT = process.env.PORT || DEFAULT_PORT;
+const HOST = process.env.HOST || '0.0.0.0';
+
+if (process.env.HOST) {
+    logger.info(`[Startup] Using HOST environment variable: ${process.env.HOST}`);
+}
 
 // Home directory for account storage
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
+    // Get actual bound address
+    const address = server.address();
+    const boundHost = typeof address === 'string' ? address : address.address;
+    const boundPort = typeof address === 'string' ? null : address.port;
+
     // Clear console for a clean start
     console.clear();
 
@@ -90,10 +103,11 @@ const server = app.listen(PORT, () => {
 
     logger.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║           Antigravity Claude Proxy Server                    ║
+║            Antigravity Claude Proxy Server v${packageVersion}            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-${border}  ${align(`Server and WebUI running at: http://localhost:${PORT}`)}${border}
+${border}  ${align(`Server and WebUI running at: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`)}${border}
+${border}  ${align(`Bound to: ${boundHost}:${boundPort}`)}${border}
 ${statusSection}║                                                              ║
 ${controlSection}
 ║                                                              ║

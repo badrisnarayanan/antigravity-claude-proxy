@@ -369,4 +369,14 @@ window.translations.en = {
     mustBeAtMost: "{fieldName} must be at most {max}",
     cannotBeEmpty: "{fieldName} cannot be empty",
     mustBeTrueOrFalse: "Value must be true or false",
+    // Mode Toggle (Proxy/Paid)
+    connectionMode: "Connection Mode",
+    proxyMode: "Proxy Mode",
+    paidMode: "Paid Mode",
+    usingLocalProxy: "Using local proxy server (localhost:{port})",
+    usingOfficialApi: "Using official Anthropic API (requires subscription)",
+    paidModeTitle: "Claude CLI is using the official Anthropic API",
+    paidModeDesc: "All proxy configuration has been removed. Claude CLI uses your Anthropic subscription directly.",
+    paidModeHint: "Switch to Proxy mode to configure model routing and presets.",
+    modeToggleFailed: "Failed to switch mode",
 };

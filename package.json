@@ -1,6 +1,6 @@
 {
   "name": "antigravity-claude-proxy",
-  "version": "1.2.6",
+  "version": "2.4.2",
   "description": "Proxy server to use Antigravity's Claude models with Claude Code CLI",
   "main": "src/index.js",
   "type": "module",
