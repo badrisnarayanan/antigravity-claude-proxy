@@ -140,9 +140,9 @@
                             </label>
                         </td>
                         <td class="py-4">
-                            <div class="tooltip tooltip-right" :data-tip="acc.email">
+                            <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
                                 <span class="font-mono text-sm text-gray-300 truncate max-w-[320px] inline-block cursor-help group-hover:text-white transition-colors"
-                                      x-text="formatEmail(acc.email)">
+                                      x-text="formatEmail(Redact.email(acc.email))">
                                 </span>
                             </div>
                         </td>
@@ -284,7 +284,7 @@
             </h3>
             <p class="py-4 text-gray-300">
                 <span x-text="$store.global.t('confirmDeletePrompt')">Are you sure you want to delete account</span>
-                <strong class="text-white font-mono" x-text="deleteTarget"></strong>?
+                <strong class="text-white font-mono" x-text="Redact.email(deleteTarget)"></strong>?
             </p>
             <div class="bg-red-500/10 border border-red-500/30 rounded p-3 mb-4">
                 <p class="text-sm text-red-300 flex items-start gap-2">
@@ -323,7 +323,7 @@
                 </svg>
                 <span x-text="$store.global.t('quotaDistribution')">Quota Distribution</span>
             </h3>
-            <p class="text-sm text-gray-500 font-mono mb-6" x-text="selectedAccountEmail"></p>
+            <p class="text-sm text-gray-500 font-mono mb-6" x-text="Redact.email(selectedAccountEmail)"></p>
 
             <div class="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
                 <template x-for="(limit, modelId) in selectedAccountLimits" :key="modelId">
@@ -382,7 +382,7 @@
                 </svg>
                 <span>Account Settings</span>
             </h3>
-            <p class="text-sm text-gray-500 font-mono mb-6" x-text="thresholdDialog.email"></p>
+            <p class="text-sm text-gray-500 font-mono mb-6" x-text="Redact.email(thresholdDialog.email)"></p>
 
             <div class="space-y-4">
                 <!-- Info Alert -->

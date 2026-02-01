@@ -320,4 +320,6 @@ window.translations.pt = {
     paidModeDesc: "Toda configuração de proxy foi removida. Claude CLI usa sua assinatura Anthropic diretamente.",
     paidModeHint: "Mude para modo Proxy para configurar roteamento de modelos e presets.",
     modeToggleFailed: "Falha ao alternar modo",
+    screenshotMode: "Modo Screenshot",
+    screenshotModeDesc: "Ocultar endereços de email para compartilhamento seguro de tela.",
 };

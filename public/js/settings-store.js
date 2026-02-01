@@ -8,6 +8,7 @@ document.addEventListener('alpine:init', () => {
         showExhausted: true,
         showHiddenModels: false, // New field
         compact: false,
+        redactMode: false,
         port: 8080, // Display only
 
         init() {
@@ -39,7 +40,8 @@ document.addEventListener('alpine:init', () => {
                 logLimit: this.logLimit,
                 showExhausted: this.showExhausted,
                 showHiddenModels: this.showHiddenModels,
-                compact: this.compact
+                compact: this.compact,
+                redactMode: this.redactMode
             };
             localStorage.setItem('antigravity_settings', JSON.stringify(toSave));
 

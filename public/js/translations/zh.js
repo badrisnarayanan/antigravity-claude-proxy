@@ -385,4 +385,6 @@ window.translations.zh = {
     paidModeDesc: "所有代理配置已移除。Claude CLI 直接使用您的 Anthropic 订阅。",
     paidModeHint: "切换到代理模式以配置模型路由和预设。",
     modeToggleFailed: "切换模式失败",
+    screenshotMode: "截图模式",
+    screenshotModeDesc: "隐藏邮箱地址，方便安全分享屏幕。",
 };

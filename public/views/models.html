@@ -52,7 +52,7 @@
                     x-model="$store.data.filters.account" @change="$store.data.computeQuotaRows()">
                     <option value="all" x-text="$store.global.t('allAccounts')">All Accounts</option>
                     <template x-for="acc in $store.data.accounts" :key="acc.email">
-                        <option :value="acc.email" x-text="acc.email.split('@')[0]"></option>
+                        <option :value="acc.email" x-text="Redact.email(acc.email).split('@')[0]"></option>
                     </template>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
@@ -199,7 +199,7 @@
                                         <div class="absolute -top-1 -bottom-1 group/marker"
                                              :class="isDragging(q, row) ? 'cursor-grabbing z-30' : 'cursor-grab'"
                                              :style="'left: calc(' + getMarkerPct(q, row) + '% - 4px); width: 9px; transform: translateX(' + (isDragging(q, row) ? '0px' : getMarkerOffset(q, row, qIdx)) + ');'"
-                                             :title="q.email + ' min: ' + getMarkerPct(q, row) + '%'"
+                                             :title="Redact.email(q.email) + ' min: ' + getMarkerPct(q, row) + '%'"
                                              @mousedown.prevent="startDrag($event, q, row)"
                                              @touchstart.prevent="startDrag($event, q, row)">
                                             <!-- Visible marker line -->
@@ -212,7 +212,7 @@
                                                  :class="isDragging(q, row) ? 'flex' : 'hidden group-hover/marker:flex'"
                                                  :style="'color: ' + getThresholdColor(qIdx).bg + '; border-color: ' + getThresholdColor(qIdx).bg + '40'">
                                                 <span class="w-2 h-2 rounded-full flex-shrink-0" :style="'background-color: ' + getThresholdColor(qIdx).bg"></span>
-                                                <span x-text="q.email"></span>
+                                                <span x-text="Redact.email(q.email)"></span>
                                                 <span class="text-gray-500">min</span>
                                                 <span x-text="getMarkerPct(q, row) + '%'"></span>
                                             </div>
@@ -229,7 +229,7 @@
                         </td>
                         <td class="font-mono text-xs">
                             <div class="tooltip tooltip-left"
-                                 :data-tip="row.quotaInfo && row.quotaInfo.length > 0 ? row.quotaInfo.filter(q => q.resetTime).map(q => q.email + ': ' + q.resetTime).join('\n') : 'No reset data'">
+                                 :data-tip="row.quotaInfo && row.quotaInfo.length > 0 ? row.quotaInfo.filter(q => q.resetTime).map(q => Redact.email(q.email) + ': ' + q.resetTime).join('\n') : 'No reset data'">
                                 <span x-text="row.resetIn"
                                     :class="(row.resetIn && row.resetIn.indexOf('h') === -1 && row.resetIn !== '-') ? 'text-neon-purple font-bold' : 'text-gray-400'"></span>
                             </div>
@@ -252,7 +252,7 @@
                                             <!-- Visible accounts (limited to maxVisible) -->
                                             <template x-for="(q, idx) in row.quotaInfo.slice(0, maxVisible)" :key="q.fullEmail">
                                                 <div class="tooltip tooltip-left"
-                                                     :data-tip="`${q.fullEmail} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')">
+                                                     :data-tip="`${Redact.email(q.fullEmail)} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')">
                                                     <div class="w-3 h-3 rounded-[2px] transition-all hover:scale-125 cursor-help"
                                                         :class="q.pct > 50 ? 'bg-neon-green opacity-80' : (q.pct > 0 ? 'bg-yellow-500 opacity-80' : 'bg-red-900 opacity-50')">
                                                     </div>
@@ -261,7 +261,7 @@
                                             <!-- Overflow indicator -->
                                             <template x-if="row.quotaInfo.length > maxVisible">
                                                 <div class="tooltip tooltip-left"
-                                                     :data-tip="row.quotaInfo.slice(maxVisible).map(q => `${q.fullEmail} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')).join('\n')">
+                                                     :data-tip="row.quotaInfo.slice(maxVisible).map(q => `${Redact.email(q.fullEmail)} (${q.pct}%)` + (q.thresholdPct > 0 ? ` · min: ${q.thresholdPct}%` : '')).join('\n')">
                                                     <div class="w-3 h-3 rounded-[2px] bg-gray-700/50 border border-gray-600 flex items-center justify-center cursor-help hover:bg-gray-600/70 transition-colors">
                                                         <span class="text-[8px] text-gray-400 font-bold leading-none" x-text="`+${row.quotaInfo.length - maxVisible}`"></span>
                                                     </div>

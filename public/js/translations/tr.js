@@ -370,4 +370,6 @@ window.translations.tr = {
     paidModeDesc: "Tüm proxy yapılandırması kaldırıldı. Claude CLI doğrudan Anthropic aboneliğinizi kullanır.",
     paidModeHint: "Model yönlendirme ve ön ayarları yapılandırmak için Proxy moduna geçin.",
     modeToggleFailed: "Mod değiştirilemedi",
+    screenshotMode: "Ekran Görüntüsü Modu",
+    screenshotModeDesc: "Güvenli ekran paylaşımı için e-posta adreslerini gizle.",
 };

@@ -424,4 +424,6 @@ window.translations.id = {
     paidModeDesc: "Semua konfigurasi proxy telah dihapus. Claude CLI menggunakan langganan Anthropic Anda secara langsung.",
     paidModeHint: "Beralih ke mode Proxy untuk mengonfigurasi routing model dan preset.",
     modeToggleFailed: "Gagal beralih mode",
+    screenshotMode: "Mode Screenshot",
+    screenshotModeDesc: "Sembunyikan alamat email untuk berbagi layar yang aman.",
 };

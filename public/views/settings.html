@@ -178,6 +178,27 @@
                             </label>
                         </div>
                     </div>
+                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-neon-cyan/50"
+                        :class="$store.settings.redactMode ? 'border-neon-cyan/50 bg-neon-cyan/5 shadow-[0_0_15px_rgba(34,211,238,0.1)]' : 'border-space-border/50'">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1">
+                                <span class="label-text font-medium transition-colors"
+                                    :class="$store.settings.redactMode ? 'text-neon-cyan' : 'text-gray-300'"
+                                    x-text="$store.global.t('screenshotMode')">Screenshot Mode</span>
+                                <span class="text-xs text-gray-500"
+                                    x-text="$store.global.t('screenshotModeDesc')">Hide email addresses for safe screen sharing.</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer"
+                                    :checked="$store.settings.redactMode === true"
+                                    @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
+                                    aria-label="Screenshot mode toggle">
+                                <div
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 

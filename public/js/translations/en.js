@@ -379,4 +379,7 @@ window.translations.en = {
     paidModeDesc: "All proxy configuration has been removed. Claude CLI uses your Anthropic subscription directly.",
     paidModeHint: "Switch to Proxy mode to configure model routing and presets.",
     modeToggleFailed: "Failed to switch mode",
+    // Screenshot Mode
+    screenshotMode: "Screenshot Mode",
+    screenshotModeDesc: "Hide email addresses for safe screen sharing.",
 };
