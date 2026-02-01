@@ -96,5 +96,25 @@ window.Components.logsViewer = () => ({
 
     clearLogs() {
         this.logs = [];
+    },
+
+    exportLogs() {
+        if (this.logs.length === 0) return;
+
+        const lines = this.logs.map(log => {
+            const ts = new Date(log.timestamp).toISOString();
+            return `[${ts}] [${log.level}] ${log.message}`;
+        });
+
+        const text = lines.join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proxy-logs-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 });
