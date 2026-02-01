@@ -450,6 +450,51 @@ export class AccountManager {
     }
 
     /**
+     * Get strategy health data for the health inspector panel.
+     * Only returns tracker data when using the hybrid strategy.
+     * @returns {Object} Strategy health data
+     */
+    getStrategyHealthData() {
+        const strategyName = this.#strategyName;
+
+        // Only hybrid strategy has trackers
+        if (!this.#strategy || typeof this.#strategy.getHealthTracker !== 'function') {
+            return { strategy: strategyName, trackers: null };
+        }
+
+        const healthTracker = this.#strategy.getHealthTracker();
+        const tokenBucketTracker = this.#strategy.getTokenBucketTracker();
+        const quotaTracker = this.#strategy.getQuotaTracker();
+
+        const accounts = this.#accounts
+            .filter(a => a.enabled !== false)
+            .map(account => {
+                const email = account.email;
+                const healthScore = healthTracker ? healthTracker.getScore(email) : null;
+                const isUsable = healthTracker ? healthTracker.isUsable(email) : null;
+                const consecutiveFailures = healthTracker ? healthTracker.getConsecutiveFailures(email) : 0;
+                const tokens = tokenBucketTracker ? tokenBucketTracker.getTokens(email) : null;
+                const hasTokens = tokenBucketTracker ? tokenBucketTracker.hasTokens(email) : null;
+                const maxTokens = tokenBucketTracker ? tokenBucketTracker.getMaxTokens() : null;
+
+                return {
+                    email,
+                    healthScore: Math.round(healthScore * 10) / 10,
+                    isUsable,
+                    consecutiveFailures,
+                    tokens: Math.round(tokens * 10) / 10,
+                    hasTokens,
+                    maxTokens
+                };
+            });
+
+        return {
+            strategy: strategyName,
+            trackers: { accounts }
+        };
+    }
+
+    /**
      * Get all accounts (internal use for quota fetching)
      * Returns the full account objects including credentials
      * @returns {Array<Object>} Array of account objects
