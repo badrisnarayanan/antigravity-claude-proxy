@@ -438,4 +438,9 @@ window.translations.id = {
     consecutiveFailures: "Kegagalan",
     refreshHealthData: "Segarkan",
     healthNotAvailable: "Pelacakan kesehatan hanya tersedia dengan strategi hybrid.",
+    // Placeholder Data
+    placeholderData: "Data Placeholder",
+    placeholderDataDesc: "Masukkan akun dan kuota dummy untuk pengujian UI.",
+    includeRealAccounts: "Sertakan Akun Asli",
+    includeRealAccountsDesc: "Tampilkan akun asli bersama data placeholder.",
 };

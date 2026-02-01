@@ -334,4 +334,9 @@ window.translations.pt = {
     consecutiveFailures: "Falhas",
     refreshHealthData: "Atualizar",
     healthNotAvailable: "Rastreamento de saúde disponível apenas com estratégia hybrid.",
+    // Placeholder Data
+    placeholderData: "Dados de Teste",
+    placeholderDataDesc: "Injetar contas e cotas fictícias para testes de interface.",
+    includeRealAccounts: "Incluir Contas Reais",
+    includeRealAccountsDesc: "Mostrar contas reais junto com dados de teste.",
 };

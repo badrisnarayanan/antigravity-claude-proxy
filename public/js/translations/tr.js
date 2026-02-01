@@ -384,4 +384,9 @@ window.translations.tr = {
     consecutiveFailures: "Hatalar",
     refreshHealthData: "Yenile",
     healthNotAvailable: "Sağlık takibi yalnızca hybrid stratejide kullanılabilir.",
+    // Placeholder Data
+    placeholderData: "Yer Tutucu Veriler",
+    placeholderDataDesc: "UI testi için sahte hesaplar ve kotalar ekle.",
+    includeRealAccounts: "Gerçek Hesapları Dahil Et",
+    includeRealAccountsDesc: "Yer tutucu verilerle birlikte gerçek hesapları göster.",
 };

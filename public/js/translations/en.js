@@ -394,4 +394,9 @@ window.translations.en = {
     consecutiveFailures: "Failures",
     refreshHealthData: "Refresh",
     healthNotAvailable: "Health tracking only available with hybrid strategy.",
+    // Placeholder Data
+    placeholderData: "Placeholder Data",
+    placeholderDataDesc: "Inject dummy accounts and quotas for UI testing.",
+    includeRealAccounts: "Include Real Accounts",
+    includeRealAccountsDesc: "Show real accounts alongside placeholder data.",
 };
