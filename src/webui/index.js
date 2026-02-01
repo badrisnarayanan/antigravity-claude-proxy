@@ -457,11 +457,19 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
+            const { debug, devMode, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
-            if (typeof debug === 'boolean') updates.debug = debug;
+            if (typeof devMode === 'boolean') {
+                updates.devMode = devMode;
+                // devMode implies debug logging
+                updates.debug = devMode;
+                logger.setDebug(devMode);
+            } else if (typeof debug === 'boolean') {
+                updates.debug = debug;
+                logger.setDebug(debug);
+            }
             if (logLevel && ['info', 'warn', 'error', 'debug'].includes(logLevel)) {
                 updates.logLevel = logLevel;
             }
@@ -898,6 +906,34 @@ export function mountWebUI(app, dirname, accountManager) {
                 logger.off('log', sendLog);
             }
         });
+    });
+
+    // ==========================================
+    // Strategy Health API (Developer Mode)
+    // ==========================================
+
+    /**
+     * GET /api/strategy/health - Get strategy health data for the inspector panel
+     * Only available when devMode is enabled
+     */
+    app.get('/api/strategy/health', (req, res) => {
+        try {
+            if (!config.devMode) {
+                return res.status(403).json({
+                    status: 'error',
+                    error: 'Developer mode is not enabled'
+                });
+            }
+
+            const healthData = accountManager.getStrategyHealthData();
+            res.json({
+                status: 'ok',
+                ...healthData
+            });
+        } catch (error) {
+            logger.error('[WebUI] Error fetching strategy health:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
     });
 
     // ==========================================
