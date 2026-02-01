@@ -9,6 +9,9 @@ document.addEventListener('alpine:init', () => {
         showHiddenModels: false, // New field
         compact: false,
         redactMode: false,
+        debugLogging: true,
+        logExport: true,
+        healthInspector: true,
         port: 8080, // Display only
 
         init() {
@@ -41,7 +44,10 @@ document.addEventListener('alpine:init', () => {
                 showExhausted: this.showExhausted,
                 showHiddenModels: this.showHiddenModels,
                 compact: this.compact,
-                redactMode: this.redactMode
+                redactMode: this.redactMode,
+                debugLogging: this.debugLogging,
+                logExport: this.logExport,
+                healthInspector: this.healthInspector
             };
             localStorage.setItem('antigravity_settings', JSON.stringify(toSave));
 
