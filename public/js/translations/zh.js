@@ -387,4 +387,16 @@ window.translations.zh = {
     modeToggleFailed: "切换模式失败",
     screenshotMode: "截图模式",
     screenshotModeDesc: "隐藏邮箱地址，方便安全分享屏幕。",
+    // Developer Mode
+    devMode: "开发者模式",
+    devModeDesc: "启用调试日志、日志导出和策略健康检查。",
+    devModeToggled: "开发者模式已{status}",
+    failedToUpdateDevMode: "更新开发者模式失败",
+    exportLogs: "导出日志",
+    strategyHealthInspector: "策略健康检查器",
+    healthScore: "健康分数",
+    tokenBucket: "令牌",
+    consecutiveFailures: "失败次数",
+    refreshHealthData: "刷新",
+    healthNotAvailable: "健康追踪仅在混合策略下可用。",
 };

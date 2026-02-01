@@ -372,4 +372,16 @@ window.translations.tr = {
     modeToggleFailed: "Mod değiştirilemedi",
     screenshotMode: "Ekran Görüntüsü Modu",
     screenshotModeDesc: "Güvenli ekran paylaşımı için e-posta adreslerini gizle.",
+    // Developer Mode
+    devMode: "Geliştirici Modu",
+    devModeDesc: "Hata ayıklama günlükleri, günlük dışa aktarma ve strateji sağlık denetçisini etkinleştirir.",
+    devModeToggled: "Geliştirici modu {status}",
+    failedToUpdateDevMode: "Geliştirici modu güncellenemedi",
+    exportLogs: "Günlükleri Dışa Aktar",
+    strategyHealthInspector: "Strateji Sağlık Denetçisi",
+    healthScore: "Sağlık Puanı",
+    tokenBucket: "Tokenlar",
+    consecutiveFailures: "Hatalar",
+    refreshHealthData: "Yenile",
+    healthNotAvailable: "Sağlık takibi yalnızca hybrid stratejide kullanılabilir.",
 };

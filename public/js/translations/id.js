@@ -426,4 +426,16 @@ window.translations.id = {
     modeToggleFailed: "Gagal beralih mode",
     screenshotMode: "Mode Screenshot",
     screenshotModeDesc: "Sembunyikan alamat email untuk berbagi layar yang aman.",
+    // Developer Mode
+    devMode: "Mode Pengembang",
+    devModeDesc: "Aktifkan log debug, ekspor log, dan inspektur kesehatan strategi.",
+    devModeToggled: "Mode pengembang {status}",
+    failedToUpdateDevMode: "Gagal memperbarui mode pengembang",
+    exportLogs: "Ekspor Log",
+    strategyHealthInspector: "Inspektur Kesehatan Strategi",
+    healthScore: "Skor Kesehatan",
+    tokenBucket: "Token",
+    consecutiveFailures: "Kegagalan",
+    refreshHealthData: "Segarkan",
+    healthNotAvailable: "Pelacakan kesehatan hanya tersedia dengan strategi hybrid.",
 };

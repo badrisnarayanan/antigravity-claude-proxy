@@ -322,4 +322,16 @@ window.translations.pt = {
     modeToggleFailed: "Falha ao alternar modo",
     screenshotMode: "Modo Screenshot",
     screenshotModeDesc: "Ocultar endereços de email para compartilhamento seguro de tela.",
+    // Developer Mode
+    devMode: "Modo Desenvolvedor",
+    devModeDesc: "Ativa logs de debug, exportação de logs e inspetor de saúde da estratégia.",
+    devModeToggled: "Modo desenvolvedor {status}",
+    failedToUpdateDevMode: "Falha ao atualizar modo desenvolvedor",
+    exportLogs: "Exportar Logs",
+    strategyHealthInspector: "Inspetor de Saúde da Estratégia",
+    healthScore: "Pontuação de Saúde",
+    tokenBucket: "Tokens",
+    consecutiveFailures: "Falhas",
+    refreshHealthData: "Atualizar",
+    healthNotAvailable: "Rastreamento de saúde disponível apenas com estratégia hybrid.",
 };
