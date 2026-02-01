@@ -15,6 +15,7 @@ document.addEventListener('alpine:init', () => {
         usageHistory: {}, // Usage statistics history (from /account-limits?includeHistory=true)
         globalQuotaThreshold: 0, // Global minimum quota threshold (fraction 0-0.99)
         maxAccounts: 10, // Maximum number of accounts allowed (from config)
+        devMode: false, // Developer mode flag (from server config)
         loading: false,
         initialLoad: true, // Track first load for skeleton screen
         connectionStatus: 'connecting',
@@ -143,14 +144,21 @@ document.addEventListener('alpine:init', () => {
             try {
                 // Get password from global store
                 const password = Alpine.store('global').webuiPassword;
-                
+
                 // Use lightweight endpoint (no quota fetching)
                 const { response, newPassword } = await window.utils.request('/api/config', {}, password);
-                
+
                 if (newPassword) Alpine.store('global').webuiPassword = newPassword;
-                
+
                 if (response.ok) {
                     this.connectionStatus = 'connected';
+                    // Update devMode from server config
+                    try {
+                        const data = await response.json();
+                        if (data.config) {
+                            this.devMode = !!data.config.devMode;
+                        }
+                    } catch (e) { /* ignore parse errors */ }
                 } else {
                     this.connectionStatus = 'disconnected';
                 }
