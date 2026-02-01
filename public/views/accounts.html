@@ -273,6 +273,113 @@
         </p>
     </div>
 
+    <!-- Strategy Health Inspector (Developer Mode) -->
+    <div x-show="$store.data.devMode" class="mt-6" x-cloak>
+        <div class="view-card !p-0 border-neon-purple/30">
+            <!-- Header -->
+            <button class="w-full flex items-center justify-between px-6 py-3 bg-space-900/50 border-b border-space-border/50 hover:bg-space-900/70 transition-colors"
+                @click="healthInspectorOpen = !healthInspectorOpen">
+                <div class="flex items-center gap-3">
+                    <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">DEV</span>
+                    <span class="text-sm font-semibold text-gray-300" x-text="$store.global.t('strategyHealthInspector')">Strategy Health Inspector</span>
+                </div>
+                <svg class="w-4 h-4 text-gray-500 transition-transform" :class="{ 'rotate-180': healthInspectorOpen }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <!-- Content -->
+            <div x-show="healthInspectorOpen" x-transition class="p-6">
+                <!-- Refresh button -->
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs text-gray-500 font-mono" x-show="healthData.strategy"
+                        x-text="'Strategy: ' + healthData.strategy">
+                    </span>
+                    <button class="btn btn-xs btn-outline border-neon-purple/50 text-neon-purple hover:bg-neon-purple/10 gap-1"
+                        @click="fetchHealthData()"
+                        :disabled="healthLoading">
+                        <svg class="w-3 h-3" :class="{ 'animate-spin': healthLoading }"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span x-text="$store.global.t('refreshHealthData')">Refresh</span>
+                    </button>
+                </div>
+
+                <!-- Not available message for non-hybrid strategies -->
+                <div x-show="healthData.trackers === null && healthData.strategy" class="text-center py-8">
+                    <p class="text-sm text-gray-500" x-text="$store.global.t('healthNotAvailable')">Health tracking only available with hybrid strategy</p>
+                </div>
+
+                <!-- Health data table -->
+                <div x-show="healthData.trackers !== null && healthData.trackers?.accounts?.length > 0">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-space-border/50">
+                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-40"
+                                    x-text="$store.global.t('healthScore')">Health Score</th>
+                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-28"
+                                    x-text="$store.global.t('tokenBucket')">Tokens</th>
+                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20"
+                                    x-text="$store.global.t('consecutiveFailures')">Failures</th>
+                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="acc in healthData.trackers.accounts" :key="acc.email">
+                                <tr class="border-b border-space-border/20 last:border-0">
+                                    <td class="py-2">
+                                        <span class="text-xs font-mono text-gray-300" x-text="Redact.email(acc.email)"></span>
+                                    </td>
+                                    <td class="py-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-20 bg-gray-700 rounded-full h-2 overflow-hidden">
+                                                <div class="h-full rounded-full transition-all"
+                                                    :class="{
+                                                        'bg-neon-green': acc.healthScore > 70,
+                                                        'bg-yellow-500': acc.healthScore > 50 && acc.healthScore <= 70,
+                                                        'bg-red-500': acc.healthScore <= 50
+                                                    }"
+                                                    :style="`width: ${acc.healthScore}%`">
+                                                </div>
+                                            </div>
+                                            <span class="text-xs font-mono" :class="{
+                                                'text-neon-green': acc.healthScore > 70,
+                                                'text-yellow-500': acc.healthScore > 50 && acc.healthScore <= 70,
+                                                'text-red-500': acc.healthScore <= 50
+                                            }" x-text="acc.healthScore"></span>
+                                        </div>
+                                    </td>
+                                    <td class="py-2">
+                                        <span class="text-xs font-mono" :class="acc.hasTokens ? 'text-gray-300' : 'text-red-400'"
+                                            x-text="acc.tokens + '/' + acc.maxTokens"></span>
+                                    </td>
+                                    <td class="py-2">
+                                        <span class="text-xs font-mono" :class="acc.consecutiveFailures > 0 ? 'text-yellow-400' : 'text-gray-500'"
+                                            x-text="acc.consecutiveFailures"></span>
+                                    </td>
+                                    <td class="py-2">
+                                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                            :class="acc.isUsable ? 'bg-neon-green/10 text-neon-green border border-neon-green/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'"
+                                            x-text="acc.isUsable ? 'OK' : 'DEGRADED'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty state (no data loaded yet) -->
+                <div x-show="!healthData.strategy && !healthLoading" class="text-center py-6">
+                    <p class="text-xs text-gray-600" x-text="$store.global.t('refreshHealthData')">Click Refresh to load health data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
     <dialog id="delete_account_modal" class="modal">
         <div class="modal-box bg-space-900 border-2 border-red-500/50">

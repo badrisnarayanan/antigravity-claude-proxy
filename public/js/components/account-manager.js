@@ -14,6 +14,11 @@ window.Components.accountManager = () => ({
     selectedAccountEmail: '',
     selectedAccountLimits: {},
 
+    // Health Inspector (Developer Mode)
+    healthInspectorOpen: false,
+    healthData: {},
+    healthLoading: false,
+
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
         if (!this.searchQuery || this.searchQuery.trim() === '') {
@@ -364,6 +369,36 @@ window.Components.accountManager = () => ({
             percent: Math.round(val * 100),
             model: bestModel
         };
+    },
+
+    /**
+     * Fetch strategy health data for the inspector panel
+     */
+    async fetchHealthData() {
+        this.healthLoading = true;
+        try {
+            const store = Alpine.store('global');
+            const { response, newPassword } = await window.utils.request(
+                '/api/strategy/health',
+                {},
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                this.healthData = data;
+            } else {
+                this.healthData = {};
+                if (response.status === 403) {
+                    store.showToast(store.t('healthNotAvailable'), 'info');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch health data:', e);
+        } finally {
+            this.healthLoading = false;
+        }
     },
 
     /**
