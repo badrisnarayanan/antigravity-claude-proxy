@@ -96,8 +96,8 @@ export function convertGoogleToAnthropic(googleResponse, model) {
     }
 
     // Extract usage metadata
-    // Note: Antigravity's promptTokenCount is the TOTAL (includes cached),
-    // but Anthropic's input_tokens excludes cached. We subtract to match.
+    // input_tokens = total tokens (matches Anthropic API spec)
+    // cache_read_input_tokens = tokens read from cache (clients can subtract if needed)
     const usageMetadata = response.usageMetadata || {};
     const promptTokens = usageMetadata.promptTokenCount || 0;
     const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
@@ -111,7 +111,7 @@ export function convertGoogleToAnthropic(googleResponse, model) {
         stop_reason: stopReason,
         stop_sequence: null,
         usage: {
-            input_tokens: promptTokens - cachedTokens,
+            input_tokens: promptTokens,
             output_tokens: usageMetadata.candidatesTokenCount || 0,
             cache_read_input_tokens: cachedTokens,
             cache_creation_input_tokens: 0

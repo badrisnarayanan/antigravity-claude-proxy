@@ -65,7 +65,8 @@ export async function* streamSSEResponse(response, originalModel) {
                 const parts = content.parts || [];
 
                 // Emit message_start on first data
-                // Note: input_tokens = promptTokenCount - cachedContentTokenCount (Antigravity includes cached in total)
+                // input_tokens = total tokens (matches Anthropic API spec)
+                // cache_read_input_tokens = tokens read from cache
                 if (!hasEmittedStart && parts.length > 0) {
                     hasEmittedStart = true;
                     yield {
@@ -79,7 +80,7 @@ export async function* streamSSEResponse(response, originalModel) {
                             stop_reason: null,
                             stop_sequence: null,
                             usage: {
-                                input_tokens: inputTokens - cacheReadTokens,
+                                input_tokens: inputTokens,
                                 output_tokens: 0,
                                 cache_read_input_tokens: cacheReadTokens,
                                 cache_creation_input_tokens: 0
