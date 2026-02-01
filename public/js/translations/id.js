@@ -439,6 +439,12 @@ window.translations.id = {
     refreshHealthData: "Segarkan",
     healthNotAvailable: "Pelacakan kesehatan hanya tersedia dengan strategi hybrid.",
     // Placeholder Data
+    debugLogging: "Log Debug",
+    debugLoggingDesc: "Tampilkan pesan debug terperinci di penampil log.",
+    logExportToggle: "Ekspor Log",
+    logExportToggleDesc: "Tampilkan tombol ekspor di toolbar penampil log.",
+    healthInspectorToggle: "Inspektur Kesehatan",
+    healthInspectorToggleDesc: "Tampilkan inspektur kesehatan strategi di tampilan akun.",
     placeholderData: "Data Placeholder",
     placeholderDataDesc: "Masukkan akun dan kuota dummy untuk pengujian UI.",
     includeRealAccounts: "Sertakan Akun Asli",

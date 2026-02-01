@@ -335,6 +335,12 @@ window.translations.pt = {
     refreshHealthData: "Atualizar",
     healthNotAvailable: "Rastreamento de saúde disponível apenas com estratégia hybrid.",
     // Placeholder Data
+    debugLogging: "Log de Debug",
+    debugLoggingDesc: "Mostrar mensagens de debug detalhadas no visualizador de logs.",
+    logExportToggle: "Exportar Logs",
+    logExportToggleDesc: "Mostrar botão de exportação na barra de ferramentas do visualizador de logs.",
+    healthInspectorToggle: "Inspetor de Saúde",
+    healthInspectorToggleDesc: "Mostrar inspetor de saúde da estratégia na visualização de contas.",
     placeholderData: "Dados de Teste",
     placeholderDataDesc: "Injetar contas e cotas fictícias para testes de interface.",
     includeRealAccounts: "Incluir Contas Reais",

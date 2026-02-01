@@ -400,6 +400,12 @@ window.translations.zh = {
     refreshHealthData: "刷新",
     healthNotAvailable: "健康追踪仅在混合策略下可用。",
     // Placeholder Data
+    debugLogging: "调试日志",
+    debugLoggingDesc: "在日志查看器中显示详细调试消息。",
+    logExportToggle: "日志导出",
+    logExportToggleDesc: "在日志查看器工具栏中显示导出按钮。",
+    healthInspectorToggle: "健康检查器",
+    healthInspectorToggleDesc: "在账户视图中显示策略健康检查器。",
     placeholderData: "占位数据",
     placeholderDataDesc: "注入虚拟账户和配额以进行界面测试。",
     includeRealAccounts: "包含真实账户",

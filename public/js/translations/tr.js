@@ -385,6 +385,12 @@ window.translations.tr = {
     refreshHealthData: "Yenile",
     healthNotAvailable: "Sağlık takibi yalnızca hybrid stratejide kullanılabilir.",
     // Placeholder Data
+    debugLogging: "Hata Ayıklama Günlükleri",
+    debugLoggingDesc: "Günlük görüntüleyicide ayrıntılı hata ayıklama mesajlarını göster.",
+    logExportToggle: "Günlük Dışa Aktarma",
+    logExportToggleDesc: "Günlük görüntüleyici araç çubuğunda dışa aktarma düğmesini göster.",
+    healthInspectorToggle: "Sağlık Denetçisi",
+    healthInspectorToggleDesc: "Hesap görünümünde strateji sağlık denetçisini göster.",
     placeholderData: "Yer Tutucu Veriler",
     placeholderDataDesc: "UI testi için sahte hesaplar ve kotalar ekle.",
     includeRealAccounts: "Gerçek Hesapları Dahil Et",

@@ -395,6 +395,12 @@ window.translations.en = {
     refreshHealthData: "Refresh",
     healthNotAvailable: "Health tracking only available with hybrid strategy.",
     // Placeholder Data
+    debugLogging: "Debug Logging",
+    debugLoggingDesc: "Show verbose debug messages in the log viewer.",
+    logExportToggle: "Log Export",
+    logExportToggleDesc: "Show export button in the log viewer toolbar.",
+    healthInspectorToggle: "Health Inspector",
+    healthInspectorToggleDesc: "Show strategy health inspector in the accounts view.",
     placeholderData: "Placeholder Data",
     placeholderDataDesc: "Inject dummy accounts and quotas for UI testing.",
     includeRealAccounts: "Include Real Accounts",
