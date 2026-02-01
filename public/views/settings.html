@@ -173,7 +173,7 @@
                                     @change="$store.settings.compact = $event.target.checked; $store.settings.saveSettings(true)"
                                     aria-label="Compact mode toggle">
                                 <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
                         </div>
@@ -596,7 +596,7 @@
                                 @change="config.env.ENABLE_EXPERIMENTAL_MCP_CLI = $event.target.checked ? 'true' : 'false'"
                                 aria-label="Experimental MCP CLI toggle">
                             <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                             </div>
                         </label>
                     </div>
@@ -621,7 +621,7 @@
                                 @change="toggleGemini1mSuffix($event.target.checked)"
                                 aria-label="Gemini 1M context mode toggle">
                             <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                             </div>
                         </label>
                     </div>
@@ -995,7 +995,7 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex flex-col gap-1">
                                     <span class="text-xs font-medium transition-colors"
-                                        :class="$store.settings.redactMode ? 'text-neon-cyan' : 'text-gray-400'"
+                                        :class="$store.settings.redactMode ? 'text-neon-purple' : 'text-gray-400'"
                                         x-text="$store.global.t('screenshotMode')">Screenshot Mode</span>
                                     <span class="text-[10px] text-gray-600"
                                         x-text="$store.global.t('screenshotModeDesc')">Hide email addresses for safe screen sharing.</span>
@@ -1006,7 +1006,67 @@
                                         @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
                                         aria-label="Screenshot mode toggle">
                                     <div
-                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-cyan peer-checked:after:bg-white">
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Debug Logging -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.debugLogging ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('debugLogging')">Debug Logging</span>
+                                    <span class="text-[10px] text-gray-600"
+                                        x-text="$store.global.t('debugLoggingDesc')">Show verbose debug messages in the log viewer.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.debugLogging === true"
+                                        @change="$store.settings.debugLogging = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Debug logging toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Log Export -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.logExport ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('logExportToggle')">Log Export</span>
+                                    <span class="text-[10px] text-gray-600"
+                                        x-text="$store.global.t('logExportToggleDesc')">Show export button in the log viewer toolbar.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.logExport === true"
+                                        @change="$store.settings.logExport = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Log export toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Health Inspector -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.healthInspector ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('healthInspectorToggle')">Health Inspector</span>
+                                    <span class="text-[10px] text-gray-600"
+                                        x-text="$store.global.t('healthInspectorToggleDesc')">Show strategy health inspector in the accounts view.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.healthInspector === true"
+                                        @change="$store.settings.healthInspector = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Health inspector toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                     </div>
                                 </label>
                             </div>
@@ -1016,7 +1076,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex flex-col gap-1">
                                         <span class="text-xs font-medium transition-colors"
-                                            :class="$store.data.placeholderMode ? 'text-neon-yellow' : 'text-gray-400'"
+                                            :class="$store.data.placeholderMode ? 'text-neon-purple' : 'text-gray-400'"
                                             x-text="$store.global.t('placeholderData')">Placeholder Data</span>
                                         <span class="text-[10px] text-gray-600"
                                             x-text="$store.global.t('placeholderDataDesc')">Inject dummy accounts and quotas for UI testing.</span>
@@ -1027,13 +1087,13 @@
                                             @change="$store.data.setPlaceholderMode($event.target.checked, $store.data.placeholderIncludeReal)"
                                             aria-label="Placeholder data toggle">
                                         <div
-                                            class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-yellow peer-checked:after:bg-white">
+                                            class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                         </div>
                                     </label>
                                 </div>
 
                                 <!-- Include Real Accounts sub-toggle -->
-                                <div x-show="$store.data.placeholderMode" x-transition class="mt-2 ml-4 pl-3 border-l border-neon-yellow/20">
+                                <div x-show="$store.data.placeholderMode" x-transition class="mt-2 ml-4 pl-3 border-l border-neon-purple/20">
                                     <div class="flex items-center justify-between">
                                         <div class="flex flex-col gap-1">
                                             <span class="text-xs font-medium transition-colors"
@@ -1048,7 +1108,7 @@
                                                 @change="$store.data.setPlaceholderMode(true, $event.target.checked)"
                                                 aria-label="Include real accounts toggle">
                                             <div
-                                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-yellow/70 peer-checked:after:bg-white">
+                                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                             </div>
                                         </label>
                                     </div>
@@ -1073,7 +1133,7 @@
                                     :checked="serverConfig.persistTokenCache === true"
                                     @change="toggleTokenCache($el.checked)" aria-label="Persist token cache toggle">
                                 <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
                         </div>
