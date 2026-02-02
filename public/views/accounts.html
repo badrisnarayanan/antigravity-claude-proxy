@@ -372,6 +372,15 @@
                     </table>
                 </div>
 
+                <!-- Scoring reference -->
+                <div x-show="healthData.trackers !== null && healthData.trackers?.accounts?.length > 0" class="mt-3 px-3 py-2 rounded bg-space-900/40 border border-space-border/30">
+                    <p class="text-[10px] text-gray-500 font-mono leading-relaxed">
+                        Score: +1 success, -10 rate limit, -20 failure | Passive recovery: +10/hr | Usable threshold: &ge;50 | Initial: 70
+                        <br>
+                        Selection: (Health&times;2) + (TokenPct&times;5) + (Quota&times;1) + (LRU&times;0.1)
+                    </p>
+                </div>
+
                 <!-- Empty state (no data loaded yet) -->
                 <div x-show="!healthData.strategy && !healthLoading" class="text-center py-6">
                     <p class="text-xs text-gray-600" x-text="$store.global.t('refreshHealthData')">Click Refresh to load health data</p>
