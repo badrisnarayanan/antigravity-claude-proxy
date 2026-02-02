@@ -9,6 +9,8 @@ document.addEventListener('alpine:init', () => {
         showHiddenModels: false, // New field
         compact: false,
         redactMode: false,
+        placeholderMode: false,
+        placeholderIncludeReal: true,
         debugLogging: true,
         logExport: true,
         healthInspector: true,
@@ -45,6 +47,8 @@ document.addEventListener('alpine:init', () => {
                 showHiddenModels: this.showHiddenModels,
                 compact: this.compact,
                 redactMode: this.redactMode,
+                placeholderMode: this.placeholderMode,
+                placeholderIncludeReal: this.placeholderIncludeReal,
                 debugLogging: this.debugLogging,
                 logExport: this.logExport,
                 healthInspector: this.healthInspector

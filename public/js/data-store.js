@@ -44,10 +44,19 @@ document.addEventListener('alpine:init', () => {
             // Restore from cache first for instant render
             this.loadFromCache();
 
+            // Restore placeholder mode from persisted settings
+            // Read localStorage directly since settings store may not be initialized yet
+            try {
+                const saved = JSON.parse(localStorage.getItem('antigravity_settings') || '{}');
+                if (saved.placeholderMode) {
+                    this.setPlaceholderMode(true, saved.placeholderIncludeReal !== false);
+                }
+            } catch (e) { /* ignore parse errors */ }
+
             // Watch filters to recompute
             // Alpine stores don't have $watch automatically unless inside a component?
             // We can manually call compute when filters change.
-            
+
             // Start health check monitoring
             this.startHealthCheck();
         },
@@ -485,6 +494,14 @@ document.addEventListener('alpine:init', () => {
         setPlaceholderMode(enabled, includeReal) {
             this.placeholderMode = enabled;
             this.placeholderIncludeReal = includeReal;
+
+            // Persist to settings store
+            const settings = Alpine.store('settings');
+            if (settings) {
+                settings.placeholderMode = enabled;
+                settings.placeholderIncludeReal = includeReal;
+                settings.saveSettings(true);
+            }
 
             if (enabled) {
                 // Stash real data
