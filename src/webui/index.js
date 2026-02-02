@@ -468,6 +468,7 @@ export function mountWebUI(app, dirname, accountManager) {
                 logger.setDebug(devMode);
             } else if (typeof debug === 'boolean') {
                 updates.debug = debug;
+                updates.devMode = debug;
                 logger.setDebug(debug);
             }
             if (logLevel && ['info', 'warn', 'error', 'debug'].includes(logLevel)) {
