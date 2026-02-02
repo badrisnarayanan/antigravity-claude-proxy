@@ -479,10 +479,10 @@ export class AccountManager {
 
                 return {
                     email,
-                    healthScore: Math.round(healthScore * 10) / 10,
+                    healthScore: healthScore != null ? Math.round(healthScore * 10) / 10 : null,
                     isUsable,
                     consecutiveFailures,
-                    tokens: Math.round(tokens * 10) / 10,
+                    tokens: tokens != null ? Math.round(tokens * 10) / 10 : null,
                     hasTokens,
                     maxTokens
                 };
