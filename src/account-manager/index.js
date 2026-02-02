@@ -464,7 +464,6 @@ export class AccountManager {
 
         const healthTracker = this.#strategy.getHealthTracker();
         const tokenBucketTracker = this.#strategy.getTokenBucketTracker();
-        const quotaTracker = this.#strategy.getQuotaTracker();
 
         const accounts = this.#accounts
             .filter(a => a.enabled !== false)
