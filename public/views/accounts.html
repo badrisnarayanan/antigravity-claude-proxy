@@ -375,9 +375,9 @@
                 <!-- Scoring reference -->
                 <div x-show="healthData.trackers !== null && healthData.trackers?.accounts?.length > 0" class="mt-3 px-3 py-2 rounded bg-space-900/40 border border-space-border/30">
                     <p class="text-[10px] text-gray-500 font-mono leading-relaxed">
-                        Score: +1 success, -10 rate limit, -20 failure | Passive recovery: +10/hr | Usable threshold: &ge;50 | Initial: 70
+                        Score is adjusted for successes, rate limits, and failures with passive recovery.
                         <br>
-                        Selection: (Health&times;2) + (TokenPct&times;5) + (Quota&times;1) + (LRU&times;0.1)
+                        Selection uses weighted health, token usage, quota, and recency (LRU).
                     </p>
                 </div>
 
