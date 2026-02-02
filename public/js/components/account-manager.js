@@ -396,7 +396,7 @@ window.Components.accountManager = () => ({
             } else {
                 this.healthData = {};
                 if (response.status === 403) {
-                    store.showToast(store.t('healthNotAvailable'), 'info');
+                    store.showToast(data.error || 'Developer mode is not enabled', 'warning');
                 }
             }
         } catch (e) {
