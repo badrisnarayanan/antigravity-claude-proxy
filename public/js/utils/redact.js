@@ -23,7 +23,7 @@ window.Redact = {
             const user = acc.email.split('@')[0];
             if (user) {
                 const escapedUser = user.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                result = result.replace(new RegExp(escapedUser, 'g'), `Account ${idx + 1}`);
+                result = result.replace(new RegExp(`\\b${escapedUser}\\b`, 'g'), `Account ${idx + 1}`);
             }
         });
         return result;
