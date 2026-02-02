@@ -18,6 +18,12 @@ window.Components.accountManager = () => ({
     healthData: {},
     healthLoading: false,
 
+    init() {
+        if (Alpine.store('data').devMode && Alpine.store('settings').healthInspectorOpen) {
+            this.fetchHealthData();
+        }
+    },
+
     get filteredAccounts() {
         const accounts = Alpine.store('data').accounts || [];
         if (!this.searchQuery || this.searchQuery.trim() === '') {

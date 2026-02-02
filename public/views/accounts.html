@@ -278,7 +278,7 @@
         <div class="view-card !p-0 border-neon-purple/30">
             <!-- Header -->
             <button class="w-full flex items-center justify-between px-6 py-3 bg-space-900/50 border-b border-space-border/50 hover:bg-space-900/70 transition-colors"
-                @click="$store.settings.toggle('healthInspectorOpen')">
+                @click="$store.settings.toggle('healthInspectorOpen'); if ($store.settings.healthInspectorOpen && !healthData.strategy) fetchHealthData()">
                 <div class="flex items-center gap-3">
                     <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">DEV</span>
                     <span class="text-sm font-semibold text-gray-300" x-text="$store.global.t('strategyHealthInspector')">Strategy Health Inspector</span>
