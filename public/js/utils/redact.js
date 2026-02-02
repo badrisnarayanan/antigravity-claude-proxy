@@ -8,7 +8,7 @@ window.Redact = {
         if (!email) return email;
         const accounts = Alpine.store('data')?.accounts || [];
         // Match full email or username-only (split('@')[0]) form
-        const idx = accounts.findIndex(a => a.email === email || a.email.split('@')[0] === email);
+        const idx = accounts.findIndex(a => a.email === email || (a.email && a.email.split('@')[0] === email));
         return idx >= 0 ? `Account ${idx + 1}` : 'Account';
     },
 
