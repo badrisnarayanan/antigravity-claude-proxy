@@ -14,6 +14,7 @@ document.addEventListener('alpine:init', () => {
         debugLogging: true,
         logExport: true,
         healthInspector: true,
+        healthInspectorOpen: false,
         port: 8080, // Display only
 
         init() {
@@ -51,7 +52,8 @@ document.addEventListener('alpine:init', () => {
                 placeholderIncludeReal: this.placeholderIncludeReal,
                 debugLogging: this.debugLogging,
                 logExport: this.logExport,
-                healthInspector: this.healthInspector
+                healthInspector: this.healthInspector,
+                healthInspectorOpen: this.healthInspectorOpen
             };
             localStorage.setItem('antigravity_settings', JSON.stringify(toSave));
 

@@ -15,7 +15,6 @@ window.Components.accountManager = () => ({
     selectedAccountLimits: {},
 
     // Health Inspector (Developer Mode)
-    healthInspectorOpen: false,
     healthData: {},
     healthLoading: false,
 
