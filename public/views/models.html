@@ -271,7 +271,7 @@
                                     <template x-for="q in getVisibleAccounts(row)" :key="q.fullEmail + '-detail'">
                                         <div class="flex items-center gap-2">
                                             <span class="text-[10px] font-mono text-gray-500 w-20 truncate text-right flex-shrink-0"
-                                                  x-text="q.email"></span>
+                                                  x-text="Redact.email(q.email)"></span>
                                             <div class="flex-1 h-1 rounded-full bg-space-800 overflow-hidden">
                                                 <div class="h-full rounded-full transition-all duration-500"
                                                      :class="q.pct > 50 ? 'bg-neon-green/70' : (q.pct > 0 ? 'bg-yellow-500/70' : 'bg-red-500/50')"
