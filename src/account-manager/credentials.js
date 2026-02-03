@@ -14,7 +14,7 @@ import {
 import { refreshAccessToken, parseRefreshParts, formatRefreshParts } from '../auth/oauth.js';
 import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
-import { isNetworkError } from '../utils/helpers.js';
+import { isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { onboardUser, getDefaultTierId } from './onboarding.js';
 import { parseTierId } from '../cloudcode/model-api.js';
 
@@ -231,7 +231,7 @@ export async function discoverProject(token, projectId = undefined) {
 
     for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
         try {
-            const response = await fetch(`${endpoint}/v1internal:loadCodeAssist`, {
+            const response = await throttledFetch(`${endpoint}/v1internal:loadCodeAssist`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

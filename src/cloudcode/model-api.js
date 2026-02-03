@@ -13,6 +13,7 @@ import {
     MODEL_VALIDATION_CACHE_TTL_MS
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { throttledFetch } from '../utils/helpers.js';
 
 // Model validation cache
 const modelCache = {
@@ -85,7 +86,7 @@ export async function fetchAvailableModels(token, projectId = null) {
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
             const url = `${endpoint}/v1internal:fetchAvailableModels`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body)
@@ -177,7 +178,7 @@ export async function getSubscriptionTier(token) {
     for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
         try {
             const url = `${endpoint}/v1internal:loadCodeAssist`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
