@@ -94,7 +94,11 @@ window.AppConstants.VALIDATION = {
 
     // Global quota threshold (0 - 99%)
     GLOBAL_QUOTA_THRESHOLD_MIN: 0,
-    GLOBAL_QUOTA_THRESHOLD_MAX: 99
+    GLOBAL_QUOTA_THRESHOLD_MAX: 99,
+
+    // Request delay (100 - 5000ms)
+    REQUEST_DELAY_MIN: 100,
+    REQUEST_DELAY_MAX: 5000
 };
 
 /**
