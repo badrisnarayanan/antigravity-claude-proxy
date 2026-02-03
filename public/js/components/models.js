@@ -32,6 +32,47 @@ window.Components.models = () => ({
         originalPct: 0
     },
 
+    // Tracks which model rows have their per-account breakdown expanded beyond the cap
+    expandedModels: new Set(),
+
+    isExpanded(modelId) {
+        return this.expandedModels.has(modelId);
+    },
+
+    toggleExpanded(modelId) {
+        if (this.expandedModels.has(modelId)) {
+            this.expandedModels.delete(modelId);
+        } else {
+            this.expandedModels.add(modelId);
+        }
+        // Force Alpine reactivity
+        this.expandedModels = new Set(this.expandedModels);
+    },
+
+    /**
+     * Get visible account rows for a model's breakdown, respecting the cap
+     */
+    getVisibleAccounts(row) {
+        const all = row.quotaInfo || [];
+        if (Alpine.store('settings').showAllAccounts || this.isExpanded(row.modelId)) {
+            return all;
+        }
+        const limit = window.AppConstants.LIMITS.ACCOUNT_BREAKDOWN_LIMIT;
+        return all.slice(0, limit);
+    },
+
+    /**
+     * Get the number of hidden accounts for a model row
+     */
+    getHiddenCount(row) {
+        const all = row.quotaInfo || [];
+        const limit = window.AppConstants.LIMITS.ACCOUNT_BREAKDOWN_LIMIT;
+        if (Alpine.store('settings').showAllAccounts || this.isExpanded(row.modelId)) {
+            return 0;
+        }
+        return Math.max(0, all.length - limit);
+    },
+
     // Model editing state (from main)
     editingModelId: null,
     newMapping: '',

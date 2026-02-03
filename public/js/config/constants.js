@@ -32,7 +32,10 @@ window.AppConstants.LIMITS = {
     MIN_QUOTA: 100,
 
     // Percentage base (for calculations)
-    PERCENTAGE_BASE: 100
+    PERCENTAGE_BASE: 100,
+
+    // Max per-account breakdown rows before showing "+N more" toggle
+    ACCOUNT_BREAKDOWN_LIMIT: 10
 };
 
 /**

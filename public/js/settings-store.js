@@ -6,7 +6,8 @@ document.addEventListener('alpine:init', () => {
         refreshInterval: 60,
         logLimit: 2000,
         showExhausted: true,
-        showHiddenModels: false, // New field
+        showHiddenModels: false,
+        showAllAccounts: false,
         compact: false,
         redactMode: false,
         placeholderMode: false,
@@ -46,6 +47,7 @@ document.addEventListener('alpine:init', () => {
                 logLimit: this.logLimit,
                 showExhausted: this.showExhausted,
                 showHiddenModels: this.showHiddenModels,
+                showAllAccounts: this.showAllAccounts,
                 compact: this.compact,
                 redactMode: this.redactMode,
                 placeholderMode: this.placeholderMode,

@@ -172,7 +172,7 @@ function parseError(error) {
     } else if (error.message.includes('PERMISSION_DENIED')) {
         errorType = 'permission_error';
         statusCode = 403;
-        errorMessage = 'Permission denied. Check your Antigravity license.';
+        errorMessage = errorMessage;
     }
 
     return { errorType, statusCode, errorMessage };
@@ -785,27 +785,59 @@ app.post('/v1/messages', async (req, res) => {
 
         if (stream) {
             // Handle streaming response
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-            res.setHeader('X-Accel-Buffering', 'no');
-
-            // Flush headers immediately to start the stream
-            res.flushHeaders();
+            // Do NOT flush headers immediately. We need to wait for the first chunk
+            // to ensure we don't send a 200 OK if the upstream fails immediately (e.g. 429/503).
 
             try {
-                // Use the streaming generator with account manager
-                for await (const event of sendMessageStream(request, accountManager, FALLBACK_ENABLED)) {
-                    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-                    // Flush after each event for real-time streaming
+                // Initialize the generator
+                const generator = sendMessageStream(request, accountManager, FALLBACK_ENABLED);
+                
+                // BUFFERING STRATEGY:
+                // Pull the first event *before* sending headers. 
+                // If this throws, we can safely send a 4xx/5xx error JSON.
+                const firstResult = await generator.next();
+
+                // If we get here, the stream started successfully.
+                res.status(200);
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.flushHeaders();
+
+                // If the generator isn't done, send the first chunk
+                if (!firstResult.done) {
+                    res.write(`event: ${firstResult.value.type}\ndata: ${JSON.stringify(firstResult.value)}\n\n`);
                     if (res.flush) res.flush();
                 }
+
+                // Continue with the rest of the stream
+                for await (const event of generator) {
+                    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+                    if (res.flush) res.flush();
+                }
+                
                 res.end();
 
-            } catch (streamError) {
-                logger.error('[API] Stream error:', streamError);
-
-                const { errorType, errorMessage } = parseError(streamError);
+            } catch (error) {
+                // If we haven't sent headers yet, we can send a proper error status
+                if (!res.headersSent) {
+                    logger.error('[API] Initial stream error:', error);
+                    const { errorType, statusCode, errorMessage } = parseError(error);
+                    
+                    return res.status(statusCode).json({
+                        type: 'error',
+                        error: {
+                            type: errorType,
+                            message: errorMessage
+                        }
+                    });
+                }
+                
+                // If headers were already sent (should only happen if error occurs mid-stream),
+                // we have to fallback to SSE error event
+                logger.error('[API] Mid-stream error:', error);
+                const { errorType, errorMessage } = parseError(error);
 
                 res.write(`event: error\ndata: ${JSON.stringify({
                     type: 'error',

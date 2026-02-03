@@ -4,7 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/antigravity-claude-proxy.svg)](https://www.npmjs.com/package/antigravity-claude-proxy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A proxy server that exposes an **Anthropic-compatible API** backed by **Antigravity's Cloud Code**, letting you use Claude and Gemini models with **Claude Code CLI**.
+A proxy server that exposes an **Anthropic-compatible API** backed by **Antigravity's Cloud Code**, letting you use Claude and Gemini models with **Claude Code CLI** and **OpenClaw / ClawdBot**.
 
 ![Antigravity Claude Proxy Banner](images/banner.png)
 
@@ -268,6 +268,7 @@ Then run `claude` for official API or `claude-antigravity` for this proxy.
 - [Web Management Console](docs/web-console.md)
 - [Advanced Configuration](docs/configuration.md)
 - [macOS Menu Bar App](docs/menubar-app.md)
+- [OpenClaw / ClawdBot Integration](docs/openclaw.md)
 - [API Endpoints](docs/api-endpoints.md)
 - [Testing](docs/testing.md)
 - [Troubleshooting](docs/troubleshooting.md)

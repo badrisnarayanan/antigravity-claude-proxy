@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Troubleshooting Guide
+    url: https://github.com/badrisnarayanan/antigravity-claude-proxy/blob/main/docs/troubleshooting.md
+    about: Check here first for common issues and solutions before creating a bug report
   - name: Google Cloud Support
     url: https://cloud.google.com/support
     about: For Google Cloud account or billing issues, contact Google Cloud directly
