@@ -290,6 +290,38 @@ window.Components.serverConfig = () => ({
         }, window.AppConstants.INTERVALS.CONFIG_DEBOUNCE);
     },
 
+    async toggleRequestThrottling(enabled) {
+        const store = Alpine.store('global');
+        const previousValue = this.serverConfig.requestThrottlingEnabled;
+        this.serverConfig.requestThrottlingEnabled = enabled;
+
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requestThrottlingEnabled: enabled })
+            }, store.webuiPassword);
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(`Request Throttling ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            } else {
+                throw new Error(data.error || 'Failed to update');
+            }
+        } catch (e) {
+            this.serverConfig.requestThrottlingEnabled = previousValue;
+            store.showToast('Failed to update Request Throttling: ' + e.message, 'error');
+        }
+    },
+
+    toggleRequestDelayMs(value) {
+        const { REQUEST_DELAY_MIN, REQUEST_DELAY_MAX } = window.AppConstants.VALIDATION;
+        this.saveConfigField('requestDelayMs', value, 'Request Delay',
+            (v) => window.Validators.validateRange(v, REQUEST_DELAY_MIN, REQUEST_DELAY_MAX, 'Request Delay'));
+    },
+
     toggleMaxAccounts(value) {
         const { MAX_ACCOUNTS_MIN, MAX_ACCOUNTS_MAX } = window.AppConstants.VALIDATION;
         this.saveConfigField('maxAccounts', value, 'Max Accounts',
