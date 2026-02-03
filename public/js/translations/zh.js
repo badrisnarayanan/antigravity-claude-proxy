@@ -386,7 +386,7 @@ window.translations.zh = {
     paidModeHint: "切换到代理模式以配置模型路由和预设。",
     modeToggleFailed: "切换模式失败",
     screenshotMode: "截图模式",
-    screenshotModeDesc: "隐藏邮箱地址，方便安全分享屏幕。",
+    screenshotModeDesc: "隐藏账户信息，方便安全分享屏幕。",
     // Developer Mode
     devMode: "开发者模式",
     devModeDesc: "启用调试日志、日志导出和策略健康检查。",

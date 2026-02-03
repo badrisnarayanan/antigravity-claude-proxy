@@ -425,7 +425,7 @@ window.translations.id = {
     paidModeHint: "Beralih ke mode Proxy untuk mengonfigurasi routing model dan preset.",
     modeToggleFailed: "Gagal beralih mode",
     screenshotMode: "Mode Screenshot",
-    screenshotModeDesc: "Sembunyikan alamat email untuk berbagi layar yang aman.",
+    screenshotModeDesc: "Sembunyikan info akun untuk berbagi layar yang aman.",
     // Developer Mode
     devMode: "Mode Pengembang",
     devModeDesc: "Aktifkan log debug, ekspor log, dan inspektur kesehatan strategi.",

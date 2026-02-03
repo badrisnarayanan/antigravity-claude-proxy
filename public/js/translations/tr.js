@@ -371,7 +371,7 @@ window.translations.tr = {
     paidModeHint: "Model yönlendirme ve ön ayarları yapılandırmak için Proxy moduna geçin.",
     modeToggleFailed: "Mod değiştirilemedi",
     screenshotMode: "Ekran Görüntüsü Modu",
-    screenshotModeDesc: "Güvenli ekran paylaşımı için e-posta adreslerini gizle.",
+    screenshotModeDesc: "Güvenli ekran paylaşımı için hesap bilgilerini gizle.",
     // Developer Mode
     devMode: "Geliştirici Modu",
     devModeDesc: "Hata ayıklama günlükleri, günlük dışa aktarma ve strateji sağlık denetçisini etkinleştirir.",

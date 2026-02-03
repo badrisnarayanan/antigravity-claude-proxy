@@ -321,7 +321,7 @@ window.translations.pt = {
     paidModeHint: "Mude para modo Proxy para configurar roteamento de modelos e presets.",
     modeToggleFailed: "Falha ao alternar modo",
     screenshotMode: "Modo Screenshot",
-    screenshotModeDesc: "Ocultar endereços de email para compartilhamento seguro de tela.",
+    screenshotModeDesc: "Ocultar informações da conta para compartilhamento seguro de tela.",
     // Developer Mode
     devMode: "Modo Desenvolvedor",
     devModeDesc: "Ativa logs de debug, exportação de logs e inspetor de saúde da estratégia.",
