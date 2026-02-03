@@ -457,7 +457,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
+            const { debug, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, requestThrottlingEnabled, requestDelayMs, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
 
             // Only allow updating specific fields (security)
             const updates = {};
@@ -488,6 +488,12 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof globalQuotaThreshold === 'number' && globalQuotaThreshold >= 0 && globalQuotaThreshold < 1) {
                 updates.globalQuotaThreshold = globalQuotaThreshold;
+            }
+            if (typeof requestThrottlingEnabled === 'boolean') {
+                updates.requestThrottlingEnabled = requestThrottlingEnabled;
+            }
+            if (typeof requestDelayMs === 'number' && requestDelayMs >= 100 && requestDelayMs <= 5000) {
+                updates.requestDelayMs = requestDelayMs;
             }
             if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
                 updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;

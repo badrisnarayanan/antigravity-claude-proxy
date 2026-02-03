@@ -9,7 +9,7 @@ import {
     ANTIGRAVITY_HEADERS
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
-import { sleep } from '../utils/helpers.js';
+import { sleep, throttledFetch } from '../utils/helpers.js';
 
 /**
  * Get the default tier ID from allowed tiers list
@@ -67,7 +67,7 @@ export async function onboardUser(token, tierId, projectId = undefined, maxAttem
     for (const endpoint of ONBOARD_USER_ENDPOINTS) {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
-                const response = await fetch(`${endpoint}/v1internal:onboardUser`, {
+                const response = await throttledFetch(`${endpoint}/v1internal:onboardUser`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
