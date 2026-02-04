@@ -12,7 +12,7 @@
  *   node src/cli/accounts.js list     # List all accounts
  *   node src/cli/accounts.js clear    # Remove all accounts
  */
-
+import '../utils/proxy.js';
 import { createInterface } from 'readline/promises';
 import { stdin, stdout } from 'process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
