@@ -377,6 +377,14 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                         }
 
                         if (response.status >= 400) {
+                            // Check for 403 PERMISSION_DENIED with VALIDATION_REQUIRED
+                            // This means the account needs re-verification via Google - rotate to next account
+                            if (response.status === 403 && errorText.includes('VALIDATION_REQUIRED')) {
+                                logger.warn(`[CloudCode] Account ${account.email} needs Google re-verification (VALIDATION_REQUIRED), marking invalid and switching...`);
+                                accountManager.markInvalid(account.email, 'Google verification required - visit Google to re-verify');
+                                throw new Error(`AUTH_VALIDATION_REQUIRED: ${errorText}`);
+                            }
+
                             // Check for 503 MODEL_CAPACITY_EXHAUSTED - use progressive backoff like 429 capacity
                             if (response.status === 503 && isModelCapacityExhausted(errorText)) {
                                 if (capacityRetryCount < MAX_CAPACITY_RETRIES) {

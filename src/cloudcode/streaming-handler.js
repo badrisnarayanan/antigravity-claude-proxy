@@ -396,6 +396,14 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             throw new Error(`invalid_request_error: ${errorText}`);
                         }
 
+                        // Check for 403 PERMISSION_DENIED with VALIDATION_REQUIRED
+                        // This means the account needs re-verification via Google - rotate to next account
+                        if (response.status === 403 && errorText.includes('VALIDATION_REQUIRED')) {
+                            logger.warn(`[CloudCode] Account ${account.email} needs Google re-verification (VALIDATION_REQUIRED), marking invalid and switching...`);
+                            accountManager.markInvalid(account.email, 'Google verification required - visit Google to re-verify');
+                            throw new Error(`AUTH_VALIDATION_REQUIRED: ${errorText}`);
+                        }
+
                         lastError = new Error(`API error ${response.status}: ${errorText}`);
 
                         // Try next endpoint for 403/404/5xx errors (matches opencode-antigravity-auth behavior)

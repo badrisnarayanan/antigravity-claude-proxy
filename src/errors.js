@@ -191,8 +191,12 @@ export function isAuthError(error) {
     if (error instanceof AuthError) return true;
     const msg = (error.message || '').toUpperCase();
     return msg.includes('AUTH_INVALID') ||
+        msg.includes('AUTH_VALIDATION_REQUIRED') ||
         msg.includes('INVALID_GRANT') ||
-        msg.includes('TOKEN REFRESH FAILED');
+        msg.includes('TOKEN REFRESH FAILED') ||
+        // 403 PERMISSION_DENIED with VALIDATION_REQUIRED means account needs re-verification
+        // This should trigger account rotation, not endpoint cycling
+        (msg.includes('PERMISSION_DENIED') && msg.includes('VALIDATION_REQUIRED'));
 }
 
 /**
