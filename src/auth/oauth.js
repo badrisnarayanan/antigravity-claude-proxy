@@ -94,7 +94,7 @@ export function getAuthorizationUrl(customRedirectUri = null) {
  * - Just the code parameter: 4/0xxx...
  *
  * @param {string} input - User input (URL or code)
- * @returns {{code: string, state: string|null}} Extracted code and optional state
+ * @returns {{code: string, state: string|null, redirectUri: string|null}} Extracted code, state, and redirect URI
  */
 export function extractCodeFromInput(input) {
     if (!input || typeof input !== 'string') {
@@ -119,7 +119,10 @@ export function extractCodeFromInput(input) {
                 throw new Error('No authorization code found in URL');
             }
 
-            return { code, state };
+            // Extract redirect_uri from the URL (protocol + host + pathname, without query params)
+            const redirectUri = `${url.protocol}//${url.host}${url.pathname}`;
+
+            return { code, state, redirectUri };
         } catch (e) {
             if (e.message.includes('OAuth error') || e.message.includes('No authorization code')) {
                 throw e;
@@ -134,7 +137,7 @@ export function extractCodeFromInput(input) {
         throw new Error('Input is too short to be a valid authorization code');
     }
 
-    return { code: trimmed, state: null };
+    return { code: trimmed, state: null, redirectUri: null };
 }
 
 /**
@@ -350,9 +353,14 @@ Option 4: Exclude port from reservation (run as Administrator)
  *
  * @param {string} code - Authorization code from OAuth callback
  * @param {string} verifier - PKCE code verifier
+ * @param {string} [redirectUri] - Optional redirect URI (must match the one used in authorization request)
  * @returns {Promise<{accessToken: string, refreshToken: string, expiresIn: number}>} OAuth tokens
  */
-export async function exchangeCode(code, verifier) {
+export async function exchangeCode(code, verifier, redirectUri = null) {
+    // Use provided redirect_uri or fall back to default
+    // This is critical for manual authorization where the redirect_uri must match exactly
+    const finalRedirectUri = redirectUri || OAUTH_REDIRECT_URI;
+
     const response = await fetch(OAUTH_CONFIG.tokenUrl, {
         method: 'POST',
         headers: {
@@ -364,7 +372,7 @@ export async function exchangeCode(code, verifier) {
             code: code,
             code_verifier: verifier,
             grant_type: 'authorization_code',
-            redirect_uri: OAUTH_REDIRECT_URI
+            redirect_uri: finalRedirectUri
         })
     });
 
@@ -497,15 +505,29 @@ export async function discoverProjectId(accessToken) {
     }
 
     // Try onboarding if we got a response but no project
+    // Note: Onboarding can take a long time (up to 50 seconds with polling),
+    // so we start it asynchronously and don't wait for it to complete
+    // The project will be discovered on first API request instead
     if (loadCodeAssistData) {
         const tierId = getDefaultTierId(loadCodeAssistData.allowedTiers) || 'FREE';
-        logger.info(`[OAuth] Onboarding user with tier: ${tierId}`);
-
-        const onboardedProject = await onboardUser(accessToken, tierId);
-        if (onboardedProject) {
-            logger.success(`[OAuth] Successfully onboarded, project: ${onboardedProject}`);
-            return onboardedProject;
-        }
+        logger.info(`[OAuth] Starting async onboarding with tier: ${tierId} (will complete in background)`);
+        
+        // Start onboarding in background (don't await)
+        onboardUser(accessToken, tierId)
+            .then(projectId => {
+                if (projectId) {
+                    logger.success(`[OAuth] Background onboarding completed, project: ${projectId}`);
+                } else {
+                    logger.warn(`[OAuth] Background onboarding failed for tier: ${tierId}`);
+                }
+            })
+            .catch(error => {
+                logger.warn(`[OAuth] Background onboarding error:`, error.message);
+            });
+        
+        // Return null - project will be discovered on first use
+        // This prevents OAuth completion from timing out
+        return null;
     }
 
     return null;
@@ -516,11 +538,12 @@ export async function discoverProjectId(accessToken) {
  *
  * @param {string} code - Authorization code from OAuth callback
  * @param {string} verifier - PKCE code verifier
+ * @param {string} [redirectUri] - Optional redirect URI (must match the one used in authorization request)
  * @returns {Promise<{email: string, refreshToken: string, accessToken: string, projectId: string|null}>} Complete account info
  */
-export async function completeOAuthFlow(code, verifier) {
+export async function completeOAuthFlow(code, verifier, redirectUri = null) {
     // Exchange code for tokens
-    const tokens = await exchangeCode(code, verifier);
+    const tokens = await exchangeCode(code, verifier, redirectUri);
 
     // Get user email
     const email = await getUserEmail(tokens.accessToken);

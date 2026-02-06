@@ -22,13 +22,14 @@ services:
       # WEBUI_PASSWORD: "change-me-webui-password"
 
     # 持久化账户信息、OAuth 令牌、配置信息等
-    # 在项目根目录创建 config/ 与 data/ 目录：
-    # - config/config.json 会作为主配置文件
+    # 在项目根目录创建 data/ 目录：
     # - data/ 保存 accounts.json、SQLite DB 等运行期数据
+    # 注意：如果宿主机目录权限不正确，entrypoint 脚本会自动修复权限
     volumes:
       # HOME 配置目录（accounts.json、SQLite DB 等会保存在这里）
+      # Entrypoint 脚本会在启动时自动修复此目录的权限
       - ../data:/home/node/.config/antigravity-proxy
-      # 可选：挂载自定义 config.json（宿主机必须是“文件”，不能是目录）
+      # 可选：挂载自定义 config.json（宿主机必须是"文件"，不能是目录）
       # - ./config.json:/home/node/.config/antigravity-proxy/config.json:ro
 
     restart: unless-stopped

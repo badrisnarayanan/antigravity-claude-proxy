@@ -70,17 +70,34 @@ window.Components.addAccountModal = () => ({
                 })
             }, store.webuiPassword);
             if (newPassword) store.webuiPassword = newPassword;
+            
+            // Check HTTP status code
+            if (!response.ok) {
+                // Try to parse error response
+                let errorMessage = store.t('authFailed');
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (e) {
+                    // If JSON parsing fails, use status text
+                    errorMessage = `${store.t('authFailed')}: ${response.statusText || response.status}`;
+                }
+                store.showToast(errorMessage, 'error');
+                return;
+            }
+            
             const data = await response.json();
             if (data.status === 'ok') {
                 store.showToast(store.t('accountAddedSuccess'), 'success');
-                Alpine.store('data').fetchData();
+                // Wait for data refresh to complete before closing modal
+                await Alpine.store('data').fetchData();
                 document.getElementById('add_account_modal').close();
                 this.resetState();
             } else {
                 store.showToast(data.error || store.t('authFailed'), 'error');
             }
         } catch (e) {
-            Alpine.store('global').showToast(e.message, 'error');
+            Alpine.store('global').showToast(e.message || store.t('authFailed'), 'error');
         } finally {
             this.submitting = false;
         }

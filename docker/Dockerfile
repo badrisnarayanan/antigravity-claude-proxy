@@ -42,6 +42,7 @@ ENV NODE_ENV=production
 WORKDIR /usr/src/app
 
 # 运行时仅需 SQLite 运行库
+# 使用标准的 su 命令进行用户切换（所有 Linux 系统都包含）
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
   && rm -rf /var/lib/apt/lists/*
@@ -61,12 +62,17 @@ RUN mkdir -p /home/node/.config/antigravity-proxy \
 # 删除 devDependencies，减小运行镜像体积
 RUN npm prune --omit=dev
 
-# 使用 node 用户运行，提升安全性
-USER node
+# 复制并设置 entrypoint 脚本权限
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 默认监听端口（代码中也会读取 PORT 环境变量）
 EXPOSE 8080
 
-# 启动服务
+# 使用 entrypoint 脚本启动（以 root 身份修复权限后切换到 node 用户）
+# Entrypoint 会在修复权限后切换到 node 用户执行命令
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# 启动服务（entrypoint 会切换到 node 用户后执行）
 CMD ["npm", "start"]
 
