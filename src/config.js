@@ -67,22 +67,43 @@ if (!fs.existsSync(CONFIG_DIR)) {
 // Load config
 let config = { ...DEFAULT_CONFIG };
 
+function isReadableFile(filePath) {
+    try {
+        const stat = fs.statSync(filePath);
+        return stat.isFile();
+    } catch {
+        return false;
+    }
+}
+
 function loadConfig() {
     try {
         // Env vars take precedence for initial defaults, but file overrides them if present?
         // Usually Env > File > Default.
 
         if (fs.existsSync(CONFIG_FILE)) {
-            const fileContent = fs.readFileSync(CONFIG_FILE, 'utf8');
-            const userConfig = JSON.parse(fileContent);
-            config = { ...DEFAULT_CONFIG, ...userConfig };
+            if (isReadableFile(CONFIG_FILE)) {
+                const fileContent = fs.readFileSync(CONFIG_FILE, 'utf8');
+                const userConfig = JSON.parse(fileContent);
+                config = { ...DEFAULT_CONFIG, ...userConfig };
+            } else {
+                logger.warn(
+                    `[Config] Config path exists but is not a file (did you mount a directory?): ${CONFIG_FILE}. Skipping file config.`
+                );
+            }
         } else {
              // Try looking in current dir for config.json as fallback
              const localConfigPath = path.resolve('config.json');
              if (fs.existsSync(localConfigPath)) {
-                 const fileContent = fs.readFileSync(localConfigPath, 'utf8');
-                 const userConfig = JSON.parse(fileContent);
-                 config = { ...DEFAULT_CONFIG, ...userConfig };
+                 if (isReadableFile(localConfigPath)) {
+                     const fileContent = fs.readFileSync(localConfigPath, 'utf8');
+                     const userConfig = JSON.parse(fileContent);
+                     config = { ...DEFAULT_CONFIG, ...userConfig };
+                 } else {
+                     logger.warn(
+                         `[Config] Local config path exists but is not a file: ${localConfigPath}. Skipping file config.`
+                     );
+                 }
              }
         }
 
