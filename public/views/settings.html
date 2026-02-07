@@ -1049,8 +1049,11 @@
                             :placeholder="$store.global.t('presetNamePlaceholder')"
                             @keydown.enter.prevent="editingPresetMode ? executeEditServerPreset() : executeSaveServerPreset(newServerPresetName)">
                         <textarea x-model="newServerPresetDescription"
-                            class="textarea textarea-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white mb-4 resize-y"
-                            style="min-height: 2rem;" rows="1" maxlength="200"
+                            x-ref="presetDescTextarea"
+                            x-effect="if(newServerPresetDescription !== undefined && $refs.presetDescTextarea) { $refs.presetDescTextarea.style.height = 'auto'; $refs.presetDescTextarea.style.height = $refs.presetDescTextarea.scrollHeight + 'px'; }"
+                            @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                            class="textarea textarea-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white mb-4 resize-none overflow-hidden"
+                            rows="1" maxlength="200"
                             :placeholder="$store.global.t('presetDescPlaceholder')"></textarea>
                         <div class="modal-action">
                             <form method="dialog">
