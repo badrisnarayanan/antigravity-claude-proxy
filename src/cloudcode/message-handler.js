@@ -18,7 +18,7 @@ import {
     isThinkingModel
 } from '../constants.js';
 import { convertGoogleToAnthropic } from '../format/index.js';
-import { isRateLimitError, isAuthError } from '../errors.js';
+import { isRateLimitError, isAuthError, isAccountForbiddenError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
@@ -30,6 +30,7 @@ import {
     clearRateLimitState,
     isPermanentAuthFailure,
     isModelCapacityExhausted,
+    isValidationRequired,
     calculateSmartBackoff
 } from './rate-limit-state.js';
 
@@ -272,6 +273,15 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                                 throw new Error(`invalid_request_error: ${errorText}`);
                             }
 
+                            // 403 with VALIDATION_REQUIRED or PERMISSION_DENIED is an account-level error
+                            // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help
+                            // Mark account and throw to trigger account rotation (fixes #248)
+                            if (response.status === 403 && isValidationRequired(errorText)) {
+                                logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, rotating account...`);
+                                accountManager.markRateLimited(account.email, EXTENDED_COOLDOWN_MS, model);
+                                throw new Error(`ACCOUNT_FORBIDDEN: ${errorText}`);
+                            }
+
                             lastError = new Error(`API error ${response.status}: ${errorText}`);
                             // Try next endpoint for 403/404/5xx errors (matches opencode-antigravity-auth behavior)
                             if (response.status === 403 || response.status === 404) {
@@ -305,6 +315,10 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                 } catch (endpointError) {
                     if (isRateLimitError(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
+                    }
+                    // 403 account-level errors - re-throw to trigger account rotation
+                    if (isAccountForbiddenError(endpointError)) {
+                        throw endpointError;
                     }
                     // 400 errors are client errors - re-throw immediately, don't retry
                     if (endpointError.message?.includes('400')) {
@@ -344,6 +358,13 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
             if (isAuthError(error)) {
                 // Auth invalid - already marked, continue to next account
                 logger.warn(`[CloudCode] Account ${account.email} has invalid credentials, trying next...`);
+                continue;
+            }
+            if (isAccountForbiddenError(error)) {
+                // 403 VALIDATION_REQUIRED / PERMISSION_DENIED - account-level error
+                // Already marked with cooldown, notify strategy and rotate to next account
+                accountManager.notifyFailure(account, model);
+                logger.warn(`[CloudCode] Account ${account.email} forbidden (403 VALIDATION_REQUIRED), trying next...`);
                 continue;
             }
             // Handle 5xx errors
