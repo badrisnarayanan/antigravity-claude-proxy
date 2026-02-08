@@ -86,6 +86,7 @@
             <thead x-show="$store.data.accounts.length > 0">
                 <tr class="bg-space-900/50 border-b border-space-border/50">
                     <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-show="$store.data.strategy === 'sticky'">Sticky</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
@@ -139,6 +140,34 @@
                                 <div class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"></div>
                             </label>
                         </td>
+                        <!-- Sticky Column -->
+                        <td class="py-4" x-show="$store.data.strategy === 'sticky'">
+                            <div class="flex items-center gap-1.5">
+                                <!-- Claude Key -->
+                                <div class="tooltip tooltip-right" data-tip="Stick Claude to this account">
+                                    <button
+                                        class="w-5 h-5 flex items-center justify-center text-[10px] font-bold font-mono rounded transition-all duration-200 shadow-sm"
+                                        :class="isStickyFor(acc.email, 'claude')
+                                            ? 'bg-neon-purple text-white border border-neon-purple shadow-[0_0_10px_rgba(168,85,247,0.5)] ring-1 ring-neon-purple/50 scale-110'
+                                            : 'bg-white/5 text-gray-400 border border-gray-600 hover:border-gray-400 hover:text-white hover:bg-white/10'"
+                                        @click="toggleSticky(getAccountIndex(acc.email), 'claude')">
+                                        C
+                                    </button>
+                                </div>
+
+                                <!-- Gemini Key -->
+                                <div class="tooltip tooltip-right" data-tip="Stick Gemini to this account">
+                                    <button
+                                        class="w-5 h-5 flex items-center justify-center text-[10px] font-bold font-mono rounded transition-all duration-200 shadow-sm"
+                                        :class="isStickyFor(acc.email, 'gemini')
+                                            ? 'bg-neon-cyan text-white border border-neon-cyan shadow-[0_0_10px_rgba(6,182,212,0.5)] ring-1 ring-neon-cyan/50 scale-110'
+                                            : 'bg-white/5 text-gray-400 border border-gray-600 hover:border-gray-400 hover:text-white hover:bg-white/10'"
+                                        @click="toggleSticky(getAccountIndex(acc.email), 'gemini')">
+                                        G
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
                         <td class="py-4">
                             <div class="flex items-center gap-2">
                                 <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
@@ -146,31 +175,6 @@
                                           x-text="formatEmail(Redact.email(acc.email))">
                                     </span>
                                 </div>
-                                <!-- Sticky Pills (only show when using sticky strategy) -->
-                                <template x-if="$store.data.strategy === 'sticky'">
-                                    <div class="flex items-center gap-1 ml-2">
-                                        <!-- Claude sticky pill -->
-                                        <button
-                                            class="px-1.5 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer"
-                                            :class="isStickyFor(acc.email, 'claude')
-                                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50 shadow-[0_0_6px_rgba(168,85,247,0.4)]'
-                                                : 'bg-transparent text-gray-600 border border-gray-700 opacity-40 hover:opacity-70 hover:border-purple-500/30'"
-                                            @click="toggleSticky(getAccountIndex(acc.email), 'claude')"
-                                            title="Toggle Claude sticky">
-                                            C
-                                        </button>
-                                        <!-- Gemini sticky pill -->
-                                        <button
-                                            class="px-1.5 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer"
-                                            :class="isStickyFor(acc.email, 'gemini')
-                                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_6px_rgba(34,211,238,0.4)]'
-                                                : 'bg-transparent text-gray-600 border border-gray-700 opacity-40 hover:opacity-70 hover:border-cyan-500/30'"
-                                            @click="toggleSticky(getAccountIndex(acc.email), 'gemini')"
-                                            title="Toggle Gemini sticky">
-                                            G
-                                        </button>
-                                    </div>
-                                </template>
                             </div>
                         </td>
                         <td class="py-4">
