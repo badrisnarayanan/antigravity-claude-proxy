@@ -87,6 +87,7 @@
                 <tr class="bg-space-900/50 border-b border-space-border/50">
                     <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24" x-show="$store.data.strategy === 'sticky'">Sticky</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('quota')">Quota</th>
@@ -140,10 +141,40 @@
                             </label>
                         </td>
                         <td class="py-4">
-                            <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
-                                <span class="font-mono text-sm text-gray-300 truncate max-w-[320px] inline-block cursor-help group-hover:text-white transition-colors"
-                                      x-text="formatEmail(Redact.email(acc.email))">
-                                </span>
+                            <div class="flex items-center gap-2">
+                                <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
+                                    <span class="font-mono text-sm text-gray-300 truncate max-w-[280px] inline-block cursor-help group-hover:text-white transition-colors"
+                                          x-text="formatEmail(Redact.email(acc.email))">
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <!-- Sticky Column -->
+                        <td class="py-4" x-show="$store.data.strategy === 'sticky'">
+                            <div class="flex items-center gap-1.5">
+                                <!-- Claude Key -->
+                                <div class="tooltip tooltip-right" data-tip="Stick Claude to this account">
+                                    <button
+                                        class="w-5 h-5 flex items-center justify-center text-[10px] font-bold font-mono rounded transition-all duration-200 shadow-sm"
+                                        :class="isStickyFor(acc.email, 'claude')
+                                            ? 'bg-neon-purple text-white border border-neon-purple shadow-[0_0_10px_rgba(168,85,247,0.5)] ring-1 ring-neon-purple/50 scale-110'
+                                            : 'bg-white/5 text-gray-400 border border-gray-600 hover:border-gray-400 hover:text-white hover:bg-white/10'"
+                                        @click="toggleSticky(getAccountIndex(acc.email), 'claude')">
+                                        C
+                                    </button>
+                                </div>
+
+                                <!-- Gemini Key -->
+                                <div class="tooltip tooltip-right" data-tip="Stick Gemini to this account">
+                                    <button
+                                        class="w-5 h-5 flex items-center justify-center text-[10px] font-bold font-mono rounded transition-all duration-200 shadow-sm"
+                                        :class="isStickyFor(acc.email, 'gemini')
+                                            ? 'bg-neon-cyan text-white border border-neon-cyan shadow-[0_0_10px_rgba(6,182,212,0.5)] ring-1 ring-neon-cyan/50 scale-110'
+                                            : 'bg-white/5 text-gray-400 border border-gray-600 hover:border-gray-400 hover:text-white hover:bg-white/10'"
+                                        @click="toggleSticky(getAccountIndex(acc.email), 'gemini')">
+                                        G
+                                    </button>
+                                </div>
                             </div>
                         </td>
                         <td class="py-4">

@@ -16,6 +16,8 @@ document.addEventListener('alpine:init', () => {
         globalQuotaThreshold: 0, // Global minimum quota threshold (fraction 0-0.99)
         maxAccounts: 10, // Maximum number of accounts allowed (from config)
         devMode: false, // Developer mode flag (from server config)
+        activeAccountByFamily: { claude: null, gemini: null },
+        strategy: 'hybrid',
         placeholderMode: false, // Inject placeholder account data for UI testing
         placeholderIncludeReal: true, // Include real accounts alongside placeholder data
         _realAccounts: null, // Stash for real accounts when placeholder mode is on
@@ -81,7 +83,10 @@ document.addEventListener('alpine:init', () => {
                         this.models = data.models;
                         this.modelConfig = data.modelConfig || {};
                         this.usageHistory = data.usageHistory || {};
-                        
+                        // Restore strategy and sticky state to prevent UI layout shift
+                        if (data.strategy) this.strategy = data.strategy;
+                        if (data.activeAccountByFamily) this.activeAccountByFamily = data.activeAccountByFamily;
+
                         // Don't show loading on initial load if we have cache
                         this.initialLoad = false;
                         this.computeQuotaRows();
@@ -100,6 +105,9 @@ document.addEventListener('alpine:init', () => {
                     models: this.models,
                     modelConfig: this.modelConfig,
                     usageHistory: this.usageHistory,
+                    // Cache strategy and sticky state
+                    strategy: this.strategy,
+                    activeAccountByFamily: this.activeAccountByFamily,
                     timestamp: Date.now()
                 };
                 localStorage.setItem('ag_data_cache', JSON.stringify(cacheData));
@@ -132,6 +140,8 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.modelConfig = data.modelConfig || {};
                 this.globalQuotaThreshold = data.globalQuotaThreshold || 0;
+                this.activeAccountByFamily = data.activeAccountByFamily || { claude: null, gemini: null };
+                this.strategy = data.strategy || 'hybrid';
 
                 // Store usage history if included (for dashboard)
                 if (data.history) {

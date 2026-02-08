@@ -353,6 +353,9 @@ window.Components.serverConfig = () => ({
 
             const data = await response.json();
             if (data.status === 'ok') {
+                // Optimistically update data store to show/hide sticky pills immediately
+                Alpine.store('data').strategy = strategy;
+
                 const strategyLabel = this.getStrategyLabel(strategy);
                 store.showToast(store.t('strategyUpdated', { strategy: strategyLabel }), 'success');
                 await this.fetchServerConfig(); // Confirm server state
