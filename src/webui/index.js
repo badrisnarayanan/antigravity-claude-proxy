@@ -15,8 +15,9 @@
 import path from 'path';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
-import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS } from '../constants.js';
+import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS, DEFAULT_SERVER_PRESETS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
+import { readServerPresets, saveServerPreset, updateServerPreset, deleteServerPreset } from '../utils/server-presets.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
 import { loadAccounts, saveAccounts } from '../account-manager/storage.js';
@@ -129,6 +130,120 @@ function createAuthMiddleware() {
         }
         next();
     };
+}
+
+/**
+ * Validate server config fields from user input.
+ * Shared by POST /api/config and PATCH /api/server/presets/:name.
+ * @param {Object} input - Raw config fields to validate
+ * @returns {Object} Validated updates object (only valid fields included)
+ */
+function validateConfigFields(input) {
+    const updates = {};
+    const { maxRetries, retryBaseMs, retryMaxMs, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries, switchAccountDelayMs, capacityBackoffTiersMs } = input;
+
+    if (typeof maxRetries === 'number' && maxRetries >= 1 && maxRetries <= 20) {
+        updates.maxRetries = maxRetries;
+    }
+    if (typeof retryBaseMs === 'number' && retryBaseMs >= 100 && retryBaseMs <= 10000) {
+        updates.retryBaseMs = retryBaseMs;
+    }
+    if (typeof retryMaxMs === 'number' && retryMaxMs >= 1000 && retryMaxMs <= 120000) {
+        updates.retryMaxMs = retryMaxMs;
+    }
+    if (typeof defaultCooldownMs === 'number' && defaultCooldownMs >= 1000 && defaultCooldownMs <= 300000) {
+        updates.defaultCooldownMs = defaultCooldownMs;
+    }
+    if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
+        updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
+    }
+    if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
+        updates.maxAccounts = maxAccounts;
+    }
+    if (typeof globalQuotaThreshold === 'number' && globalQuotaThreshold >= 0 && globalQuotaThreshold < 1) {
+        updates.globalQuotaThreshold = globalQuotaThreshold;
+    }
+    if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
+        updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;
+    }
+    if (typeof maxConsecutiveFailures === 'number' && maxConsecutiveFailures >= 1 && maxConsecutiveFailures <= 10) {
+        updates.maxConsecutiveFailures = maxConsecutiveFailures;
+    }
+    if (typeof extendedCooldownMs === 'number' && extendedCooldownMs >= 10000 && extendedCooldownMs <= 300000) {
+        updates.extendedCooldownMs = extendedCooldownMs;
+    }
+    if (typeof maxCapacityRetries === 'number' && maxCapacityRetries >= 1 && maxCapacityRetries <= 10) {
+        updates.maxCapacityRetries = maxCapacityRetries;
+    }
+    if (typeof switchAccountDelayMs === 'number' && switchAccountDelayMs >= 1000 && switchAccountDelayMs <= 60000) {
+        updates.switchAccountDelayMs = switchAccountDelayMs;
+    }
+    if (Array.isArray(capacityBackoffTiersMs) && capacityBackoffTiersMs.length >= 1 && capacityBackoffTiersMs.length <= 10) {
+        const allValid = capacityBackoffTiersMs.every(v => typeof v === 'number' && v >= 1000 && v <= 300000);
+        if (allValid) {
+            updates.capacityBackoffTiersMs = [...capacityBackoffTiersMs];
+        }
+    }
+    // Account selection strategy and tuning validation
+    if (accountSelection && typeof accountSelection === 'object') {
+        const validStrategies = ['sticky', 'round-robin', 'hybrid'];
+        const acctUpdate = {};
+
+        if (accountSelection.strategy && validStrategies.includes(accountSelection.strategy)) {
+            acctUpdate.strategy = accountSelection.strategy;
+        }
+
+        // Health score tuning
+        if (accountSelection.healthScore && typeof accountSelection.healthScore === 'object') {
+            const hs = accountSelection.healthScore;
+            const hsUpdate = {};
+            if (typeof hs.initial === 'number' && hs.initial >= 0 && hs.initial <= 100) hsUpdate.initial = hs.initial;
+            if (typeof hs.successReward === 'number' && hs.successReward >= 0 && hs.successReward <= 20) hsUpdate.successReward = hs.successReward;
+            if (typeof hs.rateLimitPenalty === 'number' && hs.rateLimitPenalty >= -50 && hs.rateLimitPenalty <= 0) hsUpdate.rateLimitPenalty = hs.rateLimitPenalty;
+            if (typeof hs.failurePenalty === 'number' && hs.failurePenalty >= -50 && hs.failurePenalty <= 0) hsUpdate.failurePenalty = hs.failurePenalty;
+            if (typeof hs.recoveryPerHour === 'number' && hs.recoveryPerHour >= 0 && hs.recoveryPerHour <= 20) hsUpdate.recoveryPerHour = hs.recoveryPerHour;
+            if (typeof hs.minUsable === 'number' && hs.minUsable >= 0 && hs.minUsable <= 100) hsUpdate.minUsable = hs.minUsable;
+            if (typeof hs.maxScore === 'number' && hs.maxScore >= 1 && hs.maxScore <= 200) hsUpdate.maxScore = hs.maxScore;
+            if (Object.keys(hsUpdate).length > 0) acctUpdate.healthScore = hsUpdate;
+        }
+
+        // Token bucket tuning
+        if (accountSelection.tokenBucket && typeof accountSelection.tokenBucket === 'object') {
+            const tb = accountSelection.tokenBucket;
+            const tbUpdate = {};
+            if (typeof tb.maxTokens === 'number' && tb.maxTokens >= 5 && tb.maxTokens <= 200) tbUpdate.maxTokens = tb.maxTokens;
+            if (typeof tb.tokensPerMinute === 'number' && tb.tokensPerMinute >= 1 && tb.tokensPerMinute <= 60) tbUpdate.tokensPerMinute = tb.tokensPerMinute;
+            if (typeof tb.initialTokens === 'number' && tb.initialTokens >= 1 && tb.initialTokens <= 200) tbUpdate.initialTokens = tb.initialTokens;
+            if (Object.keys(tbUpdate).length > 0) acctUpdate.tokenBucket = tbUpdate;
+        }
+
+        // Quota tuning
+        if (accountSelection.quota && typeof accountSelection.quota === 'object') {
+            const q = accountSelection.quota;
+            const qUpdate = {};
+            if (typeof q.lowThreshold === 'number' && q.lowThreshold >= 0 && q.lowThreshold < 1) qUpdate.lowThreshold = q.lowThreshold;
+            if (typeof q.criticalThreshold === 'number' && q.criticalThreshold >= 0 && q.criticalThreshold < 1) qUpdate.criticalThreshold = q.criticalThreshold;
+            if (typeof q.staleMs === 'number' && q.staleMs >= 30000 && q.staleMs <= 3600000) qUpdate.staleMs = q.staleMs;
+            if (Object.keys(qUpdate).length > 0) acctUpdate.quota = qUpdate;
+        }
+
+        // Weights tuning
+        if (accountSelection.weights && typeof accountSelection.weights === 'object') {
+            const w = accountSelection.weights;
+            const wUpdate = {};
+            if (typeof w.health === 'number' && w.health >= 0 && w.health <= 20) wUpdate.health = w.health;
+            if (typeof w.tokens === 'number' && w.tokens >= 0 && w.tokens <= 20) wUpdate.tokens = w.tokens;
+            if (typeof w.quota === 'number' && w.quota >= 0 && w.quota <= 20) wUpdate.quota = w.quota;
+            if (typeof w.lru === 'number' && w.lru >= 0 && w.lru <= 5) wUpdate.lru = w.lru;
+            if (Object.keys(wUpdate).length > 0) acctUpdate.weights = wUpdate;
+        }
+
+        if (Object.keys(acctUpdate).length > 0) {
+            updates.accountSelection = acctUpdate;
+        }
+    }
+
+    return updates;
 }
 
 /**
@@ -457,13 +572,14 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', (req, res) => {
         try {
-            const { debug, devMode, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
+            const { debug, devMode, logLevel, persistTokenCache } = req.body;
 
-            // Only allow updating specific fields (security)
-            const updates = {};
+            // Validate tunable config fields via shared helper
+            const updates = validateConfigFields(req.body);
+
+            // Handle fields not covered by the shared helper
             if (typeof devMode === 'boolean') {
                 updates.devMode = devMode;
-                // devMode implies debug logging
                 updates.debug = devMode;
                 logger.setDebug(devMode);
             } else if (typeof debug === 'boolean') {
@@ -474,51 +590,8 @@ export function mountWebUI(app, dirname, accountManager) {
             if (logLevel && ['info', 'warn', 'error', 'debug'].includes(logLevel)) {
                 updates.logLevel = logLevel;
             }
-            if (typeof maxRetries === 'number' && maxRetries >= 1 && maxRetries <= 20) {
-                updates.maxRetries = maxRetries;
-            }
-            if (typeof retryBaseMs === 'number' && retryBaseMs >= 100 && retryBaseMs <= 10000) {
-                updates.retryBaseMs = retryBaseMs;
-            }
-            if (typeof retryMaxMs === 'number' && retryMaxMs >= 1000 && retryMaxMs <= 120000) {
-                updates.retryMaxMs = retryMaxMs;
-            }
             if (typeof persistTokenCache === 'boolean') {
                 updates.persistTokenCache = persistTokenCache;
-            }
-            if (typeof defaultCooldownMs === 'number' && defaultCooldownMs >= 1000 && defaultCooldownMs <= 300000) {
-                updates.defaultCooldownMs = defaultCooldownMs;
-            }
-            if (typeof maxWaitBeforeErrorMs === 'number' && maxWaitBeforeErrorMs >= 0 && maxWaitBeforeErrorMs <= 600000) {
-                updates.maxWaitBeforeErrorMs = maxWaitBeforeErrorMs;
-            }
-            if (typeof maxAccounts === 'number' && maxAccounts >= 1 && maxAccounts <= 100) {
-                updates.maxAccounts = maxAccounts;
-            }
-            if (typeof globalQuotaThreshold === 'number' && globalQuotaThreshold >= 0 && globalQuotaThreshold < 1) {
-                updates.globalQuotaThreshold = globalQuotaThreshold;
-            }
-            if (typeof rateLimitDedupWindowMs === 'number' && rateLimitDedupWindowMs >= 1000 && rateLimitDedupWindowMs <= 30000) {
-                updates.rateLimitDedupWindowMs = rateLimitDedupWindowMs;
-            }
-            if (typeof maxConsecutiveFailures === 'number' && maxConsecutiveFailures >= 1 && maxConsecutiveFailures <= 10) {
-                updates.maxConsecutiveFailures = maxConsecutiveFailures;
-            }
-            if (typeof extendedCooldownMs === 'number' && extendedCooldownMs >= 10000 && extendedCooldownMs <= 300000) {
-                updates.extendedCooldownMs = extendedCooldownMs;
-            }
-            if (typeof maxCapacityRetries === 'number' && maxCapacityRetries >= 1 && maxCapacityRetries <= 10) {
-                updates.maxCapacityRetries = maxCapacityRetries;
-            }
-            // Account selection strategy validation
-            if (accountSelection && typeof accountSelection === 'object') {
-                const validStrategies = ['sticky', 'round-robin', 'hybrid'];
-                if (accountSelection.strategy && validStrategies.includes(accountSelection.strategy)) {
-                    updates.accountSelection = {
-                        ...(config.accountSelection || {}),
-                        strategy: accountSelection.strategy
-                    };
-                }
             }
 
             if (Object.keys(updates).length === 0) {
@@ -826,6 +899,102 @@ export function mountWebUI(app, dirname, accountManager) {
             res.json({ status: 'ok', presets, message: `Preset "${name}" deleted` });
         } catch (error) {
             res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    // ==========================================
+    // Server Configuration Presets API
+    // ==========================================
+
+    /**
+     * GET /api/server/presets - List all server config presets
+     */
+    app.get('/api/server/presets', async (req, res) => {
+        try {
+            const presets = await readServerPresets();
+            res.json({ status: 'ok', presets });
+        } catch (error) {
+            logger.error('[WebUI] Error reading server presets:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/server/presets - Save a custom server config preset
+     */
+    app.post('/api/server/presets', async (req, res) => {
+        try {
+            const { name, config: presetConfig, description } = req.body;
+            if (!name || typeof name !== 'string' || !name.trim()) {
+                return res.status(400).json({ status: 'error', error: 'Preset name is required' });
+            }
+            if (!presetConfig || typeof presetConfig !== 'object' || Array.isArray(presetConfig)) {
+                return res.status(400).json({ status: 'error', error: 'Config object is required' });
+            }
+
+            const validatedConfig = validateConfigFields(presetConfig);
+            if (Object.keys(validatedConfig).length === 0) {
+                return res.status(400).json({ status: 'error', error: 'No valid config fields provided' });
+            }
+
+            const presets = await saveServerPreset(name.trim(), validatedConfig, description);
+            res.json({ status: 'ok', presets, message: `Server preset "${name}" saved` });
+        } catch (error) {
+            const status = error.message.includes('built-in') ? 400 : 500;
+            res.status(status).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * PATCH /api/server/presets/:name - Update custom preset metadata and/or config
+     */
+    app.patch('/api/server/presets/:name', async (req, res) => {
+        try {
+            const { name: currentName } = req.params;
+            if (!currentName) {
+                return res.status(400).json({ status: 'error', error: 'Preset name is required' });
+            }
+
+            const { name: newName, description, config: configInput } = req.body;
+            const updates = {};
+            if (newName !== undefined) updates.name = newName;
+            if (description !== undefined) updates.description = description;
+
+            // Validate and include config updates if provided
+            if (configInput && typeof configInput === 'object') {
+                const validatedConfig = validateConfigFields(configInput);
+                if (Object.keys(validatedConfig).length > 0) {
+                    updates.config = validatedConfig;
+                }
+            }
+
+            if (Object.keys(updates).length === 0) {
+                return res.status(400).json({ status: 'error', error: 'No updates provided' });
+            }
+
+            const presets = await updateServerPreset(currentName, updates);
+            res.json({ status: 'ok', presets, message: `Server preset "${currentName}" updated` });
+        } catch (error) {
+            const status = error.message.includes('built-in') || error.message.includes('not found') || error.message.includes('already exists') ? 400 : 500;
+            res.status(status).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * DELETE /api/server/presets/:name - Delete a custom server config preset
+     */
+    app.delete('/api/server/presets/:name', async (req, res) => {
+        try {
+            const { name } = req.params;
+            if (!name) {
+                return res.status(400).json({ status: 'error', error: 'Preset name is required' });
+            }
+
+            const presets = await deleteServerPreset(name);
+            res.json({ status: 'ok', presets, message: `Server preset "${name}" deleted` });
+        } catch (error) {
+            const status = error.message.includes('built-in') ? 400 : 500;
+            res.status(status).json({ status: 'error', error: error.message });
         }
     });
 

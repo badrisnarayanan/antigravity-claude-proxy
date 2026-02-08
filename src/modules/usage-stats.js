@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { USAGE_HISTORY_PATH } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 // Persistence path
 const HISTORY_FILE = USAGE_HISTORY_PATH;
@@ -46,13 +47,13 @@ function load() {
     try {
         // Migration logic: if old file exists and new one doesn't
         if (fs.existsSync(OLD_HISTORY_FILE) && !fs.existsSync(HISTORY_FILE)) {
-            console.log('[UsageStats] Migrating legacy usage data...');
+            logger.info('[UsageStats] Migrating legacy usage data...');
             if (!fs.existsSync(DATA_DIR)) {
                 fs.mkdirSync(DATA_DIR, { recursive: true });
             }
             fs.copyFileSync(OLD_HISTORY_FILE, HISTORY_FILE);
             // We keep the old file for safety initially, but could delete it
-            console.log(`[UsageStats] Migration complete: ${OLD_HISTORY_FILE} -> ${HISTORY_FILE}`);
+            logger.info(`[UsageStats] Migration complete: ${OLD_HISTORY_FILE} -> ${HISTORY_FILE}`);
         }
 
         if (!fs.existsSync(DATA_DIR)) {
@@ -63,7 +64,7 @@ function load() {
             history = JSON.parse(data);
         }
     } catch (err) {
-        console.error('[UsageStats] Failed to load history:', err);
+        logger.error('[UsageStats] Failed to load history:', err);
         history = {};
     }
 }
@@ -77,7 +78,7 @@ function save() {
         fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
         isDirty = false;
     } catch (err) {
-        console.error('[UsageStats] Failed to save history:', err);
+        logger.error('[UsageStats] Failed to save history:', err);
     }
 }
 
