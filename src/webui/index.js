@@ -53,7 +53,7 @@ async function setAccountEnabled(email, enabled) {
  * Remove account from config
  */
 async function removeAccount(email) {
-    const { accounts, settings, activeIndex } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+    const { accounts, settings, activeIndex, activeIndexByFamily } = await loadAccounts(ACCOUNT_CONFIG_PATH);
     const index = accounts.findIndex(a => a.email === email);
     if (index === -1) {
         throw new Error(`Account ${email} not found`);
@@ -61,7 +61,17 @@ async function removeAccount(email) {
     accounts.splice(index, 1);
     // Adjust activeIndex if needed
     const newActiveIndex = activeIndex >= accounts.length ? Math.max(0, accounts.length - 1) : activeIndex;
-    await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, newActiveIndex);
+
+    // Adjust activeIndexByFamily
+    for (const family of ['claude', 'gemini']) {
+        if (activeIndexByFamily[family] === index) {
+            activeIndexByFamily[family] = null;
+        } else if (activeIndexByFamily[family] !== null && activeIndexByFamily[family] > index) {
+            activeIndexByFamily[family]--;
+        }
+    }
+
+    await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, newActiveIndex, activeIndexByFamily);
     logger.info(`[WebUI] Account ${email} removed`);
 }
 
@@ -208,6 +218,74 @@ export function mountWebUI(app, dirname, accountManager) {
                 message: `Account ${email} ${enabled ? 'enabled' : 'disabled'}`
             });
         } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * Set sticky account for a model family
+     * POST /api/accounts/:index/sticky/:family
+     */
+    app.post('/api/accounts/:index/sticky/:family', async (req, res) => {
+        try {
+            const { index, family } = req.params;
+            const accountIndex = parseInt(index, 10);
+
+            if (family !== 'claude' && family !== 'gemini') {
+                return res.status(400).json({ status: 'error', error: 'Invalid family. Must be "claude" or "gemini"' });
+            }
+
+            const { accounts, settings, activeIndex, activeIndexByFamily } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+
+            if (isNaN(accountIndex) || accountIndex < 0 || accountIndex >= accounts.length) {
+                return res.status(400).json({ status: 'error', error: 'Invalid account index' });
+            }
+
+            activeIndexByFamily[family] = accountIndex;
+            await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex, activeIndexByFamily);
+
+            // Notify AccountManager to reload
+            if (accountManager) {
+                await accountManager.reload();
+            }
+
+            const account = accounts[accountIndex];
+            logger.info(`[WebUI] Set ${family} sticky to: ${account.email}`);
+
+            res.json({ status: 'ok', family, email: account.email });
+        } catch (error) {
+            logger.error('[WebUI] Failed to set sticky:', error);
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * Clear sticky account for a model family
+     * DELETE /api/accounts/sticky/:family
+     */
+    app.delete('/api/accounts/sticky/:family', async (req, res) => {
+        try {
+            const { family } = req.params;
+
+            if (family !== 'claude' && family !== 'gemini') {
+                return res.status(400).json({ status: 'error', error: 'Invalid family. Must be "claude" or "gemini"' });
+            }
+
+            const { accounts, settings, activeIndex, activeIndexByFamily } = await loadAccounts(ACCOUNT_CONFIG_PATH);
+
+            activeIndexByFamily[family] = null;
+            await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex, activeIndexByFamily);
+
+            // Notify AccountManager to reload
+            if (accountManager) {
+                await accountManager.reload();
+            }
+
+            logger.info(`[WebUI] Cleared ${family} sticky`);
+
+            res.json({ status: 'ok', family, email: null });
+        } catch (error) {
+            logger.error('[WebUI] Failed to clear sticky:', error);
             res.status(500).json({ status: 'error', error: error.message });
         }
     });
