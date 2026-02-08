@@ -42,15 +42,23 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
 
         const settings = config.settings || {};
         let activeIndex = config.activeIndex || 0;
+        const activeIndexByFamily = config.activeIndexByFamily || { claude: null, gemini: null };
 
         // Clamp activeIndex to valid range
         if (activeIndex >= accounts.length) {
             activeIndex = 0;
         }
 
+        // Validate and clamp indices
+        for (const family of ['claude', 'gemini']) {
+            if (activeIndexByFamily[family] !== null && activeIndexByFamily[family] >= accounts.length) {
+                activeIndexByFamily[family] = null;
+            }
+        }
+
         logger.info(`[AccountManager] Loaded ${accounts.length} account(s) from config`);
 
-        return { accounts, settings, activeIndex };
+        return { accounts, settings, activeIndex, activeIndexByFamily };
     } catch (error) {
         if (error.code === 'ENOENT') {
             // No config file - return empty
@@ -103,8 +111,9 @@ export function loadDefaultAccount(dbPath) {
  * @param {Array} accounts - Array of account objects
  * @param {Object} settings - Settings object
  * @param {number} activeIndex - Current active account index
+ * @param {Object} activeIndexByFamily - Per-family active indices
  */
-export async function saveAccounts(configPath, accounts, settings, activeIndex) {
+export async function saveAccounts(configPath, accounts, settings, activeIndex, activeIndexByFamily = null) {
     try {
         // Ensure directory exists
         const dir = dirname(configPath);
@@ -132,7 +141,8 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 modelQuotaThresholds: Object.keys(acc.modelQuotaThresholds || {}).length > 0 ? acc.modelQuotaThresholds : undefined
             })),
             settings: settings,
-            activeIndex: activeIndex
+            activeIndex: activeIndex,
+            activeIndexByFamily: activeIndexByFamily || { claude: null, gemini: null }
         };
 
         await writeFile(configPath, JSON.stringify(config, null, 2));

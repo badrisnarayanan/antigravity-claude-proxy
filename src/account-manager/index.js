@@ -38,6 +38,7 @@ import { logger } from '../utils/logger.js';
 export class AccountManager {
     #accounts = [];
     #currentIndex = 0;
+    #activeIndexByFamily = { claude: null, gemini: null };
     #configPath;
     #settings = {};
     #initialized = false;
@@ -63,11 +64,12 @@ export class AccountManager {
     async initialize(strategyOverride = null) {
         if (this.#initialized) return;
 
-        const { accounts, settings, activeIndex } = await loadAccounts(this.#configPath);
+        const { accounts, settings, activeIndex, activeIndexByFamily } = await loadAccounts(this.#configPath);
 
         this.#accounts = accounts;
         this.#settings = settings;
         this.#currentIndex = activeIndex;
+        this.#activeIndexByFamily = activeIndexByFamily || { claude: null, gemini: null };
 
         // If config exists but has no accounts, fall back to Antigravity database
         if (this.#accounts.length === 0) {
@@ -173,7 +175,11 @@ export class AccountManager {
 
         const result = this.#strategy.selectAccount(this.#accounts, modelId, {
             currentIndex: this.#currentIndex,
+            activeIndexByFamily: this.#activeIndexByFamily,
             onSave: () => this.saveToDisk(),
+            onUpdateFamilyIndex: (family, index) => {
+                this.#activeIndexByFamily[family] = index;
+            },
             ...options
         });
 
@@ -252,6 +258,74 @@ export class AccountManager {
      */
     getStrategyLabel() {
         return getStrategyLabel(this.#strategyName);
+    }
+
+    /**
+     * Get the active account index for a model family
+     * @param {string} family - 'claude' or 'gemini'
+     * @returns {number|null} Index or null if not pinned
+     */
+    getActiveIndexForFamily(family) {
+        return this.#activeIndexByFamily[family] ?? null;
+    }
+
+    /**
+     * Set the active account index for a model family
+     * @param {string} family - 'claude' or 'gemini'
+     * @param {number|null} index - Account index or null to clear
+     */
+    setActiveIndexForFamily(family, index) {
+        if (family !== 'claude' && family !== 'gemini') {
+            throw new Error(`Invalid family: ${family}`);
+        }
+        this.#activeIndexByFamily[family] = index;
+        this.saveToDisk();
+        logger.info(`[AccountManager] Set sticky for ${family}: ${index !== null ? this.#accounts[index]?.email : 'none'}`);
+    }
+
+    /**
+     * Clear the active account for a model family
+     * @param {string} family - 'claude' or 'gemini'
+     */
+    clearActiveIndexForFamily(family) {
+        this.setActiveIndexForFamily(family, null);
+    }
+
+    /**
+     * Get active accounts by family (emails for API response)
+     * @returns {{claude: string|null, gemini: string|null}}
+     */
+    getActiveAccountByFamily() {
+        return {
+            claude: this.#activeIndexByFamily.claude !== null
+                ? this.#accounts[this.#activeIndexByFamily.claude]?.email || null
+                : null,
+            gemini: this.#activeIndexByFamily.gemini !== null
+                ? this.#accounts[this.#activeIndexByFamily.gemini]?.email || null
+                : null
+        };
+    }
+
+    /**
+     * Get the raw activeIndexByFamily object
+     * @returns {{claude: number|null, gemini: number|null}}
+     */
+    getActiveIndexByFamily() {
+        return { ...this.#activeIndexByFamily };
+    }
+
+    /**
+     * Reset sticky index for a family if it points to a removed account
+     * @param {number} removedIndex - Index of removed account
+     */
+    adjustActiveIndicesAfterRemoval(removedIndex) {
+        for (const family of ['claude', 'gemini']) {
+            if (this.#activeIndexByFamily[family] === removedIndex) {
+                this.#activeIndexByFamily[family] = null;
+            } else if (this.#activeIndexByFamily[family] !== null && this.#activeIndexByFamily[family] > removedIndex) {
+                this.#activeIndexByFamily[family]--;
+            }
+        }
     }
 
     /**
@@ -400,7 +474,7 @@ export class AccountManager {
      * @returns {Promise<void>}
      */
     async saveToDisk() {
-        await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex);
+        await saveAccounts(this.#configPath, this.#accounts, this.#settings, this.#currentIndex, this.#activeIndexByFamily);
     }
 
     /**

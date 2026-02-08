@@ -407,6 +407,79 @@ window.Components.accountManager = () => ({
     },
 
     /**
+     * Toggle sticky status for an account/family
+     * @param {number} index - Account index in the accounts array
+     * @param {string} family - 'claude' or 'gemini'
+     */
+    async toggleSticky(index, family) {
+        const store = Alpine.store('global');
+        const dataStore = Alpine.store('data');
+        const currentSticky = dataStore.activeAccountByFamily[family];
+        const accounts = dataStore.accounts;
+        const account = accounts[index];
+
+        if (!account) return;
+
+        // Determine if we're setting or clearing
+        const isCurrentlySticky = currentSticky === account.email;
+
+        try {
+            let response, newPassword;
+
+            if (isCurrentlySticky) {
+                // Clear sticky
+                ({ response, newPassword } = await window.utils.request(
+                    `/api/accounts/sticky/${family}`,
+                    { method: 'DELETE' },
+                    store.webuiPassword
+                ));
+            } else {
+                // Set sticky
+                ({ response, newPassword } = await window.utils.request(
+                    `/api/accounts/${index}/sticky/${family}`,
+                    { method: 'POST' },
+                    store.webuiPassword
+                ));
+            }
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                // Optimistic update
+                dataStore.activeAccountByFamily[family] = data.email;
+                const action = isCurrentlySticky ? 'Cleared' : 'Set';
+                store.showToast(`${action} ${family} sticky${data.email ? ': ' + Redact.email(data.email) : ''}`, 'success');
+            } else {
+                throw new Error(data.error || 'Failed to update sticky');
+            }
+        } catch (e) {
+            store.showToast('Failed to update sticky: ' + e.message, 'error');
+            // Refresh to get correct state
+            await dataStore.fetchData();
+        }
+    },
+
+    /**
+     * Check if an account is sticky for a family
+     * @param {string} email - Account email
+     * @param {string} family - 'claude' or 'gemini'
+     * @returns {boolean}
+     */
+    isStickyFor(email, family) {
+        return Alpine.store('data').activeAccountByFamily[family] === email;
+    },
+
+    /**
+     * Get account index from email
+     * @param {string} email - Account email
+     * @returns {number}
+     */
+    getAccountIndex(email) {
+        return Alpine.store('data').accounts.findIndex(a => a.email === email);
+    },
+
+    /**
      * Export accounts to JSON file
      */
     async exportAccounts() {

@@ -128,7 +128,9 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
             const project = await accountManager.getProjectForAccount(account, token);
             const payload = buildCloudCodeRequest(anthropicRequest, project);
 
-            logger.debug(`[CloudCode] Sending request for model: ${model}`);
+            const allAccounts = accountManager.getAllAccounts();
+            const accIndex = allAccounts.findIndex(a => a.email === account.email);
+            logger.info(`[CloudCode] Processing ${model} with account #${accIndex} (${account.email})`);
 
             // Try each endpoint with index-based loop for capacity retry support
             let lastError = null;

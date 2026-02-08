@@ -140,10 +140,37 @@
                             </label>
                         </td>
                         <td class="py-4">
-                            <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
-                                <span class="font-mono text-sm text-gray-300 truncate max-w-[320px] inline-block cursor-help group-hover:text-white transition-colors"
-                                      x-text="formatEmail(Redact.email(acc.email))">
-                                </span>
+                            <div class="flex items-center gap-2">
+                                <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
+                                    <span class="font-mono text-sm text-gray-300 truncate max-w-[280px] inline-block cursor-help group-hover:text-white transition-colors"
+                                          x-text="formatEmail(Redact.email(acc.email))">
+                                    </span>
+                                </div>
+                                <!-- Sticky Pills (only show when using sticky strategy) -->
+                                <template x-if="$store.data.strategy === 'sticky'">
+                                    <div class="flex items-center gap-1 ml-2">
+                                        <!-- Claude sticky pill -->
+                                        <button
+                                            class="px-1.5 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer"
+                                            :class="isStickyFor(acc.email, 'claude')
+                                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50 shadow-[0_0_6px_rgba(168,85,247,0.4)]'
+                                                : 'bg-transparent text-gray-600 border border-gray-700 opacity-40 hover:opacity-70 hover:border-purple-500/30'"
+                                            @click="toggleSticky(getAccountIndex(acc.email), 'claude')"
+                                            title="Toggle Claude sticky">
+                                            C
+                                        </button>
+                                        <!-- Gemini sticky pill -->
+                                        <button
+                                            class="px-1.5 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer"
+                                            :class="isStickyFor(acc.email, 'gemini')
+                                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_6px_rgba(34,211,238,0.4)]'
+                                                : 'bg-transparent text-gray-600 border border-gray-700 opacity-40 hover:opacity-70 hover:border-cyan-500/30'"
+                                            @click="toggleSticky(getAccountIndex(acc.email), 'gemini')"
+                                            title="Toggle Gemini sticky">
+                                            G
+                                        </button>
+                                    </div>
+                                </template>
                             </div>
                         </td>
                         <td class="py-4">

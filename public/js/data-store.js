@@ -16,6 +16,8 @@ document.addEventListener('alpine:init', () => {
         globalQuotaThreshold: 0, // Global minimum quota threshold (fraction 0-0.99)
         maxAccounts: 10, // Maximum number of accounts allowed (from config)
         devMode: false, // Developer mode flag (from server config)
+        activeAccountByFamily: { claude: null, gemini: null },
+        strategy: 'hybrid',
         placeholderMode: false, // Inject placeholder account data for UI testing
         placeholderIncludeReal: true, // Include real accounts alongside placeholder data
         _realAccounts: null, // Stash for real accounts when placeholder mode is on
@@ -132,6 +134,8 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.modelConfig = data.modelConfig || {};
                 this.globalQuotaThreshold = data.globalQuotaThreshold || 0;
+                this.activeAccountByFamily = data.activeAccountByFamily || { claude: null, gemini: null };
+                this.strategy = data.strategy || 'hybrid';
 
                 // Store usage history if included (for dashboard)
                 if (data.history) {
