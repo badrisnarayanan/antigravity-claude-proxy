@@ -83,7 +83,10 @@ document.addEventListener('alpine:init', () => {
                         this.models = data.models;
                         this.modelConfig = data.modelConfig || {};
                         this.usageHistory = data.usageHistory || {};
-                        
+                        // Restore strategy and sticky state to prevent UI layout shift
+                        if (data.strategy) this.strategy = data.strategy;
+                        if (data.activeAccountByFamily) this.activeAccountByFamily = data.activeAccountByFamily;
+
                         // Don't show loading on initial load if we have cache
                         this.initialLoad = false;
                         this.computeQuotaRows();
@@ -102,6 +105,9 @@ document.addEventListener('alpine:init', () => {
                     models: this.models,
                     modelConfig: this.modelConfig,
                     usageHistory: this.usageHistory,
+                    // Cache strategy and sticky state
+                    strategy: this.strategy,
+                    activeAccountByFamily: this.activeAccountByFamily,
                     timestamp: Date.now()
                 };
                 localStorage.setItem('ag_data_cache', JSON.stringify(cacheData));

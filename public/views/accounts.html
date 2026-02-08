@@ -86,8 +86,8 @@
             <thead x-show="$store.data.accounts.length > 0">
                 <tr class="bg-space-900/50 border-b border-space-border/50">
                     <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-show="$store.data.strategy === 'sticky'">Sticky</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24" x-show="$store.data.strategy === 'sticky'">Sticky</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('quota')">Quota</th>
@@ -140,6 +140,15 @@
                                 <div class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white"></div>
                             </label>
                         </td>
+                        <td class="py-4">
+                            <div class="flex items-center gap-2">
+                                <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
+                                    <span class="font-mono text-sm text-gray-300 truncate max-w-[280px] inline-block cursor-help group-hover:text-white transition-colors"
+                                          x-text="formatEmail(Redact.email(acc.email))">
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
                         <!-- Sticky Column -->
                         <td class="py-4" x-show="$store.data.strategy === 'sticky'">
                             <div class="flex items-center gap-1.5">
@@ -165,15 +174,6 @@
                                         @click="toggleSticky(getAccountIndex(acc.email), 'gemini')">
                                         G
                                     </button>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-4">
-                            <div class="flex items-center gap-2">
-                                <div class="tooltip tooltip-right" :data-tip="Redact.email(acc.email)">
-                                    <span class="font-mono text-sm text-gray-300 truncate max-w-[280px] inline-block cursor-help group-hover:text-white transition-colors"
-                                          x-text="formatEmail(Redact.email(acc.email))">
-                                    </span>
                                 </div>
                             </div>
                         </td>
