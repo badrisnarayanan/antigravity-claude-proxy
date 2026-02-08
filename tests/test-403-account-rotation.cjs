@@ -26,6 +26,7 @@ async function runTests() {
 
     const {
         isValidationRequired,
+        extractVerificationUrl,
         isPermanentAuthFailure,
         isModelCapacityExhausted
     } = await import('../src/cloudcode/rate-limit-state.js');
@@ -258,7 +259,40 @@ async function runTests() {
     });
 
     // =========================================================================
-    // Test Group 6: Real-world 403 error payloads
+    // Test Group 6: extractVerificationUrl()
+    // =========================================================================
+    console.log('\n── extractVerificationUrl() ──────────────────────────────────');
+
+    test('extracts Google verification URL from error message', () => {
+        const errorText = '{"error":{"code":403,"message":"To continue, verify your account at\\n\\nhttps://accounts.google.com/signin/continue?sarp=1&scc=1&continue=https://aistudio.google.com\\n\\nLearn more","status":"PERMISSION_DENIED"}}';
+        const url = extractVerificationUrl(errorText);
+        assertTrue(url !== null, 'Should extract URL');
+        assertTrue(url.startsWith('https://accounts.google.com/signin/continue'), 'URL should start with Google signin');
+    });
+
+    test('extracts URL with complex query parameters', () => {
+        const errorText = 'Error: https://accounts.google.com/signin/continue?sarp=1&scc=1&continue=https%3A%2F%2Faistudio.google.com&foo=bar end';
+        const url = extractVerificationUrl(errorText);
+        assertTrue(url !== null, 'Should extract URL');
+        assertTrue(url.includes('sarp=1'), 'Should include query params');
+    });
+
+    test('returns null when no verification URL present', () => {
+        const errorText = '{"error":{"code":403,"message":"Generic permission denied","status":"PERMISSION_DENIED"}}';
+        const url = extractVerificationUrl(errorText);
+        assertEqual(url, null, 'Should return null for no URL');
+    });
+
+    test('returns null for empty string', () => {
+        assertEqual(extractVerificationUrl(''), null);
+    });
+
+    test('returns null for null input', () => {
+        assertEqual(extractVerificationUrl(null), null);
+    });
+
+    // =========================================================================
+    // Test Group 7: Real-world 403 error payloads
     // =========================================================================
     console.log('\n── Real-world 403 Error Payloads ────────────────────────────────');
 

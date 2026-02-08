@@ -31,6 +31,7 @@ import {
     isPermanentAuthFailure,
     isModelCapacityExhausted,
     isValidationRequired,
+    extractVerificationUrl,
     calculateSmartBackoff
 } from './rate-limit-state.js';
 
@@ -275,10 +276,14 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
                             // 403 with VALIDATION_REQUIRED or PERMISSION_DENIED is an account-level error
                             // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help
-                            // Mark account and throw to trigger account rotation (fixes #248)
+                            // Mark account as invalid (requires user intervention) and rotate (fixes #248)
                             if (response.status === 403 && isValidationRequired(errorText)) {
-                                logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, rotating account...`);
-                                accountManager.markRateLimited(account.email, EXTENDED_COOLDOWN_MS, model);
+                                const verifyUrl = extractVerificationUrl(errorText);
+                                const reason = verifyUrl
+                                    ? `Account requires verification: ${verifyUrl}`
+                                    : 'Account requires verification (403 PERMISSION_DENIED)';
+                                logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
+                                accountManager.markInvalid(account.email, reason);
                                 throw new Error(`ACCOUNT_FORBIDDEN: ${errorText}`);
                             }
 

@@ -117,6 +117,18 @@ export function isValidationRequired(errorText) {
 }
 
 /**
+ * Extract the Google verification URL from an error message.
+ * The 403 VALIDATION_REQUIRED error contains a URL the user must visit.
+ * @param {string} errorText - Error message from the API
+ * @returns {string|null} The verification URL, or null if not found
+ */
+export function extractVerificationUrl(errorText) {
+    if (!errorText) return null;
+    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\]+/);
+    return match ? match[0] : null;
+}
+
+/**
  * Detect if 429 error is due to model capacity (not user quota).
  * Capacity issues should retry on same account with shorter delay.
  * @param {string} errorText - Error message from API
