@@ -177,6 +177,18 @@ export function mountWebUI(app, dirname, accountManager) {
             const { email } = req.params;
             accountManager.clearTokenCache(email);
             accountManager.clearProjectCache(email);
+
+            // For verification errors (403 VALIDATION_REQUIRED), clear isInvalid on refresh.
+            // The user has completed verification on Google's site and clicks Refresh to re-enable.
+            // Auth errors (no verifyUrl) still require OAuth re-auth via FIX button.
+            const account = accountManager.getAllAccounts().find(a => a.email === email);
+            if (account && account.isInvalid && account.verifyUrl) {
+                account.isInvalid = false;
+                account.invalidReason = null;
+                account.verifyUrl = null;
+                accountManager.saveToDisk();
+            }
+
             res.json({
                 status: 'ok',
                 message: `Token cache cleared for ${email}`

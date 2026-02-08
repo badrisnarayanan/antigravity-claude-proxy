@@ -337,6 +337,68 @@ async function runTests() {
     });
 
     // =========================================================================
+    // Test Group 8: markInvalid() with verifyUrl (integration)
+    // =========================================================================
+    console.log('\n── markInvalid() with verifyUrl ──────────────────────────────');
+
+    const { markInvalid } = await import('../src/account-manager/rate-limits.js');
+
+    test('markInvalid stores verifyUrl as separate field', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        const verifyUrl = 'https://accounts.google.com/signin/continue?sarp=1&scc=1';
+        markInvalid(accounts, 'test@example.com', 'Account requires verification', verifyUrl);
+        assertTrue(accounts[0].isInvalid, 'isInvalid should be true');
+        assertEqual(accounts[0].invalidReason, 'Account requires verification');
+        assertEqual(accounts[0].verifyUrl, verifyUrl, 'verifyUrl should be stored separately');
+    });
+
+    test('markInvalid without verifyUrl sets verifyUrl to null', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        markInvalid(accounts, 'test@example.com', 'Token revoked');
+        assertTrue(accounts[0].isInvalid, 'isInvalid should be true');
+        assertEqual(accounts[0].verifyUrl, null, 'verifyUrl should be null for auth errors');
+    });
+
+    test('markInvalid sets invalidAt timestamp', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        const before = Date.now();
+        markInvalid(accounts, 'test@example.com', 'Test reason');
+        assertTrue(accounts[0].invalidAt >= before, 'invalidAt should be set');
+        assertTrue(accounts[0].invalidAt <= Date.now(), 'invalidAt should be reasonable');
+    });
+
+    test('markInvalid returns false for unknown email', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        const result = markInvalid(accounts, 'unknown@example.com', 'Test');
+        assertFalse(result, 'Should return false for unknown email');
+    });
+
+    test('verification error can be cleared by resetting fields', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        const verifyUrl = 'https://accounts.google.com/signin/continue?sarp=1';
+        markInvalid(accounts, 'test@example.com', 'Account requires verification', verifyUrl);
+
+        // Simulate what the refresh endpoint does for verification errors
+        assertTrue(accounts[0].isInvalid && accounts[0].verifyUrl, 'Should have verifyUrl');
+        accounts[0].isInvalid = false;
+        accounts[0].invalidReason = null;
+        accounts[0].verifyUrl = null;
+
+        assertFalse(accounts[0].isInvalid, 'isInvalid should be cleared');
+        assertEqual(accounts[0].verifyUrl, null, 'verifyUrl should be cleared');
+    });
+
+    test('auth error (no verifyUrl) is NOT cleared by refresh logic', () => {
+        const accounts = [{ email: 'test@example.com', enabled: true }];
+        markInvalid(accounts, 'test@example.com', 'Token revoked');
+
+        // Simulate refresh endpoint check: only clears if verifyUrl exists
+        const shouldClear = accounts[0].isInvalid && accounts[0].verifyUrl;
+        assertFalse(shouldClear, 'Auth errors should NOT be auto-cleared on refresh');
+        assertTrue(accounts[0].isInvalid, 'isInvalid should remain true');
+    });
+
+    // =========================================================================
     // Summary
     // =========================================================================
     console.log('\n══════════════════════════════════════════════════════════════');

@@ -156,15 +156,17 @@ export function markRateLimited(accounts, email, resetMs = null, modelId) {
  * @param {Array} accounts - Array of account objects
  * @param {string} email - Email of the account to mark
  * @param {string} reason - Reason for marking as invalid
+ * @param {string|null} verifyUrl - Optional verification URL (for 403 VALIDATION_REQUIRED)
  * @returns {boolean} True if account was found and marked
  */
-export function markInvalid(accounts, email, reason = 'Unknown error') {
+export function markInvalid(accounts, email, reason = 'Unknown error', verifyUrl = null) {
     const account = accounts.find(a => a.email === email);
     if (!account) return false;
 
     account.isInvalid = true;
     account.invalidReason = reason;
     account.invalidAt = Date.now();
+    account.verifyUrl = verifyUrl || null;
 
     logger.error(
         `[AccountManager] ⚠ Account INVALID: ${email}`
@@ -172,6 +174,11 @@ export function markInvalid(accounts, email, reason = 'Unknown error') {
     logger.error(
         `[AccountManager]   Reason: ${reason}`
     );
+    if (verifyUrl) {
+        logger.error(
+            `[AccountManager]   Verification URL: ${verifyUrl}`
+        );
+    }
     logger.error(
         `[AccountManager]   Run 'npm run accounts' to re-authenticate this account`
     );
