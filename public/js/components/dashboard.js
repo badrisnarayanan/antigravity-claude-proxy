@@ -15,6 +15,13 @@ window.Components.dashboard = () => ({
     modelTree: {},
     families: [],
 
+    // Claude config status
+    claudeConfigStatus: {
+        needsApply: false,
+        presetName: '',
+        checked: false
+    },
+
     // Filter state (from module)
     ...window.DashboardFilters.getInitialState(),
 
@@ -30,6 +37,9 @@ window.Components.dashboard = () => ({
         // Load saved preferences from localStorage
         window.DashboardFilters.loadPreferences(this);
 
+        // Check Claude config status on init
+        this.checkClaudeConfigStatus();
+
         // Update stats when dashboard becomes active (skip initial trigger)
         this.$watch('$store.global.activeTab', (val, oldVal) => {
             if (val === 'dashboard' && oldVal !== undefined) {
@@ -37,6 +47,7 @@ window.Components.dashboard = () => ({
                     this.updateStats();
                     this.updateCharts();
                     this.updateTrendChart();
+                    this.checkClaudeConfigStatus();
                 });
             }
         });
@@ -232,5 +243,78 @@ window.Components.dashboard = () => ({
 
     autoSelectTopN(n = 5) {
         window.DashboardFilters.autoSelectTopN(this, n);
+    },
+
+    /**
+     * Check if Claude CLI config needs to be updated
+     * Fetches both local config and presets, then compares
+     */
+    async checkClaudeConfigStatus() {
+        try {
+            const password = Alpine.store('global').webuiPassword;
+
+            // Fetch both config and presets in parallel
+            const [configRes, presetsRes] = await Promise.all([
+                window.utils.request('/api/claude/config', {}, password),
+                window.utils.request('/api/claude/presets', {}, password)
+            ]);
+
+            if (!configRes.response.ok || !presetsRes.response.ok) {
+                this.claudeConfigStatus.checked = true;
+                return;
+            }
+
+            const configData = await configRes.response.json();
+            const presetsData = await presetsRes.response.json();
+
+            const localConfig = configData.config || { env: {} };
+            const presets = presetsData.presets || [];
+
+            if (presets.length === 0) {
+                this.claudeConfigStatus = { needsApply: false, presetName: '', checked: true };
+                return;
+            }
+
+            // Use first preset as the default/selected one
+            const selectedPreset = presets[0];
+            const relevantKeys = [
+                'ANTHROPIC_BASE_URL',
+                'ANTHROPIC_AUTH_TOKEN',
+                'ANTHROPIC_MODEL',
+                'CLAUDE_CODE_SUBAGENT_MODEL',
+                'ANTHROPIC_DEFAULT_OPUS_MODEL',
+                'ANTHROPIC_DEFAULT_SONNET_MODEL',
+                'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+                'ENABLE_EXPERIMENTAL_MCP_CLI'
+            ];
+
+            // Check if local config matches the selected preset
+            let needsApply = false;
+            for (const key of relevantKeys) {
+                const localVal = localConfig.env?.[key] || '';
+                const presetVal = selectedPreset.config[key] || '';
+                if (localVal !== presetVal) {
+                    needsApply = true;
+                    break;
+                }
+            }
+
+            this.claudeConfigStatus = {
+                needsApply,
+                presetName: selectedPreset.name,
+                checked: true
+            };
+        } catch (e) {
+            console.error('Failed to check Claude config status:', e);
+            this.claudeConfigStatus.checked = true;
+        }
+    },
+
+    /**
+     * Navigate to Claude CLI settings and dismiss the warning
+     */
+    goToClaudeSettings() {
+        this.$store.global.activeTab = 'settings';
+        this.$store.global.settingsTab = 'claude';
     }
 });

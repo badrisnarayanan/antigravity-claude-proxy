@@ -166,6 +166,7 @@ window.Components.claudeConfig = () => ({
             if (newPassword) Alpine.store('global').webuiPassword = newPassword;
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
             Alpine.store('global').showToast(Alpine.store('global').t('claudeConfigSaved'), 'success');
         } catch (e) {
             Alpine.store('global').showToast(Alpine.store('global').t('saveConfigFailed') + ': ' + e.message, 'error');

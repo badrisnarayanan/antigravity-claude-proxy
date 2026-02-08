@@ -176,6 +176,26 @@
                             </label>
                         </div>
                     </div>
+
+                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-amber-500/50"
+                        :class="$store.settings.showConfigWarning ? 'border-amber-500/50 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-space-border/50'">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1">
+                                <span class="label-text font-medium transition-colors"
+                                    :class="$store.settings.showConfigWarning ? 'text-amber-400' : 'text-gray-300'"
+                                    x-text="$store.global.t('showConfigWarning')">Show Config Warning</span>
+                                <span class="text-xs text-gray-500" x-text="$store.global.t('showConfigWarningDesc')">Display a warning on Dashboard when Claude CLI config doesn't match preset.</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" :checked="$store.settings.showConfigWarning === true"
+                                    @change="$store.settings.showConfigWarning = $event.target.checked; $store.settings.saveSettings(true)"
+                                    aria-label="Show config warning toggle">
+                                <div
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
