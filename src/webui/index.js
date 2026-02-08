@@ -455,7 +455,7 @@ export function mountWebUI(app, dirname, accountManager) {
     /**
      * POST /api/config - Update server configuration
      */
-    app.post('/api/config', (req, res) => {
+    app.post('/api/config', async (req, res) => {
         try {
             const { debug, devMode, logLevel, maxRetries, retryBaseMs, retryMaxMs, persistTokenCache, defaultCooldownMs, maxWaitBeforeErrorMs, maxAccounts, globalQuotaThreshold, accountSelection, rateLimitDedupWindowMs, maxConsecutiveFailures, extendedCooldownMs, maxCapacityRetries } = req.body;
 
@@ -531,6 +531,12 @@ export function mountWebUI(app, dirname, accountManager) {
             const success = saveConfig(updates);
 
             if (success) {
+                // Hot-reload strategy if it was changed (no server restart needed)
+                if (updates.accountSelection?.strategy && accountManager) {
+                    await accountManager.reload();
+                    logger.info(`[WebUI] Strategy hot-reloaded to: ${updates.accountSelection.strategy}`);
+                }
+
                 res.json({
                     status: 'ok',
                     message: 'Configuration saved. Restart server to apply some changes.',
