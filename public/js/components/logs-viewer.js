@@ -9,6 +9,7 @@ window.Components.logsViewer = () => ({
     isAutoScroll: true,
     eventSource: null,
     searchQuery: '',
+    expandedLogs: new Set(),
     filters: {
         INFO: true,
         WARN: true,
@@ -103,6 +104,35 @@ window.Components.logsViewer = () => ({
         if (container) container.scrollTop = container.scrollHeight;
     },
 
+    toggleLog(idx) {
+        if (this.expandedLogs.has(idx)) {
+            this.expandedLogs.delete(idx);
+        } else {
+            this.expandedLogs.add(idx);
+        }
+    },
+
+    isExpanded(idx) {
+        return this.expandedLogs.has(idx);
+    },
+
+    formatData(data) {
+        if (!data) return '';
+        try {
+            const json = JSON.stringify(data, null, 2);
+            if (Alpine.store('settings')?.redactMode && window.Redact) {
+                return window.Redact.logMessage(json);
+            }
+            return json;
+        } catch (e) {
+            const str = String(data);
+            if (Alpine.store('settings')?.redactMode && window.Redact) {
+                return window.Redact.logMessage(str);
+            }
+            return str;
+        }
+    },
+
     clearLogs() {
         this.logs = [];
     },
@@ -114,7 +144,11 @@ window.Components.logsViewer = () => ({
         const lines = this.logs.map(log => {
             const ts = new Date(log.timestamp).toISOString();
             const message = shouldRedact ? window.Redact.logMessage(log.message) : log.message;
-            return `[${ts}] [${log.level}] ${message}`;
+            let line = `[${ts}] [${log.level}] ${message}`;
+            if (log.data) {
+                line += `\nDATA: ${this.formatData(log.data)}`;
+            }
+            return line;
         });
 
         const text = lines.join('\n');

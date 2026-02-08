@@ -58,16 +58,29 @@ class Logger extends EventEmitter {
      * @param {string} level
      * @param {string} color
      * @param {string} message
-     * @param  {...any} args
+     * @param {any} data Optional structured data
+     * @param {...any} args
      */
-    print(level, color, message, ...args) {
+    print(level, color, message, data, ...args) {
+        // If the first arg after message is not an object (or is null),
+        // it might be part of util.format args
+        let actualData = null;
+        let formatArgs = [];
+
+        if (data && typeof data === 'object' && !Array.isArray(data) && data._isExtraData) {
+            actualData = data.data;
+            formatArgs = args;
+        } else {
+            formatArgs = [data, ...args].filter(arg => arg !== undefined);
+        }
+
         // Format: [TIMESTAMP] [LEVEL] Message
         const timestampStr = this.getTimestamp();
         const timestamp = `${COLORS.GRAY}[${timestampStr}]${COLORS.RESET}`;
         const levelTag = `${color}[${level}]${COLORS.RESET}`;
 
         // Format the message with args similar to console.log
-        const formattedMessage = util.format(message, ...args);
+        const formattedMessage = util.format(message, ...formatArgs);
 
         console.log(`${timestamp} ${levelTag} ${formattedMessage}`);
 
@@ -75,7 +88,8 @@ class Logger extends EventEmitter {
         const logEntry = {
             timestamp: timestampStr,
             level,
-            message: formattedMessage
+            message: formattedMessage,
+            data: actualData
         };
 
         this.history.push(logEntry);
@@ -84,6 +98,13 @@ class Logger extends EventEmitter {
         }
 
         this.emit('log', logEntry);
+    }
+
+    /**
+     * Helper to wrap extra data for the logger
+     */
+    withData(data) {
+        return { _isExtraData: true, data };
     }
 
     /**
