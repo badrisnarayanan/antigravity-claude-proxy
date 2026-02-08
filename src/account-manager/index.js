@@ -282,9 +282,10 @@ export class AccountManager {
      * Mark an account as invalid (credentials need re-authentication)
      * @param {string} email - Email of the account to mark
      * @param {string} reason - Reason for marking as invalid
+     * @param {string|null} verifyUrl - Optional verification URL (for 403 VALIDATION_REQUIRED)
      */
-    markInvalid(email, reason = 'Unknown error') {
-        markAccountInvalid(this.#accounts, email, reason);
+    markInvalid(email, reason = 'Unknown error', verifyUrl = null) {
+        markAccountInvalid(this.#accounts, email, reason, verifyUrl);
         this.saveToDisk();
     }
 
@@ -433,6 +434,7 @@ export class AccountManager {
                 modelRateLimits: a.modelRateLimits || {},
                 isInvalid: a.isInvalid || false,
                 invalidReason: a.invalidReason || null,
+                verifyUrl: a.verifyUrl || null,
                 lastUsed: a.lastUsed,
                 // Include quota threshold settings
                 quotaThreshold: a.quotaThreshold,
