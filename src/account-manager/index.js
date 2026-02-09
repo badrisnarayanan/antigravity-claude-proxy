@@ -15,6 +15,7 @@ import {
     resetAllRateLimits as resetLimits,
     markRateLimited as markLimited,
     markInvalid as markAccountInvalid,
+    clearInvalid as clearAccountInvalid,
     getMinWaitTimeMs as getMinWait,
     getRateLimitInfo as getLimitInfo,
     getConsecutiveFailures as getFailures,
@@ -286,6 +287,15 @@ export class AccountManager {
      */
     markInvalid(email, reason = 'Unknown error', verifyUrl = null) {
         markAccountInvalid(this.#accounts, email, reason, verifyUrl);
+        this.saveToDisk();
+    }
+
+    /**
+     * Clear invalid status for an account (after user completes verification)
+     * @param {string} email - Email of the account to clear
+     */
+    clearInvalid(email) {
+        clearAccountInvalid(this.#accounts, email);
         this.saveToDisk();
     }
 

@@ -193,8 +193,7 @@ export function isAccountForbiddenError(error) {
     if (error instanceof AccountForbiddenError) return true;
     const msg = (error.message || '').toUpperCase();
     return msg.includes('ACCOUNT_FORBIDDEN') ||
-        msg.includes('VALIDATION_REQUIRED') ||
-        (msg.includes('403') && (msg.includes('PERMISSION_DENIED') || msg.includes('FORBIDDEN')));
+        msg.includes('VALIDATION_REQUIRED');
 }
 
 /**

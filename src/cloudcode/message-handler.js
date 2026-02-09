@@ -18,7 +18,7 @@ import {
     isThinkingModel
 } from '../constants.js';
 import { convertGoogleToAnthropic } from '../format/index.js';
-import { isRateLimitError, isAuthError, isAccountForbiddenError } from '../errors.js';
+import { isRateLimitError, isAuthError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
@@ -281,7 +281,7 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                                 const verifyUrl = extractVerificationUrl(errorText);
                                 logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
                                 accountManager.markInvalid(account.email, 'Account requires verification', verifyUrl);
-                                throw new Error(`ACCOUNT_FORBIDDEN: ${errorText}`);
+                                throw new AccountForbiddenError(errorText, account.email);
                             }
 
                             lastError = new Error(`API error ${response.status}: ${errorText}`);

@@ -109,9 +109,6 @@ export function isPermanentAuthFailure(errorText) {
 export function isValidationRequired(errorText) {
     const lower = (errorText || '').toLowerCase();
     return lower.includes('validation_required') ||
-        lower.includes('permission_denied') ||
-        lower.includes('forbidden') ||
-        lower.includes('access denied') ||
         lower.includes('account_disabled') ||
         lower.includes('user_disabled');
 }
@@ -124,7 +121,7 @@ export function isValidationRequired(errorText) {
  */
 export function extractVerificationUrl(errorText) {
     if (!errorText) return null;
-    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\]+/);
+    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\,.)]+/);
     return match ? match[0] : null;
 }
 

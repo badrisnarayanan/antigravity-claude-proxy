@@ -75,20 +75,20 @@ async function runTests() {
         ));
     });
 
-    test('detects PERMISSION_DENIED in error text', () => {
-        assertTrue(isValidationRequired(
+    test('does NOT match generic PERMISSION_DENIED (too broad)', () => {
+        assertFalse(isValidationRequired(
             '{"error":{"code":403,"message":"Request had insufficient authentication scopes.","status":"PERMISSION_DENIED"}}'
         ));
     });
 
-    test('detects "forbidden" in error text', () => {
-        assertTrue(isValidationRequired(
-            '{"error":{"code":403,"message":"Forbidden: Account requires validation"}}'
+    test('does NOT match generic "forbidden" (too broad)', () => {
+        assertFalse(isValidationRequired(
+            '{"error":{"code":403,"message":"Forbidden: some generic error"}}'
         ));
     });
 
-    test('detects ACCESS_DENIED in error text', () => {
-        assertTrue(isValidationRequired(
+    test('does NOT match generic ACCESS_DENIED (too broad)', () => {
+        assertFalse(isValidationRequired(
             '{"error":{"code":403,"message":"Access denied for this account"}}'
         ));
     });
@@ -177,14 +177,14 @@ async function runTests() {
         assertTrue(isAccountForbiddenError(err));
     });
 
-    test('detects 403 + PERMISSION_DENIED in error message', () => {
+    test('does NOT match generic 403 + PERMISSION_DENIED (too broad)', () => {
         const err = new Error('API error 403: PERMISSION_DENIED');
-        assertTrue(isAccountForbiddenError(err));
+        assertFalse(isAccountForbiddenError(err));
     });
 
-    test('detects 403 + FORBIDDEN in error message', () => {
+    test('does NOT match generic 403 + FORBIDDEN (too broad)', () => {
         const err = new Error('API error 403: Forbidden');
-        assertTrue(isAccountForbiddenError(err));
+        assertFalse(isAccountForbiddenError(err));
     });
 
     test('does NOT classify rate limit errors as forbidden', () => {
@@ -314,7 +314,7 @@ async function runTests() {
         assertTrue(isValidationRequired(errorText));
     });
 
-    test('Google API generic PERMISSION_DENIED', () => {
+    test('Google API generic PERMISSION_DENIED (should NOT trigger - too broad)', () => {
         const errorText = JSON.stringify({
             error: {
                 code: 403,
@@ -322,10 +322,10 @@ async function runTests() {
                 status: "PERMISSION_DENIED"
             }
         });
-        assertTrue(isValidationRequired(errorText));
+        assertFalse(isValidationRequired(errorText));
     });
 
-    test('Google API FORBIDDEN response', () => {
+    test('Google API FORBIDDEN response (should NOT trigger - too broad)', () => {
         const errorText = JSON.stringify({
             error: {
                 code: 403,
@@ -333,7 +333,7 @@ async function runTests() {
                 status: "FORBIDDEN"
             }
         });
-        assertTrue(isValidationRequired(errorText));
+        assertFalse(isValidationRequired(errorText));
     });
 
     // =========================================================================

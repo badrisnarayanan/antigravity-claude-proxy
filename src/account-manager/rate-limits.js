@@ -187,6 +187,25 @@ export function markInvalid(accounts, email, reason = 'Unknown error', verifyUrl
 }
 
 /**
+ * Clear invalid status for an account (after user completes verification)
+ *
+ * @param {Array} accounts - Array of account objects
+ * @param {string} email - Email of the account to clear
+ * @returns {boolean} True if account was found and cleared
+ */
+export function clearInvalid(accounts, email) {
+    const account = accounts.find(a => a.email === email);
+    if (!account) return false;
+
+    account.isInvalid = false;
+    account.invalidReason = null;
+    account.verifyUrl = null;
+
+    logger.info(`[AccountManager] ✓ Account re-enabled: ${email}`);
+    return true;
+}
+
+/**
  * Get the minimum wait time until any account becomes available for a model
  *
  * @param {Array} accounts - Array of account objects

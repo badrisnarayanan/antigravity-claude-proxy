@@ -183,10 +183,7 @@ export function mountWebUI(app, dirname, accountManager) {
             // Auth errors (no verifyUrl) still require OAuth re-auth via FIX button.
             const account = accountManager.getAllAccounts().find(a => a.email === email);
             if (account && account.isInvalid && account.verifyUrl) {
-                account.isInvalid = false;
-                account.invalidReason = null;
-                account.verifyUrl = null;
-                accountManager.saveToDisk();
+                accountManager.clearInvalid(email);
             }
 
             res.json({
