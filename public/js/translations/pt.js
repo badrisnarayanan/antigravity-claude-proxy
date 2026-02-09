@@ -355,8 +355,8 @@ window.translations.pt = {
     paidModeDesc: "Toda configuração de proxy foi removida. Claude CLI usa sua assinatura Anthropic diretamente.",
     paidModeHint: "Mude para modo Proxy para configurar roteamento de modelos e presets.",
     modeToggleFailed: "Falha ao alternar modo",
-    screenshotMode: "Modo Screenshot",
-    screenshotModeDesc: "Ocultar informações da conta para compartilhamento seguro de tela.",
+    anonymizeAccounts: "Anonimizar Contas",
+    anonymizeAccountsDesc: "Substituir e-mails por indicativos NATO (Alpha, Bravo, Charlie...) para privacidade.",
     // Developer Mode
     devMode: "Modo Desenvolvedor",
     devModeDesc: "Ativa logs de debug, exportação de logs e inspetor de saúde da estratégia.",

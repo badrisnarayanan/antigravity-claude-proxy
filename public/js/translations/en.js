@@ -414,9 +414,9 @@ window.translations.en = {
     paidModeDesc: "All proxy configuration has been removed. Claude CLI uses your Anthropic subscription directly.",
     paidModeHint: "Switch to Proxy mode to configure model routing and presets.",
     modeToggleFailed: "Failed to switch mode",
-    // Screenshot Mode
-    screenshotMode: "Screenshot Mode",
-    screenshotModeDesc: "Redact account info for safe screen sharing.",
+    // Anonymize Accounts
+    anonymizeAccounts: "Anonymize Accounts",
+    anonymizeAccountsDesc: "Replace emails with NATO callsigns (Alpha, Bravo, Charlie...).",
     // Developer Mode
     devMode: "Developer Mode",
     devModeDesc: "Enables debug logging, log export, and strategy health inspector.",

@@ -420,8 +420,8 @@ window.translations.zh = {
     paidModeDesc: "所有代理配置已移除。Claude CLI 直接使用您的 Anthropic 订阅。",
     paidModeHint: "切换到代理模式以配置模型路由和预设。",
     modeToggleFailed: "切换模式失败",
-    screenshotMode: "截图模式",
-    screenshotModeDesc: "隐藏账户信息，方便安全分享屏幕。",
+    anonymizeAccounts: "匿名账户",
+    anonymizeAccountsDesc: "用 NATO 呼号 (Alpha, Bravo, Charlie...) 替换邮箱以保护隐私。",
     // Developer Mode
     devMode: "开发者模式",
     devModeDesc: "启用调试日志、日志导出和策略健康检查。",
