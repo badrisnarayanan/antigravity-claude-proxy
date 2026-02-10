@@ -81,6 +81,16 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                     data: part.inlineData.data
                 }
             });
+        } else if (part.fileData) {
+            // Some endpoints/models return images as fileData (URI) instead of inlineData (base64)
+            anthropicContent.push({
+                type: 'image',
+                source: {
+                    type: 'url',
+                    media_type: part.fileData.mimeType,
+                    url: part.fileData.fileUri
+                }
+            });
         }
     }
 

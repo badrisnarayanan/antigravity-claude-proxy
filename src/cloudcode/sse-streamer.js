@@ -242,6 +242,38 @@ export async function* streamSSEResponse(response, originalModel) {
                         yield { type: 'content_block_stop', index: blockIndex };
                         blockIndex++;
                         currentBlockType = null;
+                    } else if (part.fileData) {
+                        // Handle image content returned as file URI
+                        if (currentBlockType === 'thinking' && currentThinkingSignature) {
+                            yield {
+                                type: 'content_block_delta',
+                                index: blockIndex,
+                                delta: { type: 'signature_delta', signature: currentThinkingSignature }
+                            };
+                            currentThinkingSignature = '';
+                        }
+                        if (currentBlockType !== null) {
+                            yield { type: 'content_block_stop', index: blockIndex };
+                            blockIndex++;
+                        }
+                        currentBlockType = 'image';
+
+                        yield {
+                            type: 'content_block_start',
+                            index: blockIndex,
+                            content_block: {
+                                type: 'image',
+                                source: {
+                                    type: 'url',
+                                    media_type: part.fileData.mimeType,
+                                    url: part.fileData.fileUri
+                                }
+                            }
+                        };
+
+                        yield { type: 'content_block_stop', index: blockIndex };
+                        blockIndex++;
+                        currentBlockType = null;
                     }
                 }
 

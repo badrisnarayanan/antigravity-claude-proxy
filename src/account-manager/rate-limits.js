@@ -17,12 +17,15 @@ import { logger } from '../utils/logger.js';
  * @returns {boolean} True if all accounts are rate-limited
  */
 export function isAllRateLimited(accounts, modelId) {
-    if (accounts.length === 0) return true;
     if (!modelId) return false; // No model specified = not rate limited
 
-    return accounts.every(acc => {
-        if (acc.isInvalid) return true; // Invalid accounts count as unavailable
-        if (acc.enabled === false) return true; // Disabled accounts count as unavailable
+    // Only consider accounts that could become usable again without user action.
+    // If there are no such accounts (e.g. all invalid/disabled, or zero accounts),
+    // we must NOT treat that as "rate-limited" (waiting would never help).
+    const candidates = accounts.filter(acc => !acc.isInvalid && acc.enabled !== false);
+    if (candidates.length === 0) return false;
+
+    return candidates.every(acc => {
         const modelLimits = acc.modelRateLimits || {};
         const limit = modelLimits[modelId];
         return limit && limit.isRateLimited && limit.resetTime > Date.now();
@@ -194,6 +197,8 @@ export function getMinWaitTimeMs(accounts, modelId) {
     let soonestAccount = null;
 
     for (const account of accounts) {
+        if (account.isInvalid) continue;
+        if (account.enabled === false) continue;
         if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {
             const limit = account.modelRateLimits[modelId];
             if (limit.isRateLimited && limit.resetTime) {

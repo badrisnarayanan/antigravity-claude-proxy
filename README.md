@@ -139,6 +139,25 @@ curl http://localhost:8080/health
 curl "http://localhost:8080/account-limits?format=table"
 ```
 
+### 4. OpenAI-Compatible Chat Completions (Optional)
+
+This proxy also exposes an **OpenAI-compatible** endpoint:
+
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer test" \
+  -d '{
+    "model": "claude-sonnet-4-5-thinking",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant." },
+      { "role": "user", "content": "Say hello in one sentence." }
+    ]
+  }'
+```
+
+If you configured `API_KEY`/`apiKey`, use that value instead of `test`.
+
 ---
 
 ## Using with Claude Code CLI

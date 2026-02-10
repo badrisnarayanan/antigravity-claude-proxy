@@ -124,6 +124,7 @@ ${controlSection}
 ║                                                              ║
 ║  Endpoints:                                                  ║
 ║    POST /v1/messages         - Anthropic Messages API        ║
+║    POST /v1/chat/completions - OpenAI Chat Completions API   ║
 ║    GET  /v1/models           - List available models         ║
 ║    GET  /health              - Health check                  ║
 ║    GET  /account-limits      - Account status & quotas       ║

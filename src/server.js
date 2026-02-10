@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
@@ -21,6 +22,11 @@ import { clearThinkingSignatureCache } from './format/signature-cache.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
+import {
+    convertOpenAIChatCompletionsToAnthropicRequest,
+    convertAnthropicToOpenAIChatCompletion,
+    createOpenAIChatCompletionStreamTransformer
+} from './openai/chat-completions.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -889,6 +895,137 @@ app.post('/v1/messages', async (req, res) => {
                 }
             });
         }
+    }
+});
+
+/**
+ * OpenAI-compatible Chat Completions API
+ * POST /v1/chat/completions
+ */
+app.post('/v1/chat/completions', async (req, res) => {
+    try {
+        await ensureInitialized();
+
+        const { anthropicRequest, includeUsage } = convertOpenAIChatCompletionsToAnthropicRequest(req.body);
+
+        // Resolve model mapping if configured (same behavior as /v1/messages)
+        let requestedModel = anthropicRequest.model || 'claude-3-5-sonnet-20241022';
+        const modelMapping = config.modelMapping || {};
+        if (modelMapping[requestedModel] && modelMapping[requestedModel].mapping) {
+            const targetModel = modelMapping[requestedModel].mapping;
+            logger.info(`[Server] Mapping model ${requestedModel} -> ${targetModel}`);
+            requestedModel = targetModel;
+        }
+        anthropicRequest.model = requestedModel;
+
+        const modelId = anthropicRequest.model;
+        anthropicRequest.max_tokens = anthropicRequest.max_tokens ?? 4096;
+
+        // Validate model ID (same approach as /v1/messages)
+        const { account: validationAccount } = accountManager.selectAccount();
+        if (validationAccount) {
+            const token = await accountManager.getTokenForAccount(validationAccount);
+            const projectId = validationAccount.subscription?.projectId || null;
+            const valid = await isValidModel(modelId, token, projectId);
+            if (!valid) {
+                throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
+            }
+        }
+
+        // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them to force a fresh check.
+        if (accountManager.isAllRateLimited(modelId)) {
+            logger.warn(`[Server] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
+            accountManager.resetAllRateLimits();
+        }
+
+        const stream = !!req.body?.stream;
+
+        if (stream) {
+            // Stream OpenAI-compatible SSE (data: {chunk}\n\n ... data: [DONE]\n\n)
+            try {
+                const generator = sendMessageStream({ ...anthropicRequest, stream: true }, accountManager, FALLBACK_ENABLED);
+
+                // Buffer first event before sending headers for proper error codes.
+                const firstResult = await generator.next();
+
+                const streamId = `chatcmpl_${crypto.randomBytes(16).toString('hex')}`;
+                const created = Math.floor(Date.now() / 1000);
+                const transformer = createOpenAIChatCompletionStreamTransformer({
+                    id: streamId,
+                    created,
+                    model: modelId,
+                    includeUsage
+                });
+
+                res.status(200);
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.flushHeaders();
+
+                const writeChunk = (chunk) => {
+                    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+                    if (res.flush) res.flush();
+                };
+
+                if (!firstResult.done) {
+                    for (const chunk of transformer.handleAnthropicEvent(firstResult.value)) {
+                        writeChunk(chunk);
+                    }
+                }
+
+                for await (const event of generator) {
+                    for (const chunk of transformer.handleAnthropicEvent(event)) {
+                        writeChunk(chunk);
+                    }
+                }
+
+                res.write('data: [DONE]\n\n');
+                res.end();
+            } catch (error) {
+                if (!res.headersSent) {
+                    logger.error('[API] Initial OpenAI stream error:', error);
+                    const { errorType, statusCode, errorMessage } = parseError(error);
+                    return res.status(statusCode).json({
+                        error: { message: errorMessage, type: errorType, param: null, code: null }
+                    });
+                }
+
+                logger.error('[API] Mid-stream OpenAI error:', error);
+                const { errorType, errorMessage } = parseError(error);
+                res.write(`data: ${JSON.stringify({ error: { message: errorMessage, type: errorType, param: null, code: null } })}\n\n`);
+                res.write('data: [DONE]\n\n');
+                res.end();
+            }
+        } else {
+            // Non-streaming OpenAI response
+            const response = await sendMessage({ ...anthropicRequest, stream: false }, accountManager, FALLBACK_ENABLED);
+            const openaiResponse = convertAnthropicToOpenAIChatCompletion(response);
+            res.json(openaiResponse);
+        }
+
+    } catch (error) {
+        logger.error('[API] OpenAI chat/completions error:', error);
+
+        let { errorType, statusCode, errorMessage } = parseError(error);
+
+        // For auth errors, try to refresh token (same behavior as /v1/messages)
+        if (errorType === 'authentication_error') {
+            logger.warn('[API] Token might be expired, attempting refresh...');
+            try {
+                accountManager.clearProjectCache();
+                accountManager.clearTokenCache();
+                await forceRefresh();
+                errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
+            } catch {
+                errorMessage = 'Could not refresh token. Make sure Antigravity is running.';
+            }
+        }
+
+        res.status(statusCode).json({
+            error: { message: errorMessage, type: errorType, param: null, code: null }
+        });
     }
 });
 

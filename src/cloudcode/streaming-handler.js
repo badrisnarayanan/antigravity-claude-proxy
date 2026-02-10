@@ -18,12 +18,13 @@ import {
     MAX_CAPACITY_RETRIES,
     BACKOFF_BY_ERROR_TYPE
 } from '../constants.js';
-import { isRateLimitError, isAuthError, isEmptyResponseError } from '../errors.js';
+import { isRateLimitError, isAuthError, isEmptyResponseError, isValidationRequiredError, ValidationRequiredError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
 import { streamSSEResponse } from './sse-streamer.js';
+import { extractValidationRequiredInfo } from './google-error-parser.js';
 import { getFallbackModel } from '../fallback-config.js';
 import {
     getRateLimitBackoff,
@@ -241,6 +242,23 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             }
                         }
 
+                        if (response.status === 403) {
+                            const validation = extractValidationRequiredInfo(errorText);
+                            if (validation) {
+                                const url = validation.validationUrl;
+                                const msg = validation.message || 'Verify your account to continue.';
+                                accountManager.markInvalid(
+                                    account.email,
+                                    url ? `Account verification required: ${url}` : 'Account verification required'
+                                );
+                                throw new ValidationRequiredError(
+                                    `PERMISSION_DENIED: VALIDATION_REQUIRED: ${account.email}: ${msg}${url ? ` (${url})` : ''}`,
+                                    account.email,
+                                    url
+                                );
+                            }
+                        }
+
                         // Check for 503/529 MODEL_CAPACITY_EXHAUSTED - use progressive backoff like 429 capacity
                         // 529 = Site Overloaded (same treatment as 503)
                         if ((response.status === 503 || response.status === 529) && isModelCapacityExhausted(errorText)) {
@@ -341,6 +359,24 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                     throw new Error(`401 AUTH_INVALID during retry: ${retryErrorText}`);
                                 }
 
+                                // Validation required (403)
+                                if (currentResponse.status === 403) {
+                                    const validation = extractValidationRequiredInfo(retryErrorText);
+                                    if (validation) {
+                                        const url = validation.validationUrl;
+                                        const msg = validation.message || 'Verify your account to continue.';
+                                        accountManager.markInvalid(
+                                            account.email,
+                                            url ? `Account verification required: ${url}` : 'Account verification required'
+                                        );
+                                        throw new ValidationRequiredError(
+                                            `PERMISSION_DENIED: VALIDATION_REQUIRED: ${account.email}: ${msg}${url ? ` (${url})` : ''}`,
+                                            account.email,
+                                            url
+                                        );
+                                    }
+                                }
+
                                 // For 5xx errors, continue retrying
                                 if (currentResponse.status >= 500) {
                                     logger.warn(`[CloudCode] Retry got ${currentResponse.status}, will retry...`);
@@ -405,6 +441,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             if (isAuthError(error)) {
                 // Auth invalid - already marked, continue to next account
                 logger.warn(`[CloudCode] Account ${account.email} has invalid credentials, trying next...`);
+                continue;
+            }
+            if (isValidationRequiredError(error)) {
+                logger.warn(`[CloudCode] Account ${account.email} requires verification, trying next...`);
                 continue;
             }
             // Handle 5xx errors

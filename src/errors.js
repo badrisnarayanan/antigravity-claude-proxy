@@ -72,6 +72,26 @@ export class AuthError extends AntigravityError {
 }
 
 /**
+ * Account validation required (Google "Verify your account to continue.")
+ *
+ * This is returned as 403 PERMISSION_DENIED with reason VALIDATION_REQUIRED.
+ * It is account-specific and should trigger switching accounts.
+ */
+export class ValidationRequiredError extends AntigravityError {
+    /**
+     * @param {string} message - Error message
+     * @param {string} accountEmail - Email of the account requiring validation
+     * @param {string|null} validationUrl - URL where user can complete validation
+     */
+    constructor(message, accountEmail = null, validationUrl = null) {
+        super(message, 'VALIDATION_REQUIRED', false, { accountEmail, validationUrl });
+        this.name = 'ValidationRequiredError';
+        this.accountEmail = accountEmail;
+        this.validationUrl = validationUrl;
+    }
+}
+
+/**
  * No accounts available error
  */
 export class NoAccountsError extends AntigravityError {
@@ -196,6 +216,18 @@ export function isAuthError(error) {
 }
 
 /**
+ * Check if an error indicates the Google account needs verification.
+ * @param {Error} error
+ * @returns {boolean}
+ */
+export function isValidationRequiredError(error) {
+    if (error instanceof ValidationRequiredError) return true;
+    const msg = (error.message || '').toUpperCase();
+    return msg.includes('VALIDATION_REQUIRED') ||
+        msg.includes('VERIFY YOUR ACCOUNT TO CONTINUE');
+}
+
+/**
  * Check if an error is an empty response error
  * @param {Error} error - Error to check
  * @returns {boolean}
@@ -225,6 +257,7 @@ export default {
     AntigravityError,
     RateLimitError,
     AuthError,
+    ValidationRequiredError,
     NoAccountsError,
     MaxRetriesError,
     ApiError,
@@ -233,6 +266,7 @@ export default {
     CapacityExhaustedError,
     isRateLimitError,
     isAuthError,
+    isValidationRequiredError,
     isEmptyResponseError,
     isCapacityExhaustedError
 };
