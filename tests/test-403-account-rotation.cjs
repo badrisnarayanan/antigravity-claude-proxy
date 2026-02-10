@@ -172,9 +172,9 @@ async function runTests() {
         assertTrue(isAccountForbiddenError(err));
     });
 
-    test('detects VALIDATION_REQUIRED in error message', () => {
+    test('does NOT match VALIDATION_REQUIRED plain string (use AccountForbiddenError class instead)', () => {
         const err = new Error('403 VALIDATION_REQUIRED: Please complete validation');
-        assertTrue(isAccountForbiddenError(err));
+        assertFalse(isAccountForbiddenError(err));
     });
 
     test('does NOT match generic 403 + PERMISSION_DENIED (too broad)', () => {

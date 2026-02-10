@@ -191,9 +191,10 @@ export class AccountForbiddenError extends AntigravityError {
  */
 export function isAccountForbiddenError(error) {
     if (error instanceof AccountForbiddenError) return true;
-    const msg = (error.message || '').toUpperCase();
-    return msg.includes('ACCOUNT_FORBIDDEN') ||
-        msg.includes('VALIDATION_REQUIRED');
+    // Fallback string check only for errors that couldn't use the typed class
+    // (e.g., errors crossing module boundaries). Only match our own prefixed format.
+    const msg = (error.message || '');
+    return msg.startsWith('ACCOUNT_FORBIDDEN:');
 }
 
 /**

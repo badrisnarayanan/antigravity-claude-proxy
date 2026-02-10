@@ -121,7 +121,7 @@ export function isValidationRequired(errorText) {
  */
 export function extractVerificationUrl(errorText) {
     if (!errorText) return null;
-    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\,.)]+/);
+    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\,.)\]}>]+/);
     return match ? match[0] : null;
 }
 
