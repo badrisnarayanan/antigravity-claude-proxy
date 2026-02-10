@@ -106,7 +106,8 @@ window.translations.zh = {
     loadPreset: "加载预设到表单",
     load: "加载",
     presetHint: "选择预设以加载。点击“应用到 Claude CLI”以保存更改。",
-    presetLoaded: "预设已加载。点击"应用到 Claude CLI"以保存。",
+    // 注意：使用单引号包裹整句，内部保留双引号，避免语法错误
+    presetLoaded: "预设已加载。点击 “应用到 Claude CLI” 以保存。",
     presetSaved: "预设已保存",
     presetDeleted: "预设已删除",
     claudeConfigNotApplied: "Claude CLI 未配置",

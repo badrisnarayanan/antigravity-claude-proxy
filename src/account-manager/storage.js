@@ -138,5 +138,11 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
         await writeFile(configPath, JSON.stringify(config, null, 2));
     } catch (error) {
         logger.error('[AccountManager] Failed to save config:', error.message);
+        // Throw error so callers know the save failed
+        // This is critical for WebUI to show proper error messages
+        const errorMessage = error.code === 'EACCES' || error.code === 'EPERM'
+            ? `Permission denied: Cannot write to ${configPath}. Please check directory permissions.`
+            : `Failed to save account configuration: ${error.message}`;
+        throw new Error(errorMessage);
     }
 }

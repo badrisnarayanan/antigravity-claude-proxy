@@ -79,6 +79,21 @@ async function ensureInitialized() {
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
 
+// Error handler for JSON parsing errors
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        logger.warn(`[API] JSON parse error: ${err.message}`);
+        return res.status(400).json({
+            type: 'error',
+            error: {
+                type: 'invalid_request_error',
+                message: `Invalid JSON: ${err.message}`
+            }
+        });
+    }
+    next(err);
+});
+
 // API Key authentication middleware for /v1/* endpoints
 app.use('/v1', (req, res, next) => {
     // Skip validation if apiKey is not configured
@@ -706,7 +721,10 @@ app.post('/v1/messages', async (req, res) => {
             thinking,
             top_p,
             top_k,
-            temperature
+            temperature,
+            generationConfig,
+            responseModalities,
+            modalities
         } = req.body;
 
         // Resolve model mapping if configured
@@ -767,7 +785,10 @@ app.post('/v1/messages', async (req, res) => {
             thinking,
             top_p,
             top_k,
-            temperature
+            temperature,
+            generationConfig,
+            responseModalities,
+            modalities
         };
 
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);

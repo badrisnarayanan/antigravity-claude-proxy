@@ -1224,16 +1224,20 @@ export function mountWebUI(app, dirname, accountManager) {
 
             // Extract code from input (URL or raw code)
             const { extractCodeFromInput, completeOAuthFlow } = await import('../auth/oauth.js');
-            const { code } = extractCodeFromInput(callbackInput);
+            const { code, redirectUri } = extractCodeFromInput(callbackInput);
 
             // Complete the OAuth flow
-            const accountData = await completeOAuthFlow(code, verifier);
+            // Pass redirectUri if extracted from URL (for manual authorization on remote servers)
+            // This ensures the redirect_uri matches exactly what was used in the authorization request
+            // Note: projectId may be null if onboarding is still in progress (it will be discovered on first use)
+            const accountData = await completeOAuthFlow(code, verifier, redirectUri || null);
 
             // Add or update the account
+            // projectId will be discovered automatically on first API request if not available yet
             await addAccount({
                 email: accountData.email,
                 refreshToken: accountData.refreshToken,
-                projectId: accountData.projectId,
+                projectId: accountData.projectId, // May be null if onboarding is in progress
                 source: 'oauth'
             });
 
@@ -1250,10 +1254,12 @@ export function mountWebUI(app, dirname, accountManager) {
 
             logger.success(`[WebUI] Account ${accountData.email} added via manual callback`);
 
+            // Send response immediately (don't wait for onboarding to complete)
+            // Project ID will be discovered automatically on first API request if not available yet
             res.json({
                 status: 'ok',
                 email: accountData.email,
-                message: `Account ${accountData.email} added successfully`
+                message: `Account ${accountData.email} added successfully${accountData.projectId ? '' : '. Project discovery will complete in the background.'}`
             });
         } catch (error) {
             logger.error('[WebUI] Manual OAuth completion error:', error);

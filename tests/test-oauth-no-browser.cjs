@@ -86,29 +86,29 @@ async function runTests() {
     await test('Parse full callback URL with code and state', () => {
         const input = 'http://localhost:51121/oauth-callback?code=4/0AQSTg123&state=abc123';
         const result = extractCodeFromInput(input);
-        const passed = result.code === '4/0AQSTg123' && result.state === 'abc123';
-        return { passed, message: `code=${result.code}, state=${result.state}` };
+        const passed = result.code === '4/0AQSTg123' && result.state === 'abc123' && result.redirectUri === 'http://localhost:51121/oauth-callback';
+        return { passed, message: `code=${result.code}, state=${result.state}, redirectUri=${result.redirectUri}` };
     });
 
     await test('Parse URL with only code (no state)', () => {
         const input = 'http://localhost:51121/oauth-callback?code=4/0AQSTg456';
         const result = extractCodeFromInput(input);
-        const passed = result.code === '4/0AQSTg456' && result.state === null;
-        return { passed, message: `code=${result.code}, state=${result.state}` };
+        const passed = result.code === '4/0AQSTg456' && result.state === null && result.redirectUri === 'http://localhost:51121/oauth-callback';
+        return { passed, message: `code=${result.code}, state=${result.state}, redirectUri=${result.redirectUri}` };
     });
 
     await test('Parse HTTPS URL', () => {
         const input = 'https://localhost:51121/callback?code=secureCode123&state=xyz';
         const result = extractCodeFromInput(input);
-        const passed = result.code === 'secureCode123';
-        return { passed, message: `code=${result.code}` };
+        const passed = result.code === 'secureCode123' && result.redirectUri === 'https://localhost:51121/callback';
+        return { passed, message: `code=${result.code}, redirectUri=${result.redirectUri}` };
     });
 
     await test('Parse URL with additional query params', () => {
         const input = 'http://localhost:51121/?code=myCode&state=myState&scope=email';
         const result = extractCodeFromInput(input);
-        const passed = result.code === 'myCode' && result.state === 'myState';
-        return { passed, message: `code=${result.code}, state=${result.state}` };
+        const passed = result.code === 'myCode' && result.state === 'myState' && result.redirectUri === 'http://localhost:51121/';
+        return { passed, message: `code=${result.code}, state=${result.state}, redirectUri=${result.redirectUri}` };
     });
 
     // ===== Test Group 2: Raw Code Inputs =====
@@ -117,15 +117,15 @@ async function runTests() {
     await test('Parse raw authorization code (Google format)', () => {
         const input = '4/0AQSTgQGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
         const result = extractCodeFromInput(input);
-        const passed = result.code === input && result.state === null;
-        return { passed, message: `code length=${result.code.length}` };
+        const passed = result.code === input && result.state === null && result.redirectUri === null;
+        return { passed, message: `code length=${result.code.length}, redirectUri=${result.redirectUri}` };
     });
 
     await test('Parse raw code with whitespace (should trim)', () => {
         const input = '  4/0AQSTgQGcode123  \n';
         const result = extractCodeFromInput(input);
-        const passed = result.code === '4/0AQSTgQGcode123' && result.state === null;
-        return { passed, message: `trimmed code=${result.code}` };
+        const passed = result.code === '4/0AQSTgQGcode123' && result.state === null && result.redirectUri === null;
+        return { passed, message: `trimmed code=${result.code}, redirectUri=${result.redirectUri}` };
     });
 
     // ===== Test Group 3: Error Cases =====
@@ -184,15 +184,15 @@ async function runTests() {
         const input = 'http://localhost:51121/?code=4%2F0AQSTg%2B%2B&state=test';
         const result = extractCodeFromInput(input);
         // URL class automatically decodes
-        const passed = result.code === '4/0AQSTg++';
-        return { passed, message: `decoded code=${result.code}` };
+        const passed = result.code === '4/0AQSTg++' && result.redirectUri === 'http://localhost:51121/';
+        return { passed, message: `decoded code=${result.code}, redirectUri=${result.redirectUri}` };
     });
 
     await test('Accept minimum valid code length (10 chars)', () => {
         const input = '1234567890';
         const result = extractCodeFromInput(input);
-        const passed = result.code === input;
-        return { passed, message: `code=${result.code}` };
+        const passed = result.code === input && result.redirectUri === null;
+        return { passed, message: `code=${result.code}, redirectUri=${result.redirectUri}` };
     });
 
     // ===== Summary =====

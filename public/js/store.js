@@ -94,12 +94,30 @@ document.addEventListener('alpine:init', () => {
         },
 
         t(key, params = {}) {
-            let str = this.translations[this.lang][key] || key;
+            // 1. 先选当前语言包；如果整个语言包不存在，则回退到英文或空对象，避免 undefined 报错
+            const currentPack = (this.translations && this.translations[this.lang])
+                || this.translations.en
+                || {};
+
+            let str = currentPack[key];
+
+            // 2. 如果当前语言里没有这个 key，但英文里有，则按英文显示（避免显示裸 key）
+            if (str === undefined && this.lang !== 'en' && this.translations.en && this.translations.en[key] !== undefined) {
+                str = this.translations.en[key];
+            }
+
+            // 3. 如果还是没有，就直接用 key 本身
+            if (str === undefined) {
+                str = key;
+            }
+
+            // 4. 简单的占位符替换
             if (typeof str === 'string') {
                 Object.keys(params).forEach(p => {
                     str = str.replace(`{${p}}`, params[p]);
                 });
             }
+
             return str;
         },
 

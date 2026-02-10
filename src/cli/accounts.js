@@ -251,7 +251,7 @@ async function addAccountNoBrowser(existingAccounts, rl) {
     const input = await rl.question('Paste the callback URL or authorization code: ');
 
     try {
-        const { code, state: extractedState } = extractCodeFromInput(input);
+        const { code, state: extractedState, redirectUri } = extractCodeFromInput(input);
 
         // Validate state if present
         if (extractedState && extractedState !== state) {
@@ -260,7 +260,9 @@ async function addAccountNoBrowser(existingAccounts, rl) {
         }
 
         console.log('\nExchanging authorization code for tokens...');
-        const result = await completeOAuthFlow(code, verifier);
+        // Pass redirectUri if extracted from URL (for manual authorization on remote servers)
+        // This ensures the redirect_uri matches exactly what was used in the authorization request
+        const result = await completeOAuthFlow(code, verifier, redirectUri || null);
 
         // Check if account already exists
         const existing = existingAccounts.find(a => a.email === result.email);
