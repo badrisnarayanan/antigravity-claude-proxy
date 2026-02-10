@@ -39,7 +39,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // before any other processing, following the pattern from Antigravity-Manager.
     const messages = cleanCacheControl(anthropicRequest.messages || []);
 
-    const { system, max_tokens, temperature, top_p, top_k, stop_sequences, tools, tool_choice, thinking } = anthropicRequest;
+    const { system, max_tokens, temperature, top_p, top_k, stop_sequences, tools, tool_choice, thinking, generationConfig, responseModalities, modalities } = anthropicRequest;
     const modelName = anthropicRequest.model || '';
     const modelFamily = getModelFamily(modelName);
     const isClaudeModel = modelFamily === 'claude';
@@ -155,6 +155,17 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     }
     if (stop_sequences && stop_sequences.length > 0) {
         googleRequest.generationConfig.stopSequences = stop_sequences;
+    }
+
+    // Handle generationConfig for image models (e.g., gemini-3-pro-image)
+    // Input format: generationConfig.responseModalities and generationConfig.imageConfig
+    if (generationConfig) {
+        // Merge all generationConfig fields including imageConfig and responseModalities
+        Object.assign(googleRequest.generationConfig, generationConfig);
+        
+        if (logger.isDebugEnabled) {
+            logger.debug(`[RequestConverter] Merged generationConfig: ${JSON.stringify(generationConfig)}`);
+        }
     }
 
     // Enable thinking for thinking models (Claude and Gemini 3+)
