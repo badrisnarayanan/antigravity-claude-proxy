@@ -280,6 +280,19 @@ function claude-antigravity {
 
 Then run `claude` for official API or `claude-antigravity` for this proxy.
 
+### Running as a System Service (systemd)
+
+When running as a systemd service, the proxy runs under a different user (e.g. `root`), so it can't find your Claude CLI settings at `~/.claude/settings.json`. Set `CLAUDE_CONFIG_PATH` to point to the real user's `.claude` directory:
+
+```ini
+# /etc/systemd/system/antigravity-proxy.service
+[Service]
+Environment=CLAUDE_CONFIG_PATH=/home/youruser/.claude
+ExecStart=/usr/bin/node /path/to/antigravity-claude-proxy/src/index.js
+```
+
+Without this, the WebUI's Claude CLI tab won't be able to read or write your Claude Code configuration.
+
 ---
 
 ## Documentation
