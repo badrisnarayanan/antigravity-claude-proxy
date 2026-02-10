@@ -121,7 +121,12 @@ export function isValidationRequired(errorText) {
  */
 export function extractVerificationUrl(errorText) {
     if (!errorText) return null;
-    const match = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\,.)\]}>]+/);
+    // Match greedily, then strip trailing punctuation that's not part of the URL.
+    // Dots must be allowed inside the URL (e.g. continue=https://aistudio.google.com).
+    const raw = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\]+/);
+    if (!raw) return null;
+    // Strip trailing punctuation that likely isn't part of the URL
+    const match = [raw[0].replace(/[,.)}\]>]+$/, '')];
     return match ? match[0] : null;
 }
 

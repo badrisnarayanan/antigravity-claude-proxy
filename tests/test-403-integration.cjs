@@ -339,6 +339,13 @@ test('extractVerificationUrl handles URL with trailing bracket', () => {
     assert.ok(!url.includes(']'), 'URL should not include trailing bracket');
 });
 
+test('extractVerificationUrl preserves dots inside URL (subdomain in query param)', () => {
+    const text = 'Visit https://accounts.google.com/signin/continue?sarp=1&scc=1&continue=https://aistudio.google.com to verify';
+    const url = extractVerificationUrl(text);
+    assert.ok(url, 'should extract URL');
+    assert.ok(url.includes('aistudio.google.com'), 'URL should preserve subdomain dots');
+});
+
 test('extractVerificationUrl handles URL with trailing angle bracket', () => {
     const text = 'Visit <https://accounts.google.com/signin/continue?sarp=1&scc=1> to verify';
     const url = extractVerificationUrl(text);
