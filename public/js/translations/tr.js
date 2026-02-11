@@ -405,8 +405,8 @@ window.translations.tr = {
     paidModeDesc: "Tüm proxy yapılandırması kaldırıldı. Claude CLI doğrudan Anthropic aboneliğinizi kullanır.",
     paidModeHint: "Model yönlendirme ve ön ayarları yapılandırmak için Proxy moduna geçin.",
     modeToggleFailed: "Mod değiştirilemedi",
-    screenshotMode: "Ekran Görüntüsü Modu",
-    screenshotModeDesc: "Güvenli ekran paylaşımı için hesap bilgilerini gizle.",
+    anonymizeAccounts: "Hesaplari Anonimleştir",
+    anonymizeAccountsDesc: "Gizlilik için e-postaları NATO çağrı işaretleriyle değiştir (Alpha, Bravo, Charlie...).",
     // Developer Mode
     devMode: "Geliştirici Modu",
     devModeDesc: "Hata ayıklama günlükleri, günlük dışa aktarma ve strateji sağlık denetçisini etkinleştirir.",
