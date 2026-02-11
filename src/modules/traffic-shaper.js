@@ -68,6 +68,16 @@ class TrafficShaper {
 
         this.isProcessing = false;
     }
+
+    /**
+     * Get current status for monitoring
+     */
+    getStatus() {
+        return {
+            processing: this.isProcessing,
+            queued: this.queue.length
+        };
+    }
 }
 
 // Export singleton

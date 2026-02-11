@@ -84,6 +84,46 @@
     <div x-show="!$store.data.initialLoad" class="space-y-6">
         <!-- Stats Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 lg:gap-3">
+        <!-- Protection Status Card -->
+        <div
+            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-300 group relative min-w-0 col-span-2 sm:col-span-1">
+            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-purple-400/70 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+            </div>
+            <div class="flex flex-col gap-2 mt-1">
+                <!-- Telemetry Status -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75" x-show="stats.telemetry?.running"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2" :class="stats.telemetry?.running ? 'bg-neon-green' : 'bg-red-500'"></span>
+                        </span>
+                        <span class="text-[10px] text-gray-400 font-mono">TELEMETRY</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-mono" x-text="stats.telemetry?.running ? 'ACTIVE' : 'OFF'"></span>
+                </div>
+                <!-- Traffic Status -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75" x-show="stats.traffic?.processing"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2" :class="stats.traffic?.processing ? 'bg-neon-purple' : 'bg-gray-600'"></span>
+                        </span>
+                        <span class="text-[10px] text-gray-400 font-mono">SHAPER</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-mono" x-text="'Q:' + (stats.traffic?.queued || 0)"></span>
+                </div>
+            </div>
+            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate mt-3">
+                Protection
+            </div>
+            <div class="stat-desc text-purple-400/60 text-[10px] truncate flex items-center gap-1">
+                <span x-text="stats.telemetry?.activeAccounts || 0">0</span> Active / Liveness On
+            </div>
+        </div>
+
         <div
             class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"

@@ -54,6 +54,20 @@ export function initialize(accountManager, fetcher = null) {
 }
 
 /**
+ * Get current status for monitoring
+ */
+export function getStatus() {
+    return {
+        running: telemetryLoopRunning,
+        lastActivity: lastActivityTime > 0 ? new Date(lastActivityTime).toISOString() : null,
+        activeAccounts: _accountManager ? _accountManager.getAllAccounts().filter(acc =>
+            !acc.isInvalid && acc.enabled !== false &&
+            acc.lastUsed && (Date.now() - new Date(acc.lastUsed).getTime() < ACTIVE_SESSION_TIMEOUT_MS)
+        ).length : 0
+    };
+}
+
+/**
  * Notify the service of user activity
  */
 export function notifyActivity() {

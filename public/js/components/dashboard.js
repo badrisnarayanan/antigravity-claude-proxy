@@ -7,7 +7,11 @@ window.Components = window.Components || {};
 
 window.Components.dashboard = () => ({
     // Core state
-    stats: { total: 0, active: 0, limited: 0, overallHealth: 0, hasTrendData: false },
+    stats: {
+        total: 0, active: 0, limited: 0, overallHealth: 0, hasTrendData: false,
+        telemetry: { running: false, activeAccounts: 0 },
+        traffic: { processing: false, queued: 0 }
+    },
     hasFilteredTrendData: true,
     charts: { quotaDistribution: null, usageTrend: null },
     usageStats: { total: 0, today: 0, thisHour: 0 },
@@ -50,6 +54,14 @@ window.Components.dashboard = () => ({
                     this.updateTrendChart();
                     this.checkClaudeConfigStatus();
                 });
+            }
+        });
+
+        // Watch for protection stats updates
+        this.$watch('$store.data.protectionStats', (newStats) => {
+            if (newStats) {
+                this.stats.telemetry = newStats.telemetry;
+                this.stats.traffic = newStats.traffic;
             }
         });
 

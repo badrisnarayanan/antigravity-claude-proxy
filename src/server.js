@@ -242,6 +242,17 @@ app.post('/test/clear-signature-cache', (req, res) => {
 });
 
 /**
+ * Monitor endpoint - Liveness status for UI
+ * Returns status of telemetry loop and traffic shaper
+ */
+app.get('/api/liveness', (req, res) => {
+    res.json({
+        telemetry: telemetry.getStatus(),
+        traffic: trafficShaper.getStatus()
+    });
+});
+
+/**
  * Health check endpoint - Detailed status
  * Returns status of all accounts including rate limits and model quotas
  */

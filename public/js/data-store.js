@@ -26,6 +26,12 @@ document.addEventListener('alpine:init', () => {
         lastUpdated: '-',
         healthCheckTimer: null,
 
+        // Protection stats
+        protectionStats: {
+            telemetry: { running: false, activeAccounts: 0 },
+            traffic: { processing: false, queued: 0 }
+        },
+
         // Filters state
         filters: {
             account: 'all',
@@ -226,8 +232,9 @@ document.addEventListener('alpine:init', () => {
                 // Only perform health check if tab is visible
                 if (!document.hidden) {
                     this.performHealthCheck();
+                    this.fetchProtectionStats();
                 }
-            }, 15000);
+            }, 5000); // Increased frequency for liveness monitor
         },
 
         stopHealthCheck() {
