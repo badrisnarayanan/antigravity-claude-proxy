@@ -14,6 +14,7 @@
 
 import path from 'path';
 import express from 'express';
+import crypto from 'crypto';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS, DEFAULT_SERVER_PRESETS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
@@ -124,7 +125,17 @@ function createAuthMiddleware() {
 
         if (isProtected) {
             const providedPassword = req.headers['x-webui-password'] || req.query.password;
-            if (providedPassword !== password) {
+
+            // Use constant-time comparison to prevent timing attacks
+            let isAuthorized = false;
+            if (providedPassword && password) {
+                const providedHash = crypto.createHash('sha256').update(providedPassword).digest();
+                const passwordHash = crypto.createHash('sha256').update(password).digest();
+                isAuthorized = crypto.timingSafeEqual(providedHash, passwordHash) &&
+                               providedPassword.length === password.length;
+            }
+
+            if (!isAuthorized) {
                 return res.status(401).json({ status: 'error', error: 'Unauthorized: Password required' });
             }
         }
@@ -731,11 +742,22 @@ export function mountWebUI(app, dirname, accountManager) {
             }
 
             // If current password exists, verify old password
-            if (config.webuiPassword && config.webuiPassword !== oldPassword) {
-                return res.status(403).json({
-                    status: 'error',
-                    error: 'Invalid current password'
-                });
+            if (config.webuiPassword) {
+                // Use constant-time comparison to prevent timing attacks
+                let isAuthorized = false;
+                if (oldPassword) {
+                    const providedHash = crypto.createHash('sha256').update(oldPassword).digest();
+                    const passwordHash = crypto.createHash('sha256').update(config.webuiPassword).digest();
+                    isAuthorized = crypto.timingSafeEqual(providedHash, passwordHash) &&
+                                   oldPassword.length === config.webuiPassword.length;
+                }
+
+                if (!isAuthorized) {
+                    return res.status(403).json({
+                        status: 'error',
+                        error: 'Invalid current password'
+                    });
+                }
             }
 
             // Save new password

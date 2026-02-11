@@ -6,6 +6,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
@@ -96,7 +97,16 @@ app.use('/v1', (req, res, next) => {
         providedKey = xApiKey;
     }
 
-    if (!providedKey || providedKey !== config.apiKey) {
+    // Use constant-time comparison to prevent timing attacks
+    let isAuthorized = false;
+    if (providedKey && config.apiKey) {
+        const providedHash = crypto.createHash('sha256').update(providedKey).digest();
+        const configHash = crypto.createHash('sha256').update(config.apiKey).digest();
+        isAuthorized = crypto.timingSafeEqual(providedHash, configHash) &&
+                       providedKey.length === config.apiKey.length;
+    }
+
+    if (!isAuthorized) {
         logger.warn(`[API] Unauthorized request from ${req.ip}, invalid API key`);
         return res.status(401).json({
             type: 'error',
