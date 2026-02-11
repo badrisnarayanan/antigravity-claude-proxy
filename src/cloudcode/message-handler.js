@@ -10,160 +10,28 @@ import {
     MAX_RETRIES,
     MAX_WAIT_BEFORE_ERROR_MS,
     DEFAULT_COOLDOWN_MS,
-    RATE_LIMIT_DEDUP_WINDOW_MS,
-    RATE_LIMIT_STATE_RESET_MS,
-    FIRST_RETRY_DELAY_MS,
     SWITCH_ACCOUNT_DELAY_MS,
     MAX_CONSECUTIVE_FAILURES,
     EXTENDED_COOLDOWN_MS,
     CAPACITY_BACKOFF_TIERS_MS,
     MAX_CAPACITY_RETRIES,
-    BACKOFF_BY_ERROR_TYPE,
-    QUOTA_EXHAUSTED_BACKOFF_TIERS_MS,
-    MIN_BACKOFF_MS,
     isThinkingModel
 } from '../constants.js';
 import { convertGoogleToAnthropic } from '../format/index.js';
 import { isRateLimitError, isAuthError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
-import { parseResetTime, parseRateLimitReason } from './rate-limit-parser.js';
+import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
 import { parseThinkingSSEResponse } from './sse-parser.js';
 import { getFallbackModel } from '../fallback-config.js';
-
-/**
- * Rate limit deduplication - prevents thundering herd on concurrent rate limits.
- * Tracks rate limit state per account+model including consecutive429 count and timestamps.
- */
-const rateLimitStateByAccountModel = new Map(); // `${email}:${model}` -> { consecutive429, lastAt }
-
-/**
- * Get deduplication key for rate limit tracking
- * @param {string} email - Account email
- * @param {string} model - Model ID
- * @returns {string} Dedup key
- */
-function getDedupKey(email, model) {
-    return `${email}:${model}`;
-}
-
-/**
- * Get rate limit backoff with deduplication and exponential backoff (matches opencode-antigravity-auth)
- * @param {string} email - Account email
- * @param {string} model - Model ID
- * @param {number|null} serverRetryAfterMs - Server-provided retry time
- * @returns {{attempt: number, delayMs: number, isDuplicate: boolean}} Backoff info
- */
-function getRateLimitBackoff(email, model, serverRetryAfterMs) {
-    const now = Date.now();
-    const stateKey = getDedupKey(email, model);
-    const previous = rateLimitStateByAccountModel.get(stateKey);
-
-    // Check if within dedup window - return duplicate status
-    if (previous && (now - previous.lastAt < RATE_LIMIT_DEDUP_WINDOW_MS)) {
-        const baseDelay = serverRetryAfterMs ?? FIRST_RETRY_DELAY_MS;
-        const backoffDelay = Math.min(baseDelay * Math.pow(2, previous.consecutive429 - 1), 60000);
-        logger.debug(`[CloudCode] Rate limit on ${email}:${model} within dedup window, attempt=${previous.consecutive429}, isDuplicate=true`);
-        return { attempt: previous.consecutive429, delayMs: Math.max(baseDelay, backoffDelay), isDuplicate: true };
-    }
-
-    // Determine attempt number - reset after RATE_LIMIT_STATE_RESET_MS of inactivity
-    const attempt = previous && (now - previous.lastAt < RATE_LIMIT_STATE_RESET_MS)
-        ? previous.consecutive429 + 1
-        : 1;
-
-    // Update state
-    rateLimitStateByAccountModel.set(stateKey, { consecutive429: attempt, lastAt: now });
-
-    // Calculate exponential backoff
-    const baseDelay = serverRetryAfterMs ?? FIRST_RETRY_DELAY_MS;
-    const backoffDelay = Math.min(baseDelay * Math.pow(2, attempt - 1), 60000);
-
-    logger.debug(`[CloudCode] Rate limit backoff for ${email}:${model}: attempt=${attempt}, delayMs=${Math.max(baseDelay, backoffDelay)}`);
-    return { attempt, delayMs: Math.max(baseDelay, backoffDelay), isDuplicate: false };
-}
-
-/**
- * Clear rate limit state after successful request
- * @param {string} email - Account email
- * @param {string} model - Model ID
- */
-function clearRateLimitState(email, model) {
-    const key = getDedupKey(email, model);
-    rateLimitStateByAccountModel.delete(key);
-}
-
-/**
- * Detect permanent authentication failures that require re-authentication.
- * These should mark the account as invalid rather than just clearing cache.
- * @param {string} errorText - Error message from API
- * @returns {boolean} True if permanent auth failure
- */
-function isPermanentAuthFailure(errorText) {
-    const lower = (errorText || '').toLowerCase();
-    return lower.includes('invalid_grant') ||
-        lower.includes('token revoked') ||
-        lower.includes('token has been expired or revoked') ||
-        lower.includes('token_revoked') ||
-        lower.includes('invalid_client') ||
-        lower.includes('credentials are invalid');
-}
-
-/**
- * Detect if 429 error is due to model capacity (not user quota).
- * Capacity issues should retry on same account with shorter delay.
- * @param {string} errorText - Error message from API
- * @returns {boolean} True if capacity exhausted (not quota)
- */
-function isModelCapacityExhausted(errorText) {
-    const lower = (errorText || '').toLowerCase();
-    return lower.includes('model_capacity_exhausted') ||
-        lower.includes('capacity_exhausted') ||
-        lower.includes('model is currently overloaded') ||
-        lower.includes('service temporarily unavailable');
-}
-
-// Periodically clean up stale rate limit state (every 60 seconds)
-setInterval(() => {
-    const cutoff = Date.now() - RATE_LIMIT_STATE_RESET_MS;
-    for (const [key, state] of rateLimitStateByAccountModel.entries()) {
-        if (state.lastAt < cutoff) {
-            rateLimitStateByAccountModel.delete(key);
-        }
-    }
-}, 60000);
-
-/**
- * Calculate smart backoff based on error type (matches opencode-antigravity-auth)
- * @param {string} errorText - Error message
- * @param {number|null} serverResetMs - Reset time from server
- * @param {number} consecutiveFailures - Number of consecutive failures
- * @returns {number} Backoff time in milliseconds
- */
-function calculateSmartBackoff(errorText, serverResetMs, consecutiveFailures = 0) {
-    // If server provides a reset time, use it (with minimum floor to prevent loops)
-    if (serverResetMs && serverResetMs > 0) {
-        return Math.max(serverResetMs, MIN_BACKOFF_MS);
-    }
-
-    const reason = parseRateLimitReason(errorText);
-
-    switch (reason) {
-        case 'QUOTA_EXHAUSTED':
-            // Progressive backoff: [60s, 5m, 30m, 2h]
-            const tierIndex = Math.min(consecutiveFailures, QUOTA_EXHAUSTED_BACKOFF_TIERS_MS.length - 1);
-            return QUOTA_EXHAUSTED_BACKOFF_TIERS_MS[tierIndex];
-        case 'RATE_LIMIT_EXCEEDED':
-            return BACKOFF_BY_ERROR_TYPE.RATE_LIMIT_EXCEEDED;
-        case 'MODEL_CAPACITY_EXHAUSTED':
-            return BACKOFF_BY_ERROR_TYPE.MODEL_CAPACITY_EXHAUSTED;
-        case 'SERVER_ERROR':
-            return BACKOFF_BY_ERROR_TYPE.SERVER_ERROR;
-        default:
-            return BACKOFF_BY_ERROR_TYPE.UNKNOWN;
-    }
-}
+import {
+    getRateLimitBackoff,
+    clearRateLimitState,
+    isPermanentAuthFailure,
+    isModelCapacityExhausted,
+    calculateSmartBackoff
+} from './rate-limit-state.js';
 
 /**
  * Send a non-streaming request to Cloud Code with multi-account support
@@ -377,21 +245,22 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                         }
 
                         if (response.status >= 400) {
-                            // Check for 503 MODEL_CAPACITY_EXHAUSTED - use progressive backoff like 429 capacity
-                            if (response.status === 503 && isModelCapacityExhausted(errorText)) {
+                            // Check for 503/529 MODEL_CAPACITY_EXHAUSTED - use progressive backoff like 429 capacity
+                            // 529 = Site Overloaded (same treatment as 503)
+                            if ((response.status === 503 || response.status === 529) && isModelCapacityExhausted(errorText)) {
                                 if (capacityRetryCount < MAX_CAPACITY_RETRIES) {
                                     // Progressive capacity backoff tiers (same as 429 capacity handling)
                                     const tierIndex = Math.min(capacityRetryCount, CAPACITY_BACKOFF_TIERS_MS.length - 1);
                                     const waitMs = CAPACITY_BACKOFF_TIERS_MS[tierIndex];
                                     capacityRetryCount++;
                                     accountManager.incrementConsecutiveFailures(account.email);
-                                    logger.info(`[CloudCode] 503 Model capacity exhausted, retry ${capacityRetryCount}/${MAX_CAPACITY_RETRIES} after ${formatDuration(waitMs)}...`);
+                                    logger.info(`[CloudCode] ${response.status} Model capacity exhausted, retry ${capacityRetryCount}/${MAX_CAPACITY_RETRIES} after ${formatDuration(waitMs)}...`);
                                     await sleep(waitMs);
                                     // Don't increment endpointIndex - retry same endpoint
                                     continue;
                                 }
                                 // Max capacity retries exceeded - switch account
-                                logger.warn(`[CloudCode] Max capacity retries (${MAX_CAPACITY_RETRIES}) exceeded on 503, switching account`);
+                                logger.warn(`[CloudCode] Max capacity retries (${MAX_CAPACITY_RETRIES}) exceeded on ${response.status}, switching account`);
                                 accountManager.markRateLimited(account.email, BACKOFF_BY_ERROR_TYPE.MODEL_CAPACITY_EXHAUSTED, model);
                                 throw new Error(`CAPACITY_EXHAUSTED: ${errorText}`);
                             }
@@ -462,6 +331,14 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                 // Rate limited - already marked, notify strategy and continue to next account
                 accountManager.notifyRateLimit(account, model);
                 logger.info(`[CloudCode] Account ${account.email} rate-limited, trying next...`);
+
+                // CRITICAL FIX: If this is a duplicate rate limit (account was already known to be
+                // rate-limited), don't count it as a failed attempt. This prevents "Max retries exceeded"
+                // when thundering herd causes all accounts to be rate-limited and we're just cycling
+                // through known-bad accounts waiting for rate limits to expire.
+                if (error.message?.includes('RATE_LIMITED_DEDUP')) {
+                    attempt--;
+                }
                 continue;
             }
             if (isAuthError(error)) {

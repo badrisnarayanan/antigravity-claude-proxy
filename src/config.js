@@ -8,6 +8,7 @@ const DEFAULT_CONFIG = {
     apiKey: '',
     webuiPassword: '',
     debug: false,
+    devMode: false,
     logLevel: 'info',
     maxRetries: 5,
     retryBaseMs: 1000,
@@ -91,6 +92,10 @@ function loadConfig() {
         if (process.env.API_KEY) config.apiKey = process.env.API_KEY;
         if (process.env.WEBUI_PASSWORD) config.webuiPassword = process.env.WEBUI_PASSWORD;
         if (process.env.DEBUG === 'true') config.debug = true;
+        if (process.env.DEV_MODE === 'true') config.devMode = true;
+
+        // Backward compat: debug implies devMode
+        if (config.debug && !config.devMode) config.devMode = true;
 
     } catch (error) {
         logger.error('[Config] Error loading config:', error);

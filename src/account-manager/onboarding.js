@@ -6,7 +6,8 @@
 
 import {
     ONBOARD_USER_ENDPOINTS,
-    ANTIGRAVITY_HEADERS
+    ANTIGRAVITY_HEADERS,
+    CLIENT_METADATA
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
 import { sleep, throttledFetch } from '../utils/helpers.js';
@@ -44,11 +45,7 @@ export function getDefaultTierId(allowedTiers) {
  * @returns {Promise<string|null>} Managed project ID or null if failed
  */
 export async function onboardUser(token, tierId, projectId = undefined, maxAttempts = 10, delayMs = 5000) {
-    const metadata = {
-        ideType: 'IDE_UNSPECIFIED',
-        platform: 'PLATFORM_UNSPECIFIED',
-        pluginType: 'GEMINI'
-    };
+    const metadata = { ...CLIENT_METADATA };
 
     if (projectId) {
         metadata.duetProject = projectId;

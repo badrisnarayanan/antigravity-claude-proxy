@@ -1,6 +1,4 @@
-<div x-data="{
-    activeTab: 'ui'
-}" class="view-container">
+<div x-data class="view-container-centered">
     <!-- Header & Tabs -->
     <div class="view-card !p-0 flex flex-col overflow-hidden">
         <div class="bg-space-900/50 border-b border-space-border px-8 pt-8 pb-0 shrink-0">
@@ -17,9 +15,9 @@
             </div>
 
             <div class="flex gap-6 overflow-x-auto">
-                <button @click="activeTab = 'ui'"
+                <button @click="$store.global.settingsTab = 'ui'"
                     class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'ui' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    :class="$store.global.settingsTab === 'ui' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -27,9 +25,9 @@
                     </svg>
                     <span x-text="$store.global.t('tabInterface')">Interface</span>
                 </button>
-                <button @click="activeTab = 'claude'"
+                <button @click="$store.global.settingsTab = 'claude'"
                     class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'claude' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    :class="$store.global.settingsTab === 'claude' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -37,9 +35,9 @@
                     </svg>
                     <span x-text="$store.global.t('tabClaude')">Claude CLI</span>
                 </button>
-                <button @click="activeTab = 'models'"
+                <button @click="$store.global.settingsTab = 'models'"
                     class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'models' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    :class="$store.global.settingsTab === 'models' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -47,9 +45,9 @@
                     </svg>
                     <span x-text="$store.global.t('tabModels')">Models</span>
                 </button>
-                <button @click="activeTab = 'server'"
+                <button @click="$store.global.settingsTab = 'server'"
                     class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'server' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    :class="$store.global.settingsTab === 'server' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -64,7 +62,7 @@
         <div class="p-8 overflow-y-auto flex-1 custom-scrollbar">
 
             <!-- Tab 1: UI Preferences -->
-            <div x-show="activeTab === 'ui'" class="space-y-8 max-w-2xl animate-fade-in">
+            <div x-show="$store.global.settingsTab === 'ui'" class="space-y-8 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Language -->
                     <div class="form-control">
@@ -173,7 +171,7 @@
                                     @change="$store.settings.compact = $event.target.checked; $store.settings.saveSettings(true)"
                                     aria-label="Compact mode toggle">
                                 <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
                         </div>
@@ -182,7 +180,7 @@
             </div>
 
             <!-- Tab 2: Claude CLI Configuration -->
-            <div x-show="activeTab === 'claude'" x-data="claudeConfig" class="space-y-6 max-w-3xl animate-fade-in">
+            <div x-show="$store.global.settingsTab === 'claude'" x-data="claudeConfig" class="space-y-6 animate-fade-in">
                 <div class="alert bg-space-900/50 border-space-border text-sm shadow-none">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                         class="stroke-info shrink-0 w-6 h-6">
@@ -328,103 +326,151 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <!-- Primary -->
-                        <div class="form-control">
+                        <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_MODEL', 'primaryModel', 'cyan')">
                             <label class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
-                                x-text="$store.global.t('primaryModel')">Primary Model</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text" :value="open ? searchTerm : config.env.ANTHROPIC_MODEL"
-                                    @input="searchTerm = $event.target.value" @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
+                                x-text="$store.global.t(labelKey)">Primary Model</label>
+                            <div class="relative w-full">
+                                <input type="text" :value="open ? searchTerm : currentValue"
+                                    @input="searchTerm = $event.target.value" @focus="openDropdown()"
+                                    @click.away="closeDropdown()"
+                                    @keydown="onKeydown($event)"
+                                    x-ref="dropdownInput"
+                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 pr-8 placeholder:!text-gray-600"
+                                    :class="[focusBorderClass, { '!text-gray-500': !open && !currentValue }]"
                                     :placeholder="open ? $store.global.t('typeToSearch') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_MODEL }"
-                                    aria-label="Primary model selection">
+                                    :aria-label="$store.global.t(labelKey) + ' selection'">
+                                <button x-show="currentValue && !open" type="button"
+                                    class="absolute right-8 top-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    @click="clearField()" @mousedown.prevent
+                                    :title="$store.global.t('clearSelection')">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                                 <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                                    @click="open ? closeDropdown() : openDropdown(); if(open) { $nextTick(() => $refs.dropdownInput.focus()) }"
                                     @mousedown.prevent>▼</div>
 
                                 <ul x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 scale-95"
                                     x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                    <template
-                                        x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                        :key="modelId">
+                                    x-ref="dropdownList"
+                                    class="absolute left-0 right-0 top-full mt-1 flex flex-col p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg z-[100] max-h-60 overflow-y-auto custom-scrollbar list-none">
+                                    <!-- Clear option -->
+                                    <li x-show="currentValue">
+                                        <a @mousedown.prevent="clearField()"
+                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-red-500/10 border-b border-space-border/30 flex items-center gap-2 italic text-gray-400 hover:text-red-400"
+                                            :class="highlightIndex === 0 ? 'bg-space-800/50' : ''"
+                                            :data-highlight="highlightIndex === 0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="$store.global.t('clearSelection')">Clear selection</span>
+                                        </a>
+                                    </li>
+                                    <!-- Grouped models -->
+                                    <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <a @mousedown.prevent="selectModel('ANTHROPIC_MODEL', modelId); open = false; searchTerm = ''"
-                                                class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                                :class="config.env.ANTHROPIC_MODEL === modelId || config.env.ANTHROPIC_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full"
-                                                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                    <span x-text="modelId"></span>
-                                                </div>
-                                                <template
-                                                    x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                    <span
-                                                        class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                                :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
+                                                x-text="group.label"></div>
+                                            <ul>
+                                                <template x-for="modelId in group.items" :key="modelId">
+                                                    <li>
+                                                        <a @mousedown.prevent="choose(modelId)"
+                                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                                                            :class="[isSelected(modelId) ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300', highlightIndex === getFlatIndex(modelId) ? 'bg-space-800/70' : '']"
+                                                            :data-highlight="highlightIndex === getFlatIndex(modelId)">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-1.5 h-1.5 rounded-full"
+                                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
+                                                                <span x-text="modelId"></span>
+                                                            </div>
+                                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
+                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                            </template>
+                                                        </a>
+                                                    </li>
                                                 </template>
-                                            </a>
+                                            </ul>
                                         </li>
                                     </template>
-                                    <li
-                                        x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
+                                    <li x-show="filteredModels.length === 0">
                                         <span class="text-xs text-gray-500 italic py-2"
                                             x-text="$store.global.t('noMatchingModels')">No matching models</span>
                                     </li>
                                 </ul>
                             </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono">ANTHROPIC_MODEL</span>
+                            <span class="text-[10px] text-gray-600 mt-1 font-mono" x-text="field"></span>
                         </div>
 
                         <!-- Sub-agent -->
-                        <div class="form-control">
+                        <div class="form-control" x-data="window.Components.modelDropdown('CLAUDE_CODE_SUBAGENT_MODEL', 'subAgentModel', 'purple')">
                             <label class="label pt-0 pb-1 text-[11px] text-gray-400 font-bold tracking-wider"
-                                x-text="$store.global.t('subAgentModel')">Sub-agent Model</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text" :value="open ? searchTerm : config.env.CLAUDE_CODE_SUBAGENT_MODEL"
-                                    @input="searchTerm = $event.target.value" @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-purple pr-8 placeholder:!text-gray-600"
+                                x-text="$store.global.t(labelKey)">Sub-agent Model</label>
+                            <div class="relative w-full">
+                                <input type="text" :value="open ? searchTerm : currentValue"
+                                    @input="searchTerm = $event.target.value" @focus="openDropdown()"
+                                    @click.away="closeDropdown()"
+                                    @keydown="onKeydown($event)"
+                                    x-ref="dropdownInput"
+                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 pr-8 placeholder:!text-gray-600"
+                                    :class="[focusBorderClass, { '!text-gray-500': !open && !currentValue }]"
                                     :placeholder="open ? $store.global.t('typeToSearch') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.CLAUDE_CODE_SUBAGENT_MODEL }"
-                                    aria-label="Sub-agent model selection">
+                                    :aria-label="$store.global.t(labelKey) + ' selection'">
+                                <button x-show="currentValue && !open" type="button"
+                                    class="absolute right-8 top-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    @click="clearField()" @mousedown.prevent
+                                    :title="$store.global.t('clearSelection')">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                                 <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                                    @click="open ? closeDropdown() : openDropdown(); if(open) { $nextTick(() => $refs.dropdownInput.focus()) }"
                                     @mousedown.prevent>▼</div>
 
                                 <ul x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 scale-95"
                                     x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                    <template
-                                        x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                        :key="modelId">
+                                    x-ref="dropdownList"
+                                    class="absolute left-0 right-0 top-full mt-1 flex flex-col p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg z-[100] max-h-60 overflow-y-auto custom-scrollbar list-none">
+                                    <li x-show="currentValue">
+                                        <a @mousedown.prevent="clearField()"
+                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-red-500/10 border-b border-space-border/30 flex items-center gap-2 italic text-gray-400 hover:text-red-400"
+                                            :class="highlightIndex === 0 ? 'bg-space-800/50' : ''"
+                                            :data-highlight="highlightIndex === 0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="$store.global.t('clearSelection')">Clear selection</span>
+                                        </a>
+                                    </li>
+                                    <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <a @mousedown.prevent="selectModel('CLAUDE_CODE_SUBAGENT_MODEL', modelId); open = false; searchTerm = ''"
-                                                class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                                :class="config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId || config.env.CLAUDE_CODE_SUBAGENT_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full"
-                                                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                    <span x-text="modelId"></span>
-                                                </div>
-                                                <template
-                                                    x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                    <span
-                                                        class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                                :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
+                                                x-text="group.label"></div>
+                                            <ul>
+                                                <template x-for="modelId in group.items" :key="modelId">
+                                                    <li>
+                                                        <a @mousedown.prevent="choose(modelId)"
+                                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                                                            :class="[isSelected(modelId) ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300', highlightIndex === getFlatIndex(modelId) ? 'bg-space-800/70' : '']"
+                                                            :data-highlight="highlightIndex === getFlatIndex(modelId)">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-1.5 h-1.5 rounded-full"
+                                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
+                                                                <span x-text="modelId"></span>
+                                                            </div>
+                                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
+                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                            </template>
+                                                        </a>
+                                                    </li>
                                                 </template>
-                                            </a>
+                                            </ul>
                                         </li>
                                     </template>
-                                    <li
-                                        x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
+                                    <li x-show="filteredModels.length === 0">
                                         <span class="text-xs text-gray-500 italic py-2"
                                             x-text="$store.global.t('noMatchingModels')">No matching models</span>
                                     </li>
                                 </ul>
                             </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono">CLAUDE_CODE_SUBAGENT_MODEL</span>
+                            <span class="text-[10px] text-gray-600 mt-1 font-mono" x-text="field"></span>
                         </div>
                     </div>
 
@@ -434,46 +480,69 @@
                     <!-- Overrides -->
                     <div class="space-y-4">
                         <!-- Opus -->
-                        <div class="form-control">
+                        <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_OPUS_MODEL', 'opusAlias', 'cyan')">
                             <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('opusAlias')">Opus Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text" :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_OPUS_MODEL"
-                                    @input="searchTerm = $event.target.value" @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_OPUS_MODEL }"
-                                    aria-label="Opus model alias selection">
+                                x-text="$store.global.t(labelKey)">Opus Alias</label>
+                            <div class="relative w-full">
+                                <input type="text" :value="open ? searchTerm : currentValue"
+                                    @input="searchTerm = $event.target.value" @focus="openDropdown()"
+                                    @click.away="closeDropdown()"
+                                    @keydown="onKeydown($event)"
+                                    x-ref="dropdownInput"
+                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 pr-8 placeholder:!text-gray-600"
+                                    :class="[focusBorderClass, { '!text-gray-500': !open && !currentValue }]"
+                                    :placeholder="open ? $store.global.t('typeToSearch') : ''"
+                                    :aria-label="$store.global.t(labelKey) + ' selection'">
+                                <button x-show="currentValue && !open" type="button"
+                                    class="absolute right-8 top-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    @click="clearField()" @mousedown.prevent
+                                    :title="$store.global.t('clearSelection')">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                                 <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                                    @click="open ? closeDropdown() : openDropdown(); if(open) { $nextTick(() => $refs.dropdownInput.focus()) }"
                                     @mousedown.prevent>▼</div>
                                 <ul x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 scale-95"
                                     x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                    <template
-                                        x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                        :key="modelId">
+                                    x-ref="dropdownList"
+                                    class="absolute left-0 right-0 top-full mt-1 flex flex-col p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg z-[100] max-h-60 overflow-y-auto custom-scrollbar list-none">
+                                    <li x-show="currentValue">
+                                        <a @mousedown.prevent="clearField()"
+                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-red-500/10 border-b border-space-border/30 flex items-center gap-2 italic text-gray-400 hover:text-red-400"
+                                            :class="highlightIndex === 0 ? 'bg-space-800/50' : ''"
+                                            :data-highlight="highlightIndex === 0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="$store.global.t('clearSelection')">Clear selection</span>
+                                        </a>
+                                    </li>
+                                    <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_OPUS_MODEL', modelId); open = false; searchTerm = ''"
-                                                class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                                :class="config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_OPUS_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full"
-                                                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                    <span x-text="modelId"></span>
-                                                </div>
-                                                <template
-                                                    x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                    <span
-                                                        class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                                :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
+                                                x-text="group.label"></div>
+                                            <ul>
+                                                <template x-for="modelId in group.items" :key="modelId">
+                                                    <li>
+                                                        <a @mousedown.prevent="choose(modelId)"
+                                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                                                            :class="[isSelected(modelId) ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300', highlightIndex === getFlatIndex(modelId) ? 'bg-space-800/70' : '']"
+                                                            :data-highlight="highlightIndex === getFlatIndex(modelId)">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-1.5 h-1.5 rounded-full"
+                                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
+                                                                <span x-text="modelId"></span>
+                                                            </div>
+                                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
+                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                            </template>
+                                                        </a>
+                                                    </li>
                                                 </template>
-                                            </a>
+                                            </ul>
                                         </li>
                                     </template>
-                                    <li
-                                        x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
+                                    <li x-show="filteredModels.length === 0">
                                         <span class="text-xs text-gray-500 italic py-2"
                                             x-text="$store.global.t('noMatchingModels')">No matching models</span>
                                     </li>
@@ -481,47 +550,69 @@
                             </div>
                         </div>
                         <!-- Sonnet -->
-                        <div class="form-control">
+                        <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_SONNET_MODEL', 'sonnetAlias', 'cyan')">
                             <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('sonnetAlias')">Sonnet Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text"
-                                    :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_SONNET_MODEL"
-                                    @input="searchTerm = $event.target.value" @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_SONNET_MODEL }"
-                                    aria-label="Sonnet model alias selection">
+                                x-text="$store.global.t(labelKey)">Sonnet Alias</label>
+                            <div class="relative w-full">
+                                <input type="text" :value="open ? searchTerm : currentValue"
+                                    @input="searchTerm = $event.target.value" @focus="openDropdown()"
+                                    @click.away="closeDropdown()"
+                                    @keydown="onKeydown($event)"
+                                    x-ref="dropdownInput"
+                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 pr-8 placeholder:!text-gray-600"
+                                    :class="[focusBorderClass, { '!text-gray-500': !open && !currentValue }]"
+                                    :placeholder="open ? $store.global.t('typeToSearch') : ''"
+                                    :aria-label="$store.global.t(labelKey) + ' selection'">
+                                <button x-show="currentValue && !open" type="button"
+                                    class="absolute right-8 top-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    @click="clearField()" @mousedown.prevent
+                                    :title="$store.global.t('clearSelection')">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                                 <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                                    @click="open ? closeDropdown() : openDropdown(); if(open) { $nextTick(() => $refs.dropdownInput.focus()) }"
                                     @mousedown.prevent>▼</div>
                                 <ul x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 scale-95"
                                     x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                    <template
-                                        x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                        :key="modelId">
+                                    x-ref="dropdownList"
+                                    class="absolute left-0 right-0 top-full mt-1 flex flex-col p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg z-[100] max-h-60 overflow-y-auto custom-scrollbar list-none">
+                                    <li x-show="currentValue">
+                                        <a @mousedown.prevent="clearField()"
+                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-red-500/10 border-b border-space-border/30 flex items-center gap-2 italic text-gray-400 hover:text-red-400"
+                                            :class="highlightIndex === 0 ? 'bg-space-800/50' : ''"
+                                            :data-highlight="highlightIndex === 0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="$store.global.t('clearSelection')">Clear selection</span>
+                                        </a>
+                                    </li>
+                                    <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_SONNET_MODEL', modelId); open = false; searchTerm = ''"
-                                                class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                                :class="config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_SONNET_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full"
-                                                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                    <span x-text="modelId"></span>
-                                                </div>
-                                                <template
-                                                    x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                    <span
-                                                        class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                                :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
+                                                x-text="group.label"></div>
+                                            <ul>
+                                                <template x-for="modelId in group.items" :key="modelId">
+                                                    <li>
+                                                        <a @mousedown.prevent="choose(modelId)"
+                                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                                                            :class="[isSelected(modelId) ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300', highlightIndex === getFlatIndex(modelId) ? 'bg-space-800/70' : '']"
+                                                            :data-highlight="highlightIndex === getFlatIndex(modelId)">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-1.5 h-1.5 rounded-full"
+                                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
+                                                                <span x-text="modelId"></span>
+                                                            </div>
+                                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
+                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                            </template>
+                                                        </a>
+                                                    </li>
                                                 </template>
-                                            </a>
+                                            </ul>
                                         </li>
                                     </template>
-                                    <li
-                                        x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
+                                    <li x-show="filteredModels.length === 0">
                                         <span class="text-xs text-gray-500 italic py-2"
                                             x-text="$store.global.t('noMatchingModels')">No matching models</span>
                                     </li>
@@ -529,46 +620,69 @@
                             </div>
                         </div>
                         <!-- Haiku -->
-                        <div class="form-control">
+                        <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'haikuAlias', 'cyan')">
                             <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
-                                x-text="$store.global.t('haikuAlias')">Haiku Alias</label>
-                            <div class="relative w-full" x-data="{ open: false, searchTerm: '' }">
-                                <input type="text" :value="open ? searchTerm : config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL"
-                                    @input="searchTerm = $event.target.value" @focus="open = true; searchTerm = ''"
-                                    @click.away="open = false; searchTerm = ''"
-                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 focus:!border-neon-cyan pr-8 placeholder:!text-gray-600"
-                                    :placeholder="open ? $store.global.t('searchPlaceholder') : ''"
-                                    :class="{ '!text-gray-500': !open && !config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL }"
-                                    aria-label="Haiku model alias selection">
+                                x-text="$store.global.t(labelKey)">Haiku Alias</label>
+                            <div class="relative w-full">
+                                <input type="text" :value="open ? searchTerm : currentValue"
+                                    @input="searchTerm = $event.target.value" @focus="openDropdown()"
+                                    @click.away="closeDropdown()"
+                                    @keydown="onKeydown($event)"
+                                    x-ref="dropdownInput"
+                                    class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white focus:!bg-space-800 pr-8 placeholder:!text-gray-600"
+                                    :class="[focusBorderClass, { '!text-gray-500': !open && !currentValue }]"
+                                    :placeholder="open ? $store.global.t('typeToSearch') : ''"
+                                    :aria-label="$store.global.t(labelKey) + ' selection'">
+                                <button x-show="currentValue && !open" type="button"
+                                    class="absolute right-8 top-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                                    @click="clearField()" @mousedown.prevent
+                                    :title="$store.global.t('clearSelection')">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                                 <div class="absolute right-2 top-1.5 cursor-pointer text-gray-500 hover:text-white transition-colors"
-                                    @click="open = !open; if(open) { searchTerm = ''; $el.previousElementSibling.focus() }"
+                                    @click="open ? closeDropdown() : openDropdown(); if(open) { $nextTick(() => $refs.dropdownInput.focus()) }"
                                     @mousedown.prevent>▼</div>
                                 <ul x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 scale-95"
                                     x-transition:enter-end="opacity-100 scale-100"
-                                    class="absolute left-0 right-0 top-full mt-1 menu p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg max-h-60 overflow-y-auto z-[100] custom-scrollbar">
-                                    <template
-                                        x-for="modelId in $store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase()))"
-                                        :key="modelId">
+                                    x-ref="dropdownList"
+                                    class="absolute left-0 right-0 top-full mt-1 flex flex-col p-2 shadow-2xl bg-space-900 border border-space-border rounded-lg z-[100] max-h-60 overflow-y-auto custom-scrollbar list-none">
+                                    <li x-show="currentValue">
+                                        <a @mousedown.prevent="clearField()"
+                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-red-500/10 border-b border-space-border/30 flex items-center gap-2 italic text-gray-400 hover:text-red-400"
+                                            :class="highlightIndex === 0 ? 'bg-space-800/50' : ''"
+                                            :data-highlight="highlightIndex === 0">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="$store.global.t('clearSelection')">Clear selection</span>
+                                        </a>
+                                    </li>
+                                    <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <a @mousedown.prevent="selectModel('ANTHROPIC_DEFAULT_HAIKU_MODEL', modelId); open = false; searchTerm = ''"
-                                                class="font-mono text-xs py-2 hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
-                                                :class="config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId || config.env.ANTHROPIC_DEFAULT_HAIKU_MODEL === modelId + '[1m]' ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300'">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="w-1.5 h-1.5 rounded-full"
-                                                        :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
-                                                    <span x-text="modelId"></span>
-                                                </div>
-                                                <template
-                                                    x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                    <span
-                                                        class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                                :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
+                                                x-text="group.label"></div>
+                                            <ul>
+                                                <template x-for="modelId in group.items" :key="modelId">
+                                                    <li>
+                                                        <a @mousedown.prevent="choose(modelId)"
+                                                            class="font-mono text-xs px-2 py-2 rounded hover:bg-space-800 border-b border-space-border/30 last:border-0 flex items-center justify-between gap-2"
+                                                            :class="[isSelected(modelId) ? 'text-neon-cyan bg-space-800/50' : 'text-gray-300', highlightIndex === getFlatIndex(modelId) ? 'bg-space-800/70' : '']"
+                                                            :data-highlight="highlightIndex === getFlatIndex(modelId)">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-1.5 h-1.5 rounded-full"
+                                                                    :class="$store.data.getModelFamily(modelId) === 'claude' ? 'bg-neon-purple shadow-[0_0_5px_rgba(168,85,247,0.5)]' : ($store.data.getModelFamily(modelId) === 'gemini' ? 'bg-neon-green shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-gray-600')"></span>
+                                                                <span x-text="modelId"></span>
+                                                            </div>
+                                                            <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
+                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                            </template>
+                                                        </a>
+                                                    </li>
                                                 </template>
-                                            </a>
+                                            </ul>
                                         </li>
                                     </template>
-                                    <li
-                                        x-show="$store.data.models.filter(m => m.toLowerCase().includes(searchTerm.toLowerCase())).length === 0">
+                                    <li x-show="filteredModels.length === 0">
                                         <span class="text-xs text-gray-500 italic py-2"
                                             x-text="$store.global.t('noMatchingModels')">No matching models</span>
                                     </li>
@@ -596,7 +710,7 @@
                                 @change="config.env.ENABLE_EXPERIMENTAL_MCP_CLI = $event.target.checked ? 'true' : 'false'"
                                 aria-label="Experimental MCP CLI toggle">
                             <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                             </div>
                         </label>
                     </div>
@@ -621,7 +735,7 @@
                                 @change="toggleGemini1mSuffix($event.target.checked)"
                                 aria-label="Gemini 1M context mode toggle">
                             <div
-                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                             </div>
                         </label>
                     </div>
@@ -756,8 +870,8 @@
             </div>
 
             <!-- Tab 3: Models Configuration -->
-            <div x-show="activeTab === 'models'" x-data="window.Components.models()"
-                class="space-y-6 max-w-3xl animate-fade-in">
+            <div x-show="$store.global.settingsTab === 'models'" x-data="window.Components.models()"
+                class="space-y-6 animate-fade-in">
 
                 <div class="flex items-center justify-between">
                     <div>
@@ -926,8 +1040,8 @@
             </div>
 
             <!-- Tab 4: Server Configuration -->
-            <div x-show="activeTab === 'server'" x-data="window.Components.serverConfig()"
-                class="space-y-6 max-w-2xl animate-fade-in pb-10">
+            <div x-show="$store.global.settingsTab === 'server'" x-data="window.Components.serverConfig()"
+                class="space-y-6 animate-fade-in pb-10">
                 <!-- 🔐 Security Section -->
                 <div class="view-card border-neon-yellow/20 bg-neon-yellow/5">
                     <div class="flex items-center justify-between">
@@ -968,23 +1082,152 @@
                         <div class="h-px flex-1 bg-space-border/30"></div>
                     </div>
 
-                    <!-- Debug Mode -->
-                    <div class="form-control view-card border-space-border/50 hover:border-neon-purple/50">
+                    <!-- Developer Mode -->
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-purple/50"
+                        :class="serverConfig.devMode ? 'border-neon-purple/50 bg-neon-purple/5' : ''">
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col gap-1">
-                                <span class="text-sm font-medium text-gray-200"
-                                    :class="serverConfig.debug ? 'text-neon-purple' : ''"
-                                    x-text="$store.global.t('debugMode')">Debug Mode</span>
-                                <span class="text-[11px] text-gray-500" x-text="$store.global.t('debugDesc')">Detailed
-                                    logging in the Logs tab</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-medium text-gray-200"
+                                        :class="serverConfig.devMode ? 'text-neon-purple' : ''"
+                                        x-text="$store.global.t('devMode')">Developer Mode</span>
+                                </div>
+                                <span class="text-[11px] text-gray-500" x-text="$store.global.t('devModeDesc')">Enables debug logging, log export, and strategy health inspector</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" :checked="serverConfig.debug === true"
-                                    @change="toggleDebug($el.checked)" aria-label="Debug mode toggle">
+                                <input type="checkbox" class="sr-only peer" :checked="serverConfig.devMode === true"
+                                    @change="toggleDevMode($el.checked)" aria-label="Developer mode toggle">
                                 <div
                                     class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
+                        </div>
+
+                        <!-- Sub-toggles (nested under Developer Mode) -->
+                        <div x-show="serverConfig.devMode" x-transition class="mt-3 pt-3 border-t border-neon-purple/20 space-y-3">
+                            <!-- Screenshot Mode -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.redactMode ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('screenshotMode')">Screenshot Mode</span>
+                                    <span class="text-[11px] text-gray-500"
+                                        x-text="$store.global.t('screenshotModeDesc')">Hide email addresses for safe screen sharing.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.redactMode === true"
+                                        @change="$store.settings.redactMode = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Screenshot mode toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Debug Logging -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.debugLogging ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('debugLogging')">Debug Logging</span>
+                                    <span class="text-[11px] text-gray-500"
+                                        x-text="$store.global.t('debugLoggingDesc')">Show verbose debug messages in the log viewer.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.debugLogging === true"
+                                        @change="$store.settings.debugLogging = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Debug logging toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Log Export -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.logExport ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('logExportToggle')">Log Export</span>
+                                    <span class="text-[11px] text-gray-500"
+                                        x-text="$store.global.t('logExportToggleDesc')">Show export button in the log viewer toolbar.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.logExport === true"
+                                        @change="$store.settings.logExport = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Log export toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Health Inspector -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs font-medium transition-colors"
+                                        :class="$store.settings.healthInspector ? 'text-neon-purple' : 'text-gray-400'"
+                                        x-text="$store.global.t('healthInspectorToggle')">Health Inspector</span>
+                                    <span class="text-[11px] text-gray-500"
+                                        x-text="$store.global.t('healthInspectorToggleDesc')">Show strategy health inspector in the accounts view.</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="$store.settings.healthInspector === true"
+                                        @change="$store.settings.healthInspector = $event.target.checked; $store.settings.saveSettings(true)"
+                                        aria-label="Health inspector toggle">
+                                    <div
+                                        class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Placeholder Data -->
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-xs font-medium transition-colors"
+                                            :class="$store.data.placeholderMode ? 'text-neon-purple' : 'text-gray-400'"
+                                            x-text="$store.global.t('placeholderData')">Placeholder Data</span>
+                                        <span class="text-[11px] text-gray-500"
+                                            x-text="$store.global.t('placeholderDataDesc')">Inject dummy accounts and quotas for UI testing.</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer"
+                                            :checked="$store.data.placeholderMode === true"
+                                            @change="$store.data.setPlaceholderMode($event.target.checked, $store.data.placeholderIncludeReal)"
+                                            aria-label="Placeholder data toggle">
+                                        <div
+                                            class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Include Real Accounts sub-toggle -->
+                                <div x-show="$store.data.placeholderMode" x-transition class="mt-2 ml-4 pl-3 border-l border-neon-purple/20">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex flex-col gap-1">
+                                            <span class="text-xs font-medium transition-colors"
+                                                :class="$store.data.placeholderIncludeReal ? 'text-gray-300' : 'text-gray-500'"
+                                                x-text="$store.global.t('includeRealAccounts')">Include Real Accounts</span>
+                                            <span class="text-[11px] text-gray-500"
+                                                x-text="$store.global.t('includeRealAccountsDesc')">Show real accounts alongside placeholder data.</span>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" class="sr-only peer"
+                                                :checked="$store.data.placeholderIncludeReal === true"
+                                                @change="$store.data.setPlaceholderMode(true, $event.target.checked)"
+                                                aria-label="Include real accounts toggle">
+                                            <div
+                                                class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1004,7 +1247,7 @@
                                     :checked="serverConfig.persistTokenCache === true"
                                     @change="toggleTokenCache($el.checked)" aria-label="Persist token cache toggle">
                                 <div
-                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-purple peer-checked:after:bg-white">
                                 </div>
                             </label>
                         </div>

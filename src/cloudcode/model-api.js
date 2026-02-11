@@ -9,6 +9,7 @@ import {
     ANTIGRAVITY_HEADERS,
     LOAD_CODE_ASSIST_ENDPOINTS,
     LOAD_CODE_ASSIST_HEADERS,
+    CLIENT_METADATA,
     getModelFamily,
     MODEL_VALIDATION_CACHE_TTL_MS
 } from '../constants.js';
@@ -183,9 +184,7 @@ export async function getSubscriptionTier(token) {
                 headers,
                 body: JSON.stringify({
                     metadata: {
-                        ideType: 'IDE_UNSPECIFIED',
-                        platform: 'PLATFORM_UNSPECIFIED',
-                        pluginType: 'GEMINI',
+                        ...CLIENT_METADATA,
                         duetProject: 'rising-fact-p41fc'
                     }
                 })

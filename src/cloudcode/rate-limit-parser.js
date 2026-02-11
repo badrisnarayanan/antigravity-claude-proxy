@@ -191,9 +191,16 @@ export function parseResetTime(responseOrError, errorText = '') {
  * Used for smart backoff by error type (matches opencode-antigravity-auth)
  *
  * @param {string} errorText - Error message/body text
+ * @param {number} [status] - HTTP status code (optional, for status-based classification)
  * @returns {'RATE_LIMIT_EXCEEDED' | 'QUOTA_EXHAUSTED' | 'MODEL_CAPACITY_EXHAUSTED' | 'SERVER_ERROR' | 'UNKNOWN'} Error reason
  */
-export function parseRateLimitReason(errorText) {
+export function parseRateLimitReason(errorText, status) {
+    // Status code checks FIRST (matches opencode-antigravity-auth Rust parity)
+    // 529 = Site Overloaded, 503 = Service Unavailable → Capacity issues
+    if (status === 529 || status === 503) return 'MODEL_CAPACITY_EXHAUSTED';
+    // 500 = Internal Server Error → Treat as Server Error (soft wait)
+    if (status === 500) return 'SERVER_ERROR';
+
     const lower = (errorText || '').toLowerCase();
 
     // Check for quota exhaustion (daily/hourly limits)

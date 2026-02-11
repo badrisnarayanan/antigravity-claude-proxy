@@ -9,6 +9,7 @@ import {
     TOKEN_REFRESH_INTERVAL_MS,
     LOAD_CODE_ASSIST_ENDPOINTS,
     LOAD_CODE_ASSIST_HEADERS,
+    CLIENT_METADATA,
     DEFAULT_PROJECT_ID
 } from '../constants.js';
 import { refreshAccessToken, parseRefreshParts, formatRefreshParts } from '../auth/oauth.js';
@@ -220,11 +221,7 @@ export async function discoverProject(token, projectId = undefined) {
     let gotSuccessfulResponse = false;
     let loadCodeAssistData = null;
 
-    const metadata = {
-        ideType: 'IDE_UNSPECIFIED',
-        platform: 'PLATFORM_UNSPECIFIED',
-        pluginType: 'GEMINI'
-    };
+    const metadata = { ...CLIENT_METADATA };
     if (projectId) {
         metadata.duetProject = projectId;
     }

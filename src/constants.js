@@ -33,8 +33,54 @@ function getAntigravityDbPath() {
 function getPlatformUserAgent() {
     const os = platform();
     const architecture = arch();
-    return `antigravity/1.15.8 ${os}/${architecture}`;
+    return `antigravity/1.16.5 ${os}/${architecture}`;
 }
+
+// IDE Type enum (numeric values as expected by Cloud Code API)
+// Reference: Antigravity binary analysis - google.internal.cloud.code.v1internal.ClientMetadata.IdeType
+export const IDE_TYPE = {
+    UNSPECIFIED: 0,
+    JETSKI: 5,         // Internal codename for Gemini CLI
+    ANTIGRAVITY: 6,
+    PLUGINS: 7
+};
+
+// Platform enum
+// Reference: Antigravity binary analysis - google.internal.cloud.code.v1internal.ClientMetadata.Platform
+export const PLATFORM = {
+    UNSPECIFIED: 0,
+    WINDOWS: 1,
+    LINUX: 2,
+    MACOS: 3
+};
+
+// Plugin type enum
+export const PLUGIN_TYPE = {
+    UNSPECIFIED: 0,
+    DUET_AI: 1,
+    GEMINI: 2
+};
+
+/**
+ * Get the platform enum value based on the current OS.
+ * @returns {number} Platform enum value
+ */
+function getPlatformEnum() {
+    switch (platform()) {
+        case 'darwin': return PLATFORM.MACOS;
+        case 'win32': return PLATFORM.WINDOWS;
+        case 'linux': return PLATFORM.LINUX;
+        default: return PLATFORM.UNSPECIFIED;
+    }
+}
+
+// Centralized client metadata (used in request bodies for loadCodeAssist, onboardUser, etc.)
+// Using numeric enum values as expected by the Cloud Code API
+export const CLIENT_METADATA = {
+    ideType: IDE_TYPE.ANTIGRAVITY,   // 6 - identifies as Antigravity client
+    platform: getPlatformEnum(),      // Runtime platform detection
+    pluginType: PLUGIN_TYPE.GEMINI    // 2
+};
 
 // Cloud Code API endpoints (in fallback order)
 const ANTIGRAVITY_ENDPOINT_DAILY = 'https://daily-cloudcode-pa.googleapis.com';
@@ -50,11 +96,7 @@ export const ANTIGRAVITY_ENDPOINT_FALLBACKS = [
 export const ANTIGRAVITY_HEADERS = {
     'User-Agent': getPlatformUserAgent(),
     'X-Goog-Api-Client': 'google-cloud-sdk vscode_cloudshelleditor/0.1',
-    'Client-Metadata': JSON.stringify({
-        ideType: 'IDE_UNSPECIFIED',
-        platform: 'PLATFORM_UNSPECIFIED',
-        pluginType: 'GEMINI'
-    })
+    'Client-Metadata': JSON.stringify(CLIENT_METADATA)
 };
 
 // Endpoint order for loadCodeAssist (prod first)
@@ -130,6 +172,10 @@ export const QUOTA_EXHAUSTED_BACKOFF_TIERS_MS = [60000, 300000, 1800000, 7200000
 
 // Minimum backoff floor to prevent "Available in 0s" loops (matches opencode-antigravity-auth)
 export const MIN_BACKOFF_MS = 2000;
+
+// Jitter range for capacity backoff (Thundering Herd Prevention)
+// Applied to MODEL_CAPACITY_EXHAUSTED to stagger client retries
+export const CAPACITY_JITTER_MAX_MS = 10000; // ±5s jitter range
 
 // Thinking model constants
 export const MIN_SIGNATURE_LENGTH = 50; // Minimum valid thinking signature length
@@ -266,6 +312,10 @@ export const DEFAULT_PRESETS = [
 ];
 
 export default {
+    IDE_TYPE,
+    PLATFORM,
+    PLUGIN_TYPE,
+    CLIENT_METADATA,
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     ANTIGRAVITY_HEADERS,
     LOAD_CODE_ASSIST_ENDPOINTS,
@@ -294,6 +344,7 @@ export default {
     BACKOFF_BY_ERROR_TYPE,
     QUOTA_EXHAUSTED_BACKOFF_TIERS_MS,
     MIN_BACKOFF_MS,
+    CAPACITY_JITTER_MAX_MS,
     MIN_SIGNATURE_LENGTH,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_SKIP_SIGNATURE,

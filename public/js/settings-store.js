@@ -9,6 +9,13 @@ document.addEventListener('alpine:init', () => {
         showHiddenModels: false,
         showAllAccounts: false,
         compact: false,
+        redactMode: false,
+        placeholderMode: false,
+        placeholderIncludeReal: true,
+        debugLogging: true,
+        logExport: true,
+        healthInspector: true,
+        healthInspectorOpen: false,
         port: 8080, // Display only
 
         init() {
@@ -41,7 +48,14 @@ document.addEventListener('alpine:init', () => {
                 showExhausted: this.showExhausted,
                 showHiddenModels: this.showHiddenModels,
                 showAllAccounts: this.showAllAccounts,
-                compact: this.compact
+                compact: this.compact,
+                redactMode: this.redactMode,
+                placeholderMode: this.placeholderMode,
+                placeholderIncludeReal: this.placeholderIncludeReal,
+                debugLogging: this.debugLogging,
+                logExport: this.logExport,
+                healthInspector: this.healthInspector,
+                healthInspectorOpen: this.healthInspectorOpen
             };
             localStorage.setItem('antigravity_settings', JSON.stringify(toSave));
 

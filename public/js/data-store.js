@@ -15,6 +15,11 @@ document.addEventListener('alpine:init', () => {
         usageHistory: {}, // Usage statistics history (from /account-limits?includeHistory=true)
         globalQuotaThreshold: 0, // Global minimum quota threshold (fraction 0-0.99)
         maxAccounts: 10, // Maximum number of accounts allowed (from config)
+        devMode: false, // Developer mode flag (from server config)
+        placeholderMode: false, // Inject placeholder account data for UI testing
+        placeholderIncludeReal: true, // Include real accounts alongside placeholder data
+        _realAccounts: null, // Stash for real accounts when placeholder mode is on
+        _realModels: null, // Stash for real models when placeholder mode is on
         loading: false,
         initialLoad: true, // Track first load for skeleton screen
         connectionStatus: 'connecting',
@@ -39,10 +44,19 @@ document.addEventListener('alpine:init', () => {
             // Restore from cache first for instant render
             this.loadFromCache();
 
+            // Restore placeholder mode from persisted settings
+            // Read localStorage directly since settings store may not be initialized yet
+            try {
+                const saved = JSON.parse(localStorage.getItem('antigravity_settings') || '{}');
+                if (saved.placeholderMode) {
+                    this.setPlaceholderMode(true, saved.placeholderIncludeReal !== false);
+                }
+            } catch (e) { /* ignore parse errors */ }
+
             // Watch filters to recompute
             // Alpine stores don't have $watch automatically unless inside a component?
             // We can manually call compute when filters change.
-            
+
             // Start health check monitoring
             this.startHealthCheck();
         },
@@ -125,6 +139,22 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 this.saveToCache(); // Save fresh data
+
+                // Re-inject placeholder data if active
+                if (this.placeholderMode) {
+                    this._realAccounts = [...this.accounts];
+                    this._realModels = [...this.models];
+                    const { accounts: fakeAccounts, models: fakeModels } = this._generatePlaceholderData();
+                    if (this.placeholderIncludeReal) {
+                        this.accounts = [...this._realAccounts, ...fakeAccounts];
+                        const modelSet = new Set([...this._realModels, ...fakeModels]);
+                        this.models = Array.from(modelSet).sort();
+                    } else {
+                        this.accounts = fakeAccounts;
+                        this.models = fakeModels;
+                    }
+                }
+
                 this.computeQuotaRows();
 
                 this.lastUpdated = new Date().toLocaleTimeString();
@@ -143,14 +173,21 @@ document.addEventListener('alpine:init', () => {
             try {
                 // Get password from global store
                 const password = Alpine.store('global').webuiPassword;
-                
+
                 // Use lightweight endpoint (no quota fetching)
                 const { response, newPassword } = await window.utils.request('/api/config', {}, password);
-                
+
                 if (newPassword) Alpine.store('global').webuiPassword = newPassword;
-                
+
                 if (response.ok) {
                     this.connectionStatus = 'connected';
+                    // Update devMode from server config
+                    try {
+                        const data = await response.json();
+                        if (data.config) {
+                            this.devMode = !!data.config.devMode;
+                        }
+                    } catch (e) { /* ignore parse errors */ }
                 } else {
                     this.connectionStatus = 'disconnected';
                 }
@@ -391,6 +428,111 @@ document.addEventListener('alpine:init', () => {
             });
 
             return rows;
+        },
+
+        /**
+         * Generate placeholder account and model data for UI testing
+         */
+        _generatePlaceholderData() {
+            const models = [
+                'claude-opus-4-5-thinking',
+                'claude-sonnet-4-5-thinking',
+                'claude-sonnet-4-5',
+                'gemini-3-pro-high',
+                'gemini-3-pro-low',
+                'gemini-3-flash'
+            ];
+
+            const tiers = ['ultra', 'pro', 'pro', 'free'];
+            const names = ['alice', 'bob', 'charlie', 'diana'];
+            const domains = ['workspace.dev', 'company.io', 'example.org', 'test.net'];
+
+            const accounts = names.map((name, i) => {
+                const email = `${name}@${domains[i]}`;
+                const tier = tiers[i];
+
+                // Generate varied quota per model per account
+                const limits = {};
+                models.forEach((modelId, mi) => {
+                    // Create a deterministic but varied fraction
+                    const seed = ((i * 7 + mi * 13) % 100);
+                    const fraction = seed < 10 ? 0 : seed / 100;
+                    const resetTime = fraction === 0
+                        ? new Date(Date.now() + (30 + i * 15) * 60000).toISOString()
+                        : null;
+                    limits[modelId] = {
+                        remaining: Math.round(fraction * 100) + '%',
+                        remainingFraction: fraction,
+                        resetTime
+                    };
+                });
+
+                return {
+                    email,
+                    status: i === 3 ? 'invalid' : 'ok',
+                    error: i === 3 ? 'Token expired' : null,
+                    source: i === 0 ? 'database' : 'oauth',
+                    enabled: i !== 2 ? true : false,
+                    projectId: `proj-${name}-${1000 + i}`,
+                    isInvalid: i === 3,
+                    invalidReason: i === 3 ? 'Token expired' : null,
+                    lastUsed: new Date(Date.now() - i * 3600000).toISOString(),
+                    modelRateLimits: {},
+                    quotaThreshold: i === 1 ? 0.15 : undefined,
+                    modelQuotaThresholds: i === 0 ? { 'claude-opus-4-5-thinking': 0.25 } : {},
+                    subscription: { tier, projectId: `proj-${name}-${1000 + i}`, detectedAt: Date.now() },
+                    limits
+                };
+            });
+
+            return { accounts, models };
+        },
+
+        /**
+         * Enable or disable placeholder data injection
+         */
+        setPlaceholderMode(enabled, includeReal) {
+            this.placeholderMode = enabled;
+            this.placeholderIncludeReal = includeReal;
+
+            // Persist to settings store
+            const settings = Alpine.store('settings');
+            if (settings) {
+                settings.placeholderMode = enabled;
+                settings.placeholderIncludeReal = includeReal;
+                settings.saveSettings(true);
+            }
+
+            if (enabled) {
+                // Stash real data
+                this._realAccounts = [...this.accounts];
+                this._realModels = [...this.models];
+
+                const { accounts: fakeAccounts, models: fakeModels } = this._generatePlaceholderData();
+
+                if (includeReal && this._realAccounts.length > 0) {
+                    // Merge: real accounts first, then placeholders
+                    this.accounts = [...this._realAccounts, ...fakeAccounts];
+                    // Union of models
+                    const modelSet = new Set([...this._realModels, ...fakeModels]);
+                    this.models = Array.from(modelSet).sort();
+                } else {
+                    this.accounts = fakeAccounts;
+                    this.models = fakeModels;
+                }
+            } else {
+                // Restore real data
+                if (this._realAccounts !== null) {
+                    this.accounts = this._realAccounts;
+                    this._realAccounts = null;
+                }
+                if (this._realModels !== null) {
+                    this.models = this._realModels;
+                    this._realModels = null;
+                }
+            }
+
+            this.computeQuotaRows();
         }
     });
 });

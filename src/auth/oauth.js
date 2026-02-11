@@ -11,6 +11,7 @@ import http from 'http';
 import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     LOAD_CODE_ASSIST_HEADERS,
+    CLIENT_METADATA,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI
 } from '../constants.js';
@@ -469,11 +470,7 @@ export async function discoverProjectId(accessToken) {
                     ...LOAD_CODE_ASSIST_HEADERS
                 },
                 body: JSON.stringify({
-                    metadata: {
-                        ideType: 'IDE_UNSPECIFIED',
-                        platform: 'PLATFORM_UNSPECIFIED',
-                        pluginType: 'GEMINI'
-                    }
+                    metadata: CLIENT_METADATA
                 })
             });
 

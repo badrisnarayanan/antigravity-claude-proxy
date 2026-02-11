@@ -379,4 +379,32 @@ window.translations.en = {
     paidModeDesc: "All proxy configuration has been removed. Claude CLI uses your Anthropic subscription directly.",
     paidModeHint: "Switch to Proxy mode to configure model routing and presets.",
     modeToggleFailed: "Failed to switch mode",
+    // Screenshot Mode
+    screenshotMode: "Screenshot Mode",
+    screenshotModeDesc: "Redact account info for safe screen sharing.",
+    // Developer Mode
+    devMode: "Developer Mode",
+    devModeDesc: "Enables debug logging, log export, and strategy health inspector.",
+    devModeToggled: "Developer mode {status}",
+    failedToUpdateDevMode: "Failed to update developer mode",
+    exportLogs: "Export Logs",
+    strategyHealthInspector: "Strategy Health Inspector",
+    healthScore: "Health Score",
+    tokenBucket: "Tokens",
+    consecutiveFailures: "Failures",
+    refreshHealthData: "Refresh",
+    healthNotAvailable: "Health tracking only available with hybrid strategy.",
+    // Placeholder Data
+    debugLogging: "Debug Logging",
+    debugLoggingDesc: "Show verbose debug messages in the log viewer.",
+    logExportToggle: "Log Export",
+    logExportToggleDesc: "Show export button in the log viewer toolbar.",
+    healthInspectorToggle: "Health Inspector",
+    healthInspectorToggleDesc: "Show strategy health inspector in the accounts view.",
+    placeholderData: "Placeholder Data",
+    placeholderDataDesc: "Inject dummy accounts and quotas for UI testing.",
+    includeRealAccounts: "Include Real Accounts",
+    includeRealAccountsDesc: "Show real accounts alongside placeholder data.",
+    // Model Dropdown
+    clearSelection: "Clear selection",
 };

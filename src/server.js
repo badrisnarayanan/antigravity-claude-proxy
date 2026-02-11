@@ -156,9 +156,9 @@ function parseError(error) {
         const model = modelMatch ? modelMatch[1] : 'the model';
 
         if (resetMatch) {
-            errorMessage = `You have exhausted your capacity on ${model}. Quota will reset after ${resetMatch[1]}.`;
+            errorMessage = `RESOURCE_EXHAUSTED: You have exhausted your capacity on ${model}. Quota will reset after ${resetMatch[1]}.`;
         } else {
-            errorMessage = `You have exhausted your capacity on ${model}. Please wait for your quota to reset.`;
+            errorMessage = `RESOURCE_EXHAUSTED: You have exhausted your capacity on ${model}. Please wait for your quota to reset.`;
         }
     } else if (error.message.includes('invalid_request_error') || error.message.includes('INVALID_ARGUMENT')) {
         errorType = 'invalid_request_error';

@@ -12,12 +12,12 @@ window.Components.serverConfig = () => ({
 
     init() {
         // Initial fetch if this is the active sub-tab
-        if (this.activeTab === 'server') {
+        if (this.$store.global.settingsTab === 'server') {
             this.fetchServerConfig();
         }
 
-        // Watch local activeTab (from parent settings scope, skip initial trigger)
-        this.$watch('activeTab', (tab, oldTab) => {
+        // Watch settings sub-tab (skip initial trigger)
+        this.$watch('$store.global.settingsTab', (tab, oldTab) => {
             if (tab === 'server' && oldTab !== undefined) {
                 this.fetchServerConfig();
             }
@@ -100,19 +100,21 @@ window.Components.serverConfig = () => ({
         }
     },
 
-    // Toggle Debug Mode with instant save
-    async toggleDebug(enabled) {
+    // Toggle Developer Mode with instant save
+    async toggleDevMode(enabled) {
         const store = Alpine.store('global');
 
         // Optimistic update
-        const previousValue = this.serverConfig.debug;
+        const previousDevMode = this.serverConfig.devMode;
+        const previousDebug = this.serverConfig.debug;
+        this.serverConfig.devMode = enabled;
         this.serverConfig.debug = enabled;
 
         try {
             const { response, newPassword } = await window.utils.request('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ debug: enabled })
+                body: JSON.stringify({ devMode: enabled })
             }, store.webuiPassword);
 
             if (newPassword) store.webuiPassword = newPassword;
@@ -120,15 +122,18 @@ window.Components.serverConfig = () => ({
             const data = await response.json();
             if (data.status === 'ok') {
                 const status = enabled ? store.t('enabledStatus') : store.t('disabledStatus');
-                store.showToast(store.t('debugModeToggled', { status }), 'success');
+                store.showToast(store.t('devModeToggled', { status }), 'success');
+                // Update data store
+                Alpine.store('data').devMode = enabled;
                 await this.fetchServerConfig(); // Confirm server state
             } else {
-                throw new Error(data.error || store.t('failedToUpdateDebugMode'));
+                throw new Error(data.error || store.t('failedToUpdateDevMode'));
             }
         } catch (e) {
             // Rollback on error
-            this.serverConfig.debug = previousValue;
-            store.showToast(store.t('failedToUpdateDebugMode') + ': ' + e.message, 'error');
+            this.serverConfig.devMode = previousDevMode;
+            this.serverConfig.debug = previousDebug;
+            store.showToast(store.t('failedToUpdateDevMode') + ': ' + e.message, 'error');
         }
     },
 

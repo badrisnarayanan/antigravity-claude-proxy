@@ -25,7 +25,10 @@ npm start -- --strategy=hybrid      # Smart distribution (default)
 # Start with model fallback enabled (falls back to alternate model when quota exhausted)
 npm start -- --fallback
 
-# Start with debug logging
+# Start with developer mode (debug logging + dev tools)
+npm start -- --dev-mode
+
+# Start with debug logging (legacy alias, also enables dev mode)
 npm start -- --debug
 
 # Development mode (file watching)
@@ -149,8 +152,8 @@ public/
 │   ├── config/                 # Application configuration
 │   │   └── constants.js        # Centralized UI constants and limits
 │   ├── store.js                # Global state management
-│   ├── data-store.js           # Shared data store (accounts, models, quotas)
-│   ├── settings-store.js       # Settings management store
+│   ├── data-store.js           # Shared data store (accounts, models, quotas, placeholder data)
+│   ├── settings-store.js       # Settings management store (incl. dev mode sub-toggles)
 │   ├── components/             # UI Components
 │   │   ├── dashboard.js        # Main dashboard orchestrator
 │   │   ├── account-manager.js  # Account list, OAuth, & threshold settings
@@ -164,7 +167,8 @@ public/
 │   │       └── filters.js      # Chart filter state management
 │   └── utils/                  # Frontend utilities
 │       ├── error-handler.js    # Centralized error handling with ErrorHandler.withLoading
-│       ├── account-actions.js  # Account operations service layer (NEW)
+│       ├── account-actions.js  # Account operations service layer
+│       ├── redact.js           # Screenshot mode email redaction utility
 │       ├── validators.js       # Input validation
 │       └── model-config.js     # Model configuration helpers
 └── views/                      # HTML partials (loaded dynamically)
@@ -183,9 +187,10 @@ public/
   - `model-api.js`: Model listing, quota retrieval (`getModelQuotas()`), and subscription tier detection (`getSubscriptionTier()`)
 - **src/account-manager/**: Multi-account pool with configurable selection strategies, rate limit handling, and automatic cooldown
   - Strategies: `sticky` (cache-optimized), `round-robin` (load-balanced), `hybrid` (smart distribution)
+  - `getStrategyHealthData()`: Exposes per-account health scores, token buckets, and failure counts for the WebUI health inspector
 - **src/auth/**: Authentication including Google OAuth, token extraction, database access, and auto-rebuild of native modules
 - **src/format/**: Format conversion between Anthropic and Google Generative AI formats
-- **src/config.js**: Runtime configuration with defaults (`globalQuotaThreshold`, `maxAccounts`, `accountSelection`, etc.)
+- **src/config.js**: Runtime configuration with defaults (`globalQuotaThreshold`, `maxAccounts`, `accountSelection`, `devMode`, etc.)
 - **src/constants.js**: API endpoints, model mappings, fallback config, OAuth config, and all configuration values
 - **src/modules/usage-stats.js**: Tracks request volume by model/family, persists 30-day history to JSON, and auto-prunes old data.
 - **src/fallback-config.js**: Model fallback mappings (`getFallbackModel()`, `hasFallback()`)
@@ -288,6 +293,22 @@ Each account object in `accounts.json` contains:
 - If rebuild succeeds, the module is reloaded; if reload fails, a server restart is required
 - Implementation in `src/utils/native-module-helper.js` and lazy loading in `src/auth/database.js`
 
+**Developer Mode:**
+- Broader replacement for the old "Debug Mode" toggle, enabled via `--dev-mode` CLI flag, `DEV_MODE=true` env var, or WebUI Settings toggle
+- `--debug` flag is a legacy alias that also enables developer mode
+- Backend: `config.devMode` field in `src/config.js`, toggled at runtime via `POST /api/config` with `{ devMode: bool }`
+- Frontend: `Alpine.store('data').devMode` synced from server config on health checks
+- Gates access to `GET /api/strategy/health` (returns 403 when dev mode is off)
+- **Sub-toggles** (client-side, stored in `settings-store.js` via localStorage):
+  - **Screenshot Mode** (`redactMode`): Redacts email addresses across all views using `window.Redact` utility (`public/js/utils/redact.js`)
+  - **Debug Logging** (`debugLogging`): Controls verbose debug message display
+  - **Log Export** (`logExport`): Shows/hides the export button in the logs toolbar
+  - **Health Inspector** (`healthInspector`): Shows/hides the strategy health inspector panel in accounts view (hybrid strategy only)
+  - **Placeholder Data** (`placeholderMode`): Injects 4 dummy accounts with varied quotas for UI testing
+    - **Include Real Accounts** (`placeholderIncludeReal`): Merges real accounts alongside placeholder data
+- Placeholder data is purely client-side (generated in `data-store.js`, no backend changes)
+- All sub-toggles use unified neon-purple styling
+
 **Web Management UI:**
 
 - **Stack**: Vanilla JS + Alpine.js + Tailwind CSS (local build with PostCSS)
@@ -311,6 +332,7 @@ Each account object in `accounts.json` contains:
   - Skeleton loading screens for improved perceived performance
   - Empty state UX with actionable prompts
   - Loading states for all async operations
+  - Developer Mode with granular sub-toggles (screenshot mode, debug logging, log export, health inspector, placeholder data)
 - **Accessibility**:
   - ARIA labels on search inputs and icon buttons
   - Keyboard navigation support (Escape to clear search)
@@ -372,7 +394,8 @@ Each account object in `accounts.json` contains:
 
 - `/api/accounts/*` - Account management (list, add, remove, refresh, threshold settings)
   - `PATCH /api/accounts/:email` - Update account quota thresholds (`quotaThreshold`, `modelQuotaThresholds`)
-- `/api/config/*` - Server configuration (read/write, includes `globalQuotaThreshold`)
+- `/api/config/*` - Server configuration (read/write, includes `globalQuotaThreshold`, `devMode`)
+- `/api/strategy/health` - Strategy health data for hybrid strategy (gated behind `devMode`)
 - `/api/claude/config` - Claude CLI settings
 - `/api/claude/mode` - Switch between Proxy/Paid mode (updates settings.json)
 - `/api/logs/stream` - SSE endpoint for real-time logs

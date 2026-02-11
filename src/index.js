@@ -3,6 +3,9 @@
  * Entry point - starts the proxy server
  */
 
+// Initialize proxy support BEFORE any other imports that may use fetch
+import './utils/proxy.js';
+
 import app, { accountManager } from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
@@ -16,7 +19,7 @@ const packageVersion = getPackageVersion();
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-const isDebug = args.includes('--debug') || process.env.DEBUG === 'true';
+const isDebug = args.includes('--debug') || args.includes('--dev-mode') || process.env.DEBUG === 'true' || process.env.DEV_MODE === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
 
 // Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
@@ -34,11 +37,13 @@ if (strategyOverride && !STRATEGY_NAMES.includes(strategyOverride.toLowerCase())
     strategyOverride = null;
 }
 
-// Initialize logger
+// Initialize logger and devMode
 logger.setDebug(isDebug);
 
 if (isDebug) {
-    logger.debug('Debug mode enabled');
+    config.devMode = true;
+    config.debug = true;
+    logger.debug('Developer mode enabled');
 }
 
 if (isFallbackEnabled) {
@@ -72,7 +77,7 @@ const server = app.listen(PORT, HOST, () => {
     // align for 2-space indent (60 chars), align4 for 4-space indent (58 chars)
     const align = (text) => text + ' '.repeat(Math.max(0, 60 - text.length));
     const align4 = (text) => text + ' '.repeat(Math.max(0, 58 - text.length));
-    
+
     // Build Control section dynamically
     const strategyOptions = `(${STRATEGY_NAMES.join('/')})`;
     const strategyLine2 = '                       ' + strategyOptions;
@@ -80,7 +85,7 @@ const server = app.listen(PORT, HOST, () => {
     controlSection += '║    --strategy=<s>     Set account selection strategy         ║\n';
     controlSection += `${border}  ${align(strategyLine2)}${border}\n`;
     if (!isDebug) {
-        controlSection += '║    --debug            Enable debug logging                   ║\n';
+        controlSection += '║    --dev-mode         Enable developer mode                  ║\n';
     }
     if (!isFallbackEnabled) {
         controlSection += '║    --fallback         Enable model fallback on quota exhaust ║\n';
@@ -95,11 +100,17 @@ const server = app.listen(PORT, HOST, () => {
     statusSection += '║  Active Modes:                                               ║\n';
     statusSection += `${border}    ${align4(`✓ Strategy: ${strategyLabel}`)}${border}\n`;
     if (isDebug) {
-        statusSection += '║    ✓ Debug mode enabled                                      ║\n';
+        statusSection += '║    ✓ Developer mode enabled                                   ║\n';
     }
     if (isFallbackEnabled) {
         statusSection += '║    ✓ Model fallback enabled                                  ║\n';
     }
+
+    const environmentSection = `║  Environment Variables:                                      ║
+║    PORT                Server port (default: 8080)           ║
+║    HOST                Bind address (default: 0.0.0.0)       ║
+║    HTTP_PROXY          Route requests through a proxy        ║
+║    See README.md for detailed configuration examples         ║`
 
     logger.log(`
 ╔══════════════════════════════════════════════════════════════╗
@@ -133,12 +144,13 @@ ${border}    ${align4(`export ANTHROPIC_API_KEY=${config.apiKey || 'dummy'}`)}${
 ║    - Antigravity must be running                             ║
 ║    - Have a chat panel open in Antigravity                   ║
 ║                                                              ║
+${environmentSection}
 ╚══════════════════════════════════════════════════════════════╝
   `);
-    
+
     logger.success(`Server started successfully on port ${PORT}`);
     if (isDebug) {
-        logger.warn('Running in DEBUG mode - verbose logs enabled');
+        logger.warn('Running in DEVELOPER mode - verbose logs enabled');
     }
 });
 

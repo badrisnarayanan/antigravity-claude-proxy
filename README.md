@@ -8,6 +8,27 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 
 ![Antigravity Claude Proxy Banner](images/banner.png)
 
+<details>
+<summary><strong>⚠️ Terms of Service Warning — Read Before Installing</strong></summary>
+
+> [!CAUTION]
+> Using this proxy may violate Google's Terms of Service. A small number of users have reported their Google accounts being **banned** or **shadow-banned** (restricted access without explicit notification).
+>
+> **High-risk scenarios:**
+> - 🚨 **Fresh Google accounts** have a very high chance of getting banned
+> - 🚨 **New accounts with Pro/Ultra subscriptions** are frequently flagged and banned
+>
+> **By using this proxy, you acknowledge:**
+> - This is an unofficial tool not endorsed by Google
+> - Your account may be suspended or permanently banned
+> - You assume all risks associated with using this proxy
+>
+> **Recommendation:** Use an established Google account that you don't rely on for critical services. Avoid creating new accounts specifically for this proxy.
+
+</details>
+
+---
+
 ## How It Works
 
 ```
