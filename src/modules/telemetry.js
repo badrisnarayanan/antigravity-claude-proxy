@@ -179,18 +179,44 @@ async function sendTelemetry(account) {
 
         // 3. Record Metrics (Low probability, simulates action)
         if (Math.random() > 0.7) {
-            // Generate fake interaction events
+            // Context-aware interaction generation ("Liveness Gap" mitigation)
+            const timeSinceActivity = Date.now() - lastActivityTime;
             const interactionEvents = [];
-            const numEvents = Math.floor(Math.random() * 3) + 1; // 1 to 3 events
-            for (let i = 0; i < numEvents; i++) {
-                // Simulate simple mouse moves or scrolls
-                // Using generic structure as exact Protobuf fields are opaque
-                // This payload structure is "best effort" based on known fields
-                interactionEvents.push({
-                    event_time: new Date().toISOString(),
-                    interaction_type: Math.random() > 0.5 ? 'MOUSE_OVER' : 'SCROLL',
-                    ui_element: 'EDITOR_PANE'
-                });
+
+            // If recently active (< 15s), simulate typing leading up to now
+            if (timeSinceActivity < 15000) {
+                const numEvents = Math.floor(Math.random() * 5) + 3; // 3-8 typing bursts
+                for (let i = 0; i < numEvents; i++) {
+                    // Spread events over the last few seconds
+                    const offset = Math.floor(Math.random() * 5000);
+                    const eventTime = new Date(Date.now() - offset).toISOString();
+                    interactionEvents.push({
+                        event_time: eventTime,
+                        interaction_type: 'TYPING',
+                        ui_element: 'EDITOR_PANE'
+                    });
+                }
+            } else {
+                // Idle/Reading behavior: Simulate scrolling and mouse moves
+                const numEvents = Math.floor(Math.random() * 3) + 1; // 1-3 events
+                for (let i = 0; i < numEvents; i++) {
+                    const offset = Math.floor(Math.random() * 10000);
+                    const eventTime = new Date(Date.now() - offset).toISOString();
+                    interactionEvents.push({
+                        event_time: eventTime,
+                        interaction_type: Math.random() > 0.6 ? 'SCROLL' : 'MOUSE_OVER',
+                        ui_element: 'EDITOR_PANE'
+                    });
+                }
+
+                // Occasional window focus change (10% chance)
+                if (Math.random() > 0.9) {
+                    interactionEvents.push({
+                         event_time: new Date().toISOString(),
+                         interaction_type: Math.random() > 0.5 ? 'WINDOW_FOCUS' : 'WINDOW_BLUR',
+                         ui_element: 'IDE_WINDOW'
+                    });
+                }
             }
 
             // Trajectory Analytics
@@ -207,16 +233,19 @@ async function sendTelemetry(account) {
         }
 
         if (Math.random() > 0.8) {
-             // Code Assist Metrics
+             // Code Assist Metrics - randomize success rate to look human
+             const shown = Math.floor(Math.random() * 3) + 1; // 1-3 completions
+             const accepted = Math.random() > 0.3 ? 1 : 0; // 70% acceptance rate
+
              await callEndpoint(ENDPOINTS.RECORD_CODE_ASSIST, {
                 project: projectId,
                 session_id: sessionId,
                 code_assist_metrics: {
-                    completions_shown: 1,
-                    completions_accepted: 1,
-                    accept_rate: 1.0,
-                    latency_ms: Math.floor(100 + Math.random() * 400),
-                    interaction_type: 'ACCEPT'
+                    completions_shown: shown,
+                    completions_accepted: accepted,
+                    accept_rate: accepted > 0 ? (accepted / shown) : 0.0,
+                    latency_ms: Math.floor(100 + Math.random() * 600), // Variable latency
+                    interaction_type: accepted > 0 ? 'ACCEPT' : 'DISMISS'
                 }
              }, headers);
         }

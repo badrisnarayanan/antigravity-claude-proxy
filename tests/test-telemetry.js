@@ -75,6 +75,15 @@ async function runTest() {
     assert(req.headers['Authorization'] === 'Bearer mock-token', 'Auth header should be correct');
     assert(req.headerGeneratorOptions.browsers[0].name === 'chrome', 'Should mimic Chrome');
 
+    // Check interaction events for active account (should have TYPING)
+    const trajectoryReq = activeProjectRequests.find(r => r.url.includes('recordTrajectoryAnalytics'));
+    if (trajectoryReq) {
+        const events = trajectoryReq.json.trajectory_metrics.interaction_events;
+        const hasTyping = events.some(e => e.interaction_type === 'TYPING');
+        assert(hasTyping, 'Active account should produce TYPING events');
+        console.log(`Verified ${events.length} interaction events (Active: TYPING found)`);
+    }
+
     console.log('Telemetry Test PASSED');
     process.exit(0);
 }
