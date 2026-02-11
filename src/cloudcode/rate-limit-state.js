@@ -99,6 +99,47 @@ export function isPermanentAuthFailure(errorText) {
 }
 
 /**
+ * Detect if 403 error is due to VALIDATION_REQUIRED or PERMISSION_DENIED.
+ * These are account-level errors that should trigger account rotation,
+ * not just endpoint rotation. The account needs validation (e.g., captcha,
+ * terms acceptance) which cannot be resolved by trying different endpoints.
+ * @param {string} errorText - Error message from API
+ * @returns {boolean} True if validation/permission error requiring account rotation
+ */
+export function isValidationRequired(errorText) {
+    const lower = (errorText || '').toLowerCase();
+    return lower.includes('validation_required') ||
+        lower.includes('account_disabled') ||
+        lower.includes('user_disabled');
+}
+
+/**
+ * Extract the Google verification URL from an error message.
+ * The 403 VALIDATION_REQUIRED error contains a URL the user must visit.
+ * @param {string} errorText - Error message from the API
+ * @returns {string|null} The verification URL, or null if not found
+ */
+export function extractVerificationUrl(errorText) {
+    if (!errorText) return null;
+    // Try structured JSON first — the 403 response often has details[].metadata.validation_url
+    try {
+        const parsed = JSON.parse(errorText);
+        const details = parsed?.error?.details || [];
+        for (const detail of details) {
+            if (detail?.metadata?.validation_url) {
+                return detail.metadata.validation_url;
+            }
+        }
+    } catch {
+        // Not valid JSON or no structured field — fall through to regex
+    }
+    // Fallback: regex match for verification URL in unstructured text
+    const raw = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\]+/);
+    if (!raw) return null;
+    return raw[0].replace(/[,.)}>\]]+$/, '');
+}
+
+/**
  * Detect if 429 error is due to model capacity (not user quota).
  * Capacity issues should retry on same account with shorter delay.
  * @param {string} errorText - Error message from API

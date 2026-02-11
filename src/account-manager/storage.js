@@ -29,9 +29,11 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             ...acc,
             lastUsed: acc.lastUsed || null,
             enabled: acc.enabled !== false, // Default to true if not specified
-            // Reset invalid flag on startup - give accounts a fresh chance to refresh
-            isInvalid: false,
-            invalidReason: null,
+            // Reset invalid flag on startup - give accounts a fresh chance
+            // EXCEPT accounts with a verifyUrl — those need user intervention
+            isInvalid: acc.verifyUrl ? (acc.isInvalid || false) : false,
+            invalidReason: acc.verifyUrl ? (acc.invalidReason || null) : null,
+            verifyUrl: acc.verifyUrl || null,
             modelRateLimits: acc.modelRateLimits || {},
             // New fields for subscription and quota tracking
             subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
@@ -129,6 +131,7 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 addedAt: acc.addedAt || undefined,
                 isInvalid: acc.isInvalid || false,
                 invalidReason: acc.invalidReason || null,
+                verifyUrl: acc.verifyUrl || null,
                 modelRateLimits: acc.modelRateLimits || {},
                 lastUsed: acc.lastUsed,
                 // Persist subscription and quota data

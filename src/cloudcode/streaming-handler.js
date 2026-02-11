@@ -18,7 +18,7 @@ import {
     MAX_CAPACITY_RETRIES,
     BACKOFF_BY_ERROR_TYPE
 } from '../constants.js';
-import { isRateLimitError, isAuthError, isEmptyResponseError } from '../errors.js';
+import { isRateLimitError, isAuthError, isEmptyResponseError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
@@ -30,6 +30,8 @@ import {
     clearRateLimitState,
     isPermanentAuthFailure,
     isModelCapacityExhausted,
+    isValidationRequired,
+    extractVerificationUrl,
     calculateSmartBackoff
 } from './rate-limit-state.js';
 import crypto from 'crypto';
@@ -63,6 +65,16 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
         // If no accounts available, check if we should wait or throw error
         if (availableAccounts.length === 0) {
+            // All accounts invalid? Fail immediately — they need user intervention (WebUI FIX button)
+            // Invalid accounts won't self-recover, so waiting would be an infinite loop
+            if (accountManager.isAllAccountsInvalid()) {
+                const invalidAccounts = accountManager.getInvalidAccounts();
+                const reasons = [...new Set(invalidAccounts.map(a => a.invalidReason).filter(Boolean))];
+                throw new Error(
+                    `All accounts are invalid: ${reasons.join('; ') || 'unknown reason'}. Visit the WebUI to fix them.`
+                );
+            }
+
             if (accountManager.isAllRateLimited(model)) {
                 const minWaitMs = accountManager.getMinWaitTimeMs(model);
                 const resetTime = new Date(Date.now() + minWaitMs).toISOString();
@@ -268,6 +280,16 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             throw new Error(`invalid_request_error: ${errorText}`);
                         }
 
+                        // 403 with VALIDATION_REQUIRED or PERMISSION_DENIED is an account-level error
+                        // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help
+                        // Mark account as invalid (requires user intervention) and rotate (fixes #248)
+                        if (response.status === 403 && isValidationRequired(errorText)) {
+                            const verifyUrl = extractVerificationUrl(errorText);
+                            logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
+                            accountManager.markInvalid(account.email, 'Account requires verification', verifyUrl);
+                            throw new AccountForbiddenError(errorText, account.email);
+                        }
+
                         lastError = new Error(`API error ${response.status}: ${errorText}`);
 
                         // Try next endpoint for 403/404/5xx errors (matches opencode-antigravity-auth behavior)
@@ -367,6 +389,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                     if (isEmptyResponseError(endpointError)) {
                         throw endpointError;
                     }
+                    // 403 account-level errors - re-throw to trigger account rotation
+                    if (isAccountForbiddenError(endpointError)) {
+                        throw endpointError;
+                    }
                     // 400 errors are client errors - re-throw immediately, don't retry
                     if (endpointError.message?.includes('400')) {
                         throw endpointError;
@@ -405,6 +431,13 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             if (isAuthError(error)) {
                 // Auth invalid - already marked, continue to next account
                 logger.warn(`[CloudCode] Account ${account.email} has invalid credentials, trying next...`);
+                continue;
+            }
+            if (isAccountForbiddenError(error)) {
+                // 403 VALIDATION_REQUIRED / PERMISSION_DENIED - account-level error
+                // Already marked with cooldown, notify strategy and rotate to next account
+                accountManager.notifyFailure(account, model);
+                logger.warn(`[CloudCode] Account ${account.email} forbidden (403 VALIDATION_REQUIRED), trying next...`);
                 continue;
             }
             // Handle 5xx errors

@@ -15,6 +15,7 @@ import {
     resetAllRateLimits as resetLimits,
     markRateLimited as markLimited,
     markInvalid as markAccountInvalid,
+    clearInvalid as clearAccountInvalid,
     getMinWaitTimeMs as getMinWait,
     getRateLimitInfo as getLimitInfo,
     getConsecutiveFailures as getFailures,
@@ -136,6 +137,16 @@ export class AccountManager {
      */
     getInvalidAccounts() {
         return getInvalid(this.#accounts);
+    }
+
+    /**
+     * Check if all enabled accounts are invalid (need user intervention).
+     * Unlike rate limits, invalid accounts won't self-recover — waiting is pointless.
+     * @returns {boolean} True if every enabled account is invalid
+     */
+    isAllAccountsInvalid() {
+        const enabled = this.#accounts.filter(a => a.enabled !== false);
+        return enabled.length > 0 && enabled.every(a => a.isInvalid);
     }
 
     /**
@@ -283,9 +294,19 @@ export class AccountManager {
      * Mark an account as invalid (credentials need re-authentication)
      * @param {string} email - Email of the account to mark
      * @param {string} reason - Reason for marking as invalid
+     * @param {string|null} verifyUrl - Optional verification URL (for 403 VALIDATION_REQUIRED)
      */
-    markInvalid(email, reason = 'Unknown error') {
-        markAccountInvalid(this.#accounts, email, reason);
+    markInvalid(email, reason = 'Unknown error', verifyUrl = null) {
+        markAccountInvalid(this.#accounts, email, reason, verifyUrl);
+        this.saveToDisk();
+    }
+
+    /**
+     * Clear invalid status for an account (after user completes verification)
+     * @param {string} email - Email of the account to clear
+     */
+    clearInvalid(email) {
+        clearAccountInvalid(this.#accounts, email);
         this.saveToDisk();
     }
 
@@ -434,6 +455,7 @@ export class AccountManager {
                 modelRateLimits: a.modelRateLimits || {},
                 isInvalid: a.isInvalid || false,
                 invalidReason: a.invalidReason || null,
+                verifyUrl: a.verifyUrl || null,
                 lastUsed: a.lastUsed,
                 // Include quota threshold settings
                 quotaThreshold: a.quotaThreshold,

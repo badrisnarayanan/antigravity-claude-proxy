@@ -22,7 +22,9 @@ const tests = [
     { name: 'OAuth No-Browser Mode', file: 'test-oauth-no-browser.cjs' },
     { name: 'Empty Response Retry', file: 'test-empty-response-retry.cjs' },
     { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
-    { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' }
+    { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
+    { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
+    { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' }
 ];
 
 async function runTest(test) {
