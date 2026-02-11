@@ -23,6 +23,10 @@ import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
 
+// Cache TTLs for informational endpoints
+const SUBSCRIPTION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const QUOTA_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
 const FALLBACK_ENABLED = args.includes('--fallback') || process.env.FALLBACK === 'true';
@@ -278,9 +282,27 @@ app.get('/health', async (req, res) => {
                 }
 
                 try {
+                    const now = Date.now();
                     const token = await accountManager.getTokenForAccount(account);
                     const projectId = account.subscription?.projectId || null;
-                    const quotas = await getModelQuotas(token, projectId);
+
+                    // Cache quotas for 5 minutes
+                    const isQuotaStale = !account.quota?.lastChecked ||
+                                       (now - account.quota.lastChecked > QUOTA_CACHE_TTL);
+
+                    let quotas = account.quota?.models;
+                    if (isQuotaStale || !quotas) {
+                        quotas = await getModelQuotas(token, projectId);
+                        // Update cache on account object
+                        account.quota = {
+                            models: quotas,
+                            lastChecked: now
+                        };
+                        // Save to disk (async)
+                        accountManager.saveToDisk().catch(err => {
+                            logger.error('[Server] Failed to save account data:', err);
+                        });
+                    }
 
                     // Format quotas for readability
                     const formattedQuotas = {};
@@ -358,6 +380,7 @@ app.get('/account-limits', async (req, res) => {
         const allAccounts = accountManager.getAllAccounts();
         const format = req.query.format || 'json';
         const includeHistory = req.query.includeHistory === 'true';
+        const forceRefreshFlag = req.query.forceRefresh === 'true';
 
         // Fetch quotas for each account in parallel
         const results = await Promise.allSettled(
@@ -373,35 +396,51 @@ app.get('/account-limits', async (req, res) => {
                 }
 
                 try {
+                    const now = Date.now();
                     const token = await accountManager.getTokenForAccount(account);
 
-                    // Fetch subscription tier first to get project ID
-                    const subscription = await getSubscriptionTier(token);
+                    // Determine if we need to refresh subscription data
+                    // Cache subscription for 24h as it rarely changes
+                    const isSubscriptionStale = !account.subscription?.projectId ||
+                                               !account.subscription?.detectedAt ||
+                                               (now - account.subscription.detectedAt > SUBSCRIPTION_CACHE_TTL);
 
-                    // Then fetch quotas with project ID for accurate quota info
-                    const quotas = await getModelQuotas(token, subscription.projectId);
+                    let subscription = account.subscription;
+                    if (isSubscriptionStale || forceRefreshFlag) {
+                        subscription = await getSubscriptionTier(token);
+                        account.subscription = {
+                            tier: subscription.tier,
+                            projectId: subscription.projectId,
+                            detectedAt: now
+                        };
+                    }
 
-                    // Update account object with fresh data
-                    account.subscription = {
-                        tier: subscription.tier,
-                        projectId: subscription.projectId,
-                        detectedAt: Date.now()
-                    };
-                    account.quota = {
-                        models: quotas,
-                        lastChecked: Date.now()
-                    };
+                    // Determine if we need to refresh quota data
+                    // Cache quotas for 5 minutes (standard TTL from HybridStrategy)
+                    const isQuotaStale = !account.quota?.lastChecked ||
+                                       (now - account.quota.lastChecked > QUOTA_CACHE_TTL);
 
-                    // Save updated account data to disk (async, don't wait)
-                    accountManager.saveToDisk().catch(err => {
-                        logger.error('[Server] Failed to save account data:', err);
-                    });
+                    let quotas = account.quota?.models;
+                    if (isQuotaStale || forceRefreshFlag || !quotas) {
+                        quotas = await getModelQuotas(token, subscription.projectId);
+                        account.quota = {
+                            models: quotas,
+                            lastChecked: now
+                        };
+                    }
+
+                    // Save updated account data to disk if anything changed
+                    if (isSubscriptionStale || isQuotaStale || forceRefreshFlag) {
+                        accountManager.saveToDisk().catch(err => {
+                            logger.error('[Server] Failed to save account data:', err);
+                        });
+                    }
 
                     return {
                         email: account.email,
                         status: 'ok',
                         subscription: account.subscription,
-                        models: quotas
+                        models: account.quota.models
                     };
                 } catch (error) {
                     return {
