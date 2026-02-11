@@ -291,6 +291,28 @@ async function runTests() {
         assertEqual(extractVerificationUrl(null), null);
     });
 
+    test('extracts validation_url from structured JSON details', () => {
+        const errorText = JSON.stringify({
+            error: {
+                code: 403,
+                message: "Verify your account to continue.",
+                status: "PERMISSION_DENIED",
+                details: [{
+                    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                    reason: "VALIDATION_REQUIRED",
+                    domain: "cloudcode-pa.googleapis.com",
+                    metadata: {
+                        validation_url: "https://accounts.google.com/signin/continue?sarp=1&scc=1&continue=https://developers.google.com/gemini-code-assist/auth/auth_success_gemini&plt=AKgnsbuSMNHioDdPwkLy&flowName=GlifWebSignIn&authuser"
+                    }
+                }]
+            }
+        });
+        const url = extractVerificationUrl(errorText);
+        assertTrue(url !== null, 'Should extract URL from structured details');
+        assertTrue(url.startsWith('https://accounts.google.com/signin/continue'), 'URL should start with Google signin');
+        assertTrue(url.includes('flowName=GlifWebSignIn'), 'Should preserve full URL from metadata');
+    });
+
     // =========================================================================
     // Test Group 7: Real-world 403 error payloads
     // =========================================================================

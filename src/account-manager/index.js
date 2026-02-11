@@ -140,6 +140,16 @@ export class AccountManager {
     }
 
     /**
+     * Check if all enabled accounts are invalid (need user intervention).
+     * Unlike rate limits, invalid accounts won't self-recover — waiting is pointless.
+     * @returns {boolean} True if every enabled account is invalid
+     */
+    isAllAccountsInvalid() {
+        const enabled = this.#accounts.filter(a => a.enabled !== false);
+        return enabled.length > 0 && enabled.every(a => a.isInvalid);
+    }
+
+    /**
      * Clear expired rate limits
      * @returns {number} Number of rate limits cleared
      */

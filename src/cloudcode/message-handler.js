@@ -66,6 +66,16 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
         // If no accounts available, check if we should wait or throw error
         if (availableAccounts.length === 0) {
+            // All accounts invalid? Fail immediately — they need user intervention (WebUI FIX button)
+            // Invalid accounts won't self-recover, so waiting would be an infinite loop
+            if (accountManager.isAllAccountsInvalid()) {
+                const invalidAccounts = accountManager.getInvalidAccounts();
+                const reasons = [...new Set(invalidAccounts.map(a => a.invalidReason).filter(Boolean))];
+                throw new Error(
+                    `All accounts are invalid: ${reasons.join('; ') || 'unknown reason'}. Visit the WebUI to fix them.`
+                );
+            }
+
             if (accountManager.isAllRateLimited(model)) {
                 const minWaitMs = accountManager.getMinWaitTimeMs(model);
                 const resetTime = new Date(Date.now() + minWaitMs).toISOString();

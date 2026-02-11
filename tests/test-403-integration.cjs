@@ -40,6 +40,11 @@ class MockAccountManager {
         return this._accounts;
     }
 
+    isAllAccountsInvalid() {
+        const enabled = this._accounts.filter(a => a.enabled !== false);
+        return enabled.length > 0 && enabled.every(a => a.isInvalid);
+    }
+
     markInvalid(email, reason, verifyUrl = null) {
         const acc = this._accounts.find(a => a.email === email);
         if (!acc) return false;
@@ -359,6 +364,49 @@ test('extractVerificationUrl handles URL with trailing brace', () => {
     assert.ok(url, 'should extract URL');
     assert.ok(!url.endsWith('"'), 'URL should not include trailing quote');
     assert.ok(!url.endsWith('}'), 'URL should not include trailing brace');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test Group 6: isAllAccountsInvalid() — prevents infinite wait loop
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n── Handler: isAllAccountsInvalid() ─────────────────────────────');
+
+test('all accounts invalid → isAllAccountsInvalid returns true', () => {
+    const mgr = new MockAccountManager([
+        { email: 'a@test.com' },
+        { email: 'b@test.com' },
+    ]);
+    mgr.markInvalid('a@test.com', 'Account requires verification');
+    mgr.markInvalid('b@test.com', 'Account requires verification');
+    assert.strictEqual(mgr.isAllAccountsInvalid(), true);
+    assert.strictEqual(mgr.getAvailableAccounts().length, 0);
+});
+
+test('one invalid, one healthy → isAllAccountsInvalid returns false', () => {
+    const mgr = new MockAccountManager([
+        { email: 'a@test.com' },
+        { email: 'b@test.com' },
+    ]);
+    mgr.markInvalid('a@test.com', 'Account requires verification');
+    assert.strictEqual(mgr.isAllAccountsInvalid(), false);
+});
+
+test('one invalid, one disabled → isAllAccountsInvalid returns true', () => {
+    const mgr = new MockAccountManager([
+        { email: 'a@test.com' },
+        { email: 'b@test.com' },
+    ]);
+    mgr._accounts[1].enabled = false;
+    mgr.markInvalid('a@test.com', 'Account requires verification');
+    assert.strictEqual(mgr.isAllAccountsInvalid(), true, 'disabled accounts dont count as healthy');
+});
+
+test('clearInvalid makes isAllAccountsInvalid return false', () => {
+    const mgr = new MockAccountManager([{ email: 'a@test.com' }]);
+    mgr.markInvalid('a@test.com', 'Account requires verification');
+    assert.strictEqual(mgr.isAllAccountsInvalid(), true);
+    mgr.clearInvalid('a@test.com');
+    assert.strictEqual(mgr.isAllAccountsInvalid(), false);
 });
 
 // ============================================================================

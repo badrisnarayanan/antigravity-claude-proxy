@@ -121,13 +121,22 @@ export function isValidationRequired(errorText) {
  */
 export function extractVerificationUrl(errorText) {
     if (!errorText) return null;
-    // Match greedily, then strip trailing punctuation that's not part of the URL.
-    // Dots must be allowed inside the URL (e.g. continue=https://aistudio.google.com).
+    // Try structured JSON first — the 403 response often has details[].metadata.validation_url
+    try {
+        const parsed = JSON.parse(errorText);
+        const details = parsed?.error?.details || [];
+        for (const detail of details) {
+            if (detail?.metadata?.validation_url) {
+                return detail.metadata.validation_url;
+            }
+        }
+    } catch {
+        // Not valid JSON or no structured field — fall through to regex
+    }
+    // Fallback: regex match for verification URL in unstructured text
     const raw = errorText.match(/https:\/\/accounts\.google\.com\/signin\/continue\?[^\s"\\]+/);
     if (!raw) return null;
-    // Strip trailing punctuation that likely isn't part of the URL
-    const match = [raw[0].replace(/[,.)}\]>]+$/, '')];
-    return match ? match[0] : null;
+    return raw[0].replace(/[,.)}>\]]+$/, '');
 }
 
 /**

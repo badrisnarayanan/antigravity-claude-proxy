@@ -118,6 +118,15 @@ window.Components.accountManager = () => ({
 
     async fixAccount(email) {
         const store = Alpine.store('global');
+        const dataStore = Alpine.store('data');
+        // If the account has a verification URL (403 VALIDATION_REQUIRED), open it directly
+        const account = (dataStore.accounts || []).find(a => a.email === email);
+        if (account?.verifyUrl) {
+            window.open(account.verifyUrl, '_blank');
+            store.showToast(store.t('verifyThenRefresh') || 'After completing verification, click the ↻ Refresh button to re-enable this account', 'info', 10000);
+            return;
+        }
+        // Otherwise fall back to OAuth re-auth
         store.showToast(store.t('reauthenticating', { email: Redact.email(email) }), 'info');
         const password = store.webuiPassword;
         try {
