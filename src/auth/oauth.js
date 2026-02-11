@@ -367,7 +367,7 @@ export async function exchangeCode(code, verifier) {
             code_verifier: verifier,
             grant_type: 'authorization_code',
             redirect_uri: OAUTH_REDIRECT_URI
-        })
+        }).toString()
     });
 
     if (!response.ok) {
@@ -413,7 +413,7 @@ export async function refreshAccessToken(compositeRefresh) {
             client_secret: OAUTH_CONFIG.clientSecret,
             refresh_token: parts.refreshToken,  // Use the actual OAuth token
             grant_type: 'refresh_token'
-        })
+        }).toString()
     });
 
     if (!response.ok) {
