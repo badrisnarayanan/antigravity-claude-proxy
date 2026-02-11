@@ -644,7 +644,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', async (req, res) => {
         try {
-            const { debug, devMode, logLevel, persistTokenCache } = req.body;
+            const { debug, devMode, logLevel, persistTokenCache, requestThrottlingEnabled, requestDelayMs } = req.body;
 
             // Validate tunable config fields via shared helper
             const updates = validateConfigFields(req.body);
@@ -664,6 +664,12 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof persistTokenCache === 'boolean') {
                 updates.persistTokenCache = persistTokenCache;
+            }
+            if (typeof requestThrottlingEnabled === 'boolean') {
+                updates.requestThrottlingEnabled = requestThrottlingEnabled;
+            }
+            if (typeof requestDelayMs === 'number' && requestDelayMs >= 100 && requestDelayMs <= 5000) {
+                updates.requestDelayMs = requestDelayMs;
             }
 
             if (Object.keys(updates).length === 0) {

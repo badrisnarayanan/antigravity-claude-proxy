@@ -1750,6 +1750,64 @@
                             </div>
                         </div>
 
+                        <!-- Request Throttling -->
+                        <div class="space-y-4 pt-2 border-t border-space-border/10">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Request Throttling</span>
+                                <span class="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">Experimental</span>
+                            </div>
+
+                            <!-- Request Throttling Card -->
+                            <div class="form-control bg-space-900/50 rounded-lg border transition-all duration-300 hover:border-amber-500/50"
+                                :class="serverConfig.requestThrottlingEnabled ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_25px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/30' : 'border-space-border/50'">
+
+                                <!-- Toggle Row -->
+                                <div class="flex items-center justify-between p-4">
+                                    <div class="flex flex-col gap-1">
+                                        <span class="label-text font-medium transition-colors"
+                                            :class="serverConfig.requestThrottlingEnabled ? 'text-amber-300' : 'text-gray-300'">Enable Request Throttling</span>
+                                        <span class="text-xs transition-colors"
+                                            :class="serverConfig.requestThrottlingEnabled ? 'text-amber-100/50' : 'text-gray-500'">Add delay before each Google API request to avoid rate limits.</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer"
+                                            :checked="serverConfig.requestThrottlingEnabled"
+                                            @change="toggleRequestThrottling($event.target.checked)"
+                                            aria-label="Request throttling toggle">
+                                        <div
+                                            class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neon-green peer-checked:after:bg-white">
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Delay Slider (only shown when enabled) -->
+                                <div x-show="serverConfig.requestThrottlingEnabled" x-transition x-collapse>
+                                    <div class="border-t border-amber-500/20 px-4 pb-4 pt-3">
+                                        <label class="flex justify-between items-center mb-2">
+                                            <span class="text-xs text-amber-200/70">Delay per Request</span>
+                                            <span class="font-mono text-amber-400 text-xs font-semibold"
+                                                x-text="(serverConfig.requestDelayMs || 200) + 'ms'"></span>
+                                        </label>
+                                        <div class="flex gap-3 items-center">
+                                            <input type="range" min="100" max="5000" step="100"
+                                                class="custom-range custom-range-yellow flex-1"
+                                                :value="serverConfig.requestDelayMs || 200"
+                                                :style="`background-size: ${((serverConfig.requestDelayMs || 200) - 100) / 49}% 100%`"
+                                                @input="toggleRequestDelayMs($event.target.value)"
+                                                aria-label="Request delay slider">
+                                            <input type="number" min="100" max="5000" step="100"
+                                                class="input input-xs input-bordered w-20 bg-space-800/50 border-amber-500/30 text-white font-mono text-center"
+                                                :value="serverConfig.requestDelayMs || 200"
+                                                @change="toggleRequestDelayMs($event.target.value)"
+                                                aria-label="Request delay value">
+                                        </div>
+                                        <p class="text-[9px] text-amber-100/40 mt-2 leading-tight">
+                                            Milliseconds to wait before each API call (token refresh, quota check, messages, etc).</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Error Handling Tuning -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
