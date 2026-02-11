@@ -435,7 +435,7 @@ document.addEventListener('alpine:init', () => {
          */
         _generatePlaceholderData() {
             const models = [
-                'claude-opus-4-5-thinking',
+                'claude-opus-4-6-thinking',
                 'claude-sonnet-4-5-thinking',
                 'claude-sonnet-4-5',
                 'gemini-3-pro-high',
@@ -479,7 +479,7 @@ document.addEventListener('alpine:init', () => {
                     lastUsed: new Date(Date.now() - i * 3600000).toISOString(),
                     modelRateLimits: {},
                     quotaThreshold: i === 1 ? 0.15 : undefined,
-                    modelQuotaThresholds: i === 0 ? { 'claude-opus-4-5-thinking': 0.25 } : {},
+                    modelQuotaThresholds: i === 0 ? { 'claude-opus-4-6-thinking': 0.25 } : {},
                     subscription: { tier, projectId: `proj-${name}-${1000 + i}`, detectedAt: Date.now() },
                     limits
                 };

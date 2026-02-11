@@ -15,10 +15,11 @@ import {
     MAX_CONSECUTIVE_FAILURES,
     EXTENDED_COOLDOWN_MS,
     CAPACITY_BACKOFF_TIERS_MS,
-    MAX_CAPACITY_RETRIES
+    MAX_CAPACITY_RETRIES,
+    BACKOFF_BY_ERROR_TYPE
 } from '../constants.js';
 import { isRateLimitError, isAuthError, isEmptyResponseError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
-import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
+import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
@@ -142,9 +143,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                 try {
                     const url = `${endpoint}/v1internal:streamGenerateContent?alt=sse`;
 
-                    const response = await fetch(url, {
+                    const response = await throttledFetch(url, {
                         method: 'POST',
-                        headers: buildHeaders(token, model, 'text/event-stream'),
+                        headers: buildHeaders(token, model, 'text/event-stream', account.fingerprint),
                         body: JSON.stringify(payload)
                     });
 
@@ -323,9 +324,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             await sleep(backoffMs);
 
                             // Refetch the response
-                            currentResponse = await fetch(url, {
+                            currentResponse = await throttledFetch(url, {
                                 method: 'POST',
-                                headers: buildHeaders(token, model, 'text/event-stream'),
+                                headers: buildHeaders(token, model, 'text/event-stream', account.fingerprint),
                                 body: JSON.stringify(payload)
                             });
 
@@ -356,9 +357,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 if (currentResponse.status >= 500) {
                                     logger.warn(`[CloudCode] Retry got ${currentResponse.status}, will retry...`);
                                     await sleep(1000);
-                                    currentResponse = await fetch(url, {
+                                    currentResponse = await throttledFetch(url, {
                                         method: 'POST',
-                                        headers: buildHeaders(token, model, 'text/event-stream'),
+                                        headers: buildHeaders(token, model, 'text/event-stream', account.fingerprint),
                                         body: JSON.stringify(payload)
                                     });
                                     if (currentResponse.ok) {

@@ -9,10 +9,12 @@ import {
     ANTIGRAVITY_HEADERS,
     LOAD_CODE_ASSIST_ENDPOINTS,
     LOAD_CODE_ASSIST_HEADERS,
+    CLIENT_METADATA,
     getModelFamily,
     MODEL_VALIDATION_CACHE_TTL_MS
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { throttledFetch } from '../utils/helpers.js';
 
 // Model validation cache
 const modelCache = {
@@ -85,7 +87,7 @@ export async function fetchAvailableModels(token, projectId = null) {
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
             const url = `${endpoint}/v1internal:fetchAvailableModels`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body)
@@ -177,14 +179,12 @@ export async function getSubscriptionTier(token) {
     for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
         try {
             const url = `${endpoint}/v1internal:loadCodeAssist`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
                     metadata: {
-                        ideType: 'IDE_UNSPECIFIED',
-                        platform: 'PLATFORM_UNSPECIFIED',
-                        pluginType: 'GEMINI',
+                        ...CLIENT_METADATA,
                         duetProject: 'rising-fact-p41fc'
                     }
                 })

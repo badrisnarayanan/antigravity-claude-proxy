@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { config } from '../config.js';
 
 /**
  * Shared Utility Functions
@@ -69,6 +70,23 @@ export function isNetworkError(error) {
         msg.includes('socket hang up') ||
         msg.includes('timeout')
     );
+}
+
+/**
+ * Throttled fetch that applies a configurable delay before each request
+ * Only applies delay when requestThrottlingEnabled is true
+ * @param {string|URL} url - The URL to fetch
+ * @param {RequestInit} [options] - Fetch options
+ * @returns {Promise<Response>} Fetch response
+ */
+export async function throttledFetch(url, options) {
+    if (config.requestThrottlingEnabled) {
+        const delayMs = config.requestDelayMs || 200;
+        if (delayMs > 0) {
+            await sleep(delayMs);
+        }
+    }
+    return fetch(url, options);
 }
 
 /**

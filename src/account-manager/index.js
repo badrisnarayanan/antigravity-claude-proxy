@@ -35,6 +35,7 @@ import {
 } from './credentials.js';
 import { createStrategy, getStrategyLabel, DEFAULT_STRATEGY } from './strategies/index.js';
 import { logger } from '../utils/logger.js';
+import { generateFingerprint, MAX_FINGERPRINT_HISTORY } from '../utils/fingerprint.js';
 
 export class AccountManager {
     #accounts = [];
@@ -448,7 +449,8 @@ export class AccountManager {
                 lastUsed: a.lastUsed,
                 // Include quota threshold settings
                 quotaThreshold: a.quotaThreshold,
-                modelQuotaThresholds: a.modelQuotaThresholds || {}
+                modelQuotaThresholds: a.modelQuotaThresholds || {},
+                hasFingerprint: !!a.fingerprint
             }))
         };
     }
@@ -512,6 +514,88 @@ export class AccountManager {
      */
     getAllAccounts() {
         return this.#accounts;
+    }
+
+    /**
+     * Regenerate fingerprint for an account
+     * @param {string} email - Email of the account
+     * @returns {Object|null} New fingerprint or null if account not found
+     */
+    regenerateFingerprint(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account) return null;
+
+        if (account.fingerprint) {
+            const historyEntry = {
+                fingerprint: account.fingerprint,
+                timestamp: Date.now(),
+                reason: 'regenerated'
+            };
+
+            if (!account.fingerprintHistory) {
+                account.fingerprintHistory = [];
+            }
+
+            account.fingerprintHistory.unshift(historyEntry);
+            if (account.fingerprintHistory.length > MAX_FINGERPRINT_HISTORY) {
+                account.fingerprintHistory = account.fingerprintHistory.slice(0, MAX_FINGERPRINT_HISTORY);
+            }
+        }
+
+        account.fingerprint = generateFingerprint();
+        this.saveToDisk();
+        return account.fingerprint;
+    }
+
+    /**
+     * Restore fingerprint from history
+     * @param {string} email - Email of the account
+     * @param {number} historyIndex - Index in history array (0 is most recent)
+     * @returns {Object|null} Restored fingerprint or null
+     */
+    restoreFingerprint(email, historyIndex) {
+        const account = this.#accounts.find(a => a.email === email);
+        if (!account || !account.fingerprintHistory || !account.fingerprintHistory[historyIndex]) {
+            return null;
+        }
+
+        const restoredEntry = account.fingerprintHistory[historyIndex];
+
+        // Save current to history before restoring
+        if (account.fingerprint) {
+            const historyEntry = {
+                fingerprint: account.fingerprint,
+                timestamp: Date.now(),
+                reason: 'restored'
+            };
+            // account.fingerprintHistory is guaranteed to exist if we are here
+            account.fingerprintHistory.unshift(historyEntry);
+        }
+
+        // Remove the restored entry from history (shifted by 1 if we just unshifted)
+        const removeIndex = account.fingerprint ? historyIndex + 1 : historyIndex;
+        account.fingerprintHistory.splice(removeIndex, 1);
+
+        // Restore
+        account.fingerprint = { ...restoredEntry.fingerprint, createdAt: Date.now() };
+
+        // Trim history again (since we added one)
+        if (account.fingerprintHistory.length > MAX_FINGERPRINT_HISTORY) {
+            account.fingerprintHistory = account.fingerprintHistory.slice(0, MAX_FINGERPRINT_HISTORY);
+        }
+
+        this.saveToDisk();
+        return account.fingerprint;
+    }
+
+    /**
+     * Get fingerprint history
+     * @param {string} email - Email of the account
+     * @returns {Array} Array of fingerprint history entries
+     */
+    getFingerprintHistory(email) {
+        const account = this.#accounts.find(a => a.email === email);
+        return account ? (account.fingerprintHistory || []) : [];
     }
 }
 

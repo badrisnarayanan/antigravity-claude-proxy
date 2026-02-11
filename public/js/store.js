@@ -8,26 +8,45 @@ document.addEventListener('alpine:init', () => {
         init() {
             // Hash-based routing
             const validTabs = ['dashboard', 'models', 'accounts', 'logs', 'settings'];
+            const validSettingsTabs = ['ui', 'claude', 'models', 'server'];
             const getHash = () => window.location.hash.substring(1);
 
+            const parseHash = (hash) => {
+                const [tab, subtab] = hash.split('/');
+                return { tab, subtab };
+            };
+
             // 1. Initial load from hash
-            const initialHash = getHash();
-            if (validTabs.includes(initialHash)) {
-                this.activeTab = initialHash;
+            const { tab: initialTab, subtab: initialSubtab } = parseHash(getHash());
+            if (validTabs.includes(initialTab)) {
+                this.activeTab = initialTab;
+                if (initialTab === 'settings' && validSettingsTabs.includes(initialSubtab)) {
+                    this.settingsTab = initialSubtab;
+                }
             }
 
             // 2. Sync State -> URL
             Alpine.effect(() => {
-                if (validTabs.includes(this.activeTab) && getHash() !== this.activeTab) {
-                    window.location.hash = this.activeTab;
+                if (!validTabs.includes(this.activeTab)) return;
+                let target = this.activeTab;
+                if (this.activeTab === 'settings' && this.settingsTab !== 'ui') {
+                    target = `settings/${this.settingsTab}`;
+                }
+                if (getHash() !== target) {
+                    window.location.hash = target;
                 }
             });
 
             // 3. Sync URL -> State (Back/Forward buttons)
             window.addEventListener('hashchange', () => {
-                const hash = getHash();
-                if (validTabs.includes(hash) && this.activeTab !== hash) {
-                    this.activeTab = hash;
+                const { tab, subtab } = parseHash(getHash());
+                if (validTabs.includes(tab)) {
+                    if (this.activeTab !== tab) {
+                        this.activeTab = tab;
+                    }
+                    if (tab === 'settings') {
+                        this.settingsTab = validSettingsTabs.includes(subtab) ? subtab : 'ui';
+                    }
                 }
             });
 
@@ -56,6 +75,7 @@ document.addEventListener('alpine:init', () => {
         // App State
         version: '1.0.0',
         activeTab: 'dashboard',
+        settingsTab: 'ui',
         webuiPassword: localStorage.getItem('antigravity_webui_password') || '',
 
         // i18n

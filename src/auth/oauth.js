@@ -11,10 +11,12 @@ import http from 'http';
 import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     LOAD_CODE_ASSIST_HEADERS,
+    CLIENT_METADATA,
     OAUTH_CONFIG,
     OAUTH_REDIRECT_URI
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { throttledFetch } from '../utils/helpers.js';
 import { onboardUser, getDefaultTierId } from '../account-manager/onboarding.js';
 
 /**
@@ -353,7 +355,7 @@ Option 4: Exclude port from reservation (run as Administrator)
  * @returns {Promise<{accessToken: string, refreshToken: string, expiresIn: number}>} OAuth tokens
  */
 export async function exchangeCode(code, verifier) {
-    const response = await fetch(OAUTH_CONFIG.tokenUrl, {
+    const response = await throttledFetch(OAUTH_CONFIG.tokenUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -401,7 +403,7 @@ export async function refreshAccessToken(compositeRefresh) {
     // Parse the composite refresh token to extract the actual OAuth token
     const parts = parseRefreshParts(compositeRefresh);
 
-    const response = await fetch(OAUTH_CONFIG.tokenUrl, {
+    const response = await throttledFetch(OAUTH_CONFIG.tokenUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -433,7 +435,7 @@ export async function refreshAccessToken(compositeRefresh) {
  * @returns {Promise<string>} User's email address
  */
 export async function getUserEmail(accessToken) {
-    const response = await fetch(OAUTH_CONFIG.userInfoUrl, {
+    const response = await throttledFetch(OAUTH_CONFIG.userInfoUrl, {
         headers: {
             'Authorization': `Bearer ${accessToken}`
         }
@@ -460,7 +462,7 @@ export async function discoverProjectId(accessToken) {
 
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
-            const response = await fetch(`${endpoint}/v1internal:loadCodeAssist`, {
+            const response = await throttledFetch(`${endpoint}/v1internal:loadCodeAssist`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -468,11 +470,7 @@ export async function discoverProjectId(accessToken) {
                     ...LOAD_CODE_ASSIST_HEADERS
                 },
                 body: JSON.stringify({
-                    metadata: {
-                        ideType: 'IDE_UNSPECIFIED',
-                        platform: 'PLATFORM_UNSPECIFIED',
-                        pluginType: 'GEMINI'
-                    }
+                    metadata: CLIENT_METADATA
                 })
             });
 

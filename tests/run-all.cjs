@@ -10,6 +10,7 @@ const path = require('path');
 
 const tests = [
     { name: 'Account Selection Strategies', file: 'test-strategies.cjs' },
+    { name: 'Fingerprint Management', file: 'test-fingerprint.cjs' },
     { name: 'Cache Control Stripping', file: 'test-cache-control.cjs' },
     { name: 'Thinking Signatures', file: 'test-thinking-signatures.cjs' },
     { name: 'Multi-turn Tools (Non-Streaming)', file: 'test-multiturn-thinking-tools.cjs' },
@@ -91,7 +92,6 @@ async function main() {
     let allPassed = true;
     for (const result of results) {
         const status = result.passed ? '✓ PASS' : '✗ FAIL';
-        const statusColor = result.passed ? '' : '';
         console.log(`║ ${status.padEnd(8)} ${result.name.padEnd(50)} ║`);
         if (!result.passed) allPassed = false;
     }

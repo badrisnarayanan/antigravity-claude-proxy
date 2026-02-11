@@ -50,7 +50,7 @@ function isServerRunning() {
             resolve(false);
         });
 
-        socket.on('error', (err) => {
+        socket.on('error', () => {
             socket.destroy();
             resolve(false); // Port free
         });
@@ -143,7 +143,9 @@ function saveAccounts(accounts, settings = {}) {
                 projectId: acc.projectId,
                 addedAt: acc.addedAt || new Date().toISOString(),
                 lastUsed: acc.lastUsed || null,
-                modelRateLimits: acc.modelRateLimits || {}
+                modelRateLimits: acc.modelRateLimits || {},
+                fingerprint: acc.fingerprint,
+                fingerprintHistory: acc.fingerprintHistory
             })),
             settings: {
                 maxRetries: 5,

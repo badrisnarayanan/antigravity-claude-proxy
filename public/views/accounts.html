@@ -88,6 +88,7 @@
                     <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
+                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24">Fingerprint</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('quota')">Quota</th>
                     <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24" x-text="$store.global.t('health')">Health</th>
@@ -150,6 +151,15 @@
                             <span :class="acc.source === 'oauth' ? 'status-pill-purple' : 'status-pill-free'"
                                   x-text="acc.source || 'oauth'">
                             </span>
+                        </td>
+                        <td class="py-4">
+                            <button class="p-2 rounded-lg hover:bg-space-800 text-gray-500 hover:text-neon-cyan transition-colors"
+                                    @click="openFingerprintModal(acc)"
+                                    :title="'View Fingerprint for ' + formatEmail(acc.email)">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.873.571-4.241m2.823 10.36c.682-1.365 1.178-2.791 1.406-4.117m8.406 5.828a5.74 5.74 0 00-1.552-1.433" />
+                                </svg>
+                            </button>
                         </td>
                         <td class="py-4">
                             <span :class="{
@@ -329,7 +339,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="acc in healthData.trackers.accounts" :key="acc.email">
+                            <template x-for="acc in (healthData.trackers?.accounts || [])" :key="acc.email">
                                 <tr class="border-b border-space-border/20 last:border-0">
                                     <td class="py-2">
                                         <span class="text-xs font-mono text-gray-300" x-text="Redact.email(acc.email)"></span>
@@ -631,6 +641,145 @@
                         :class="{ 'loading': thresholdDialog.saving }">
                     <span>Save</span>
                 </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <!-- Fingerprint Details Modal -->
+    <dialog id="fingerprint_modal" class="modal backdrop-blur-sm">
+        <div class="modal-box max-w-2xl w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6 relative">
+            <!-- Close Button (Top Right) -->
+            <form method="dialog" class="absolute top-4 right-4">
+                <button class="btn btn-sm btn-circle btn-ghost text-gray-500 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </form>
+
+            <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
+                <svg class="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.873.571-4.241m2.823 10.36c.682-1.365 1.178-2.791 1.406-4.117m8.406 5.828a5.74 5.74 0 00-1.552-1.433" />
+                </svg>
+                <span>Device Fingerprint</span>
+            </h3>
+            <p class="text-sm text-gray-500 font-mono mb-6" x-text="Redact.email(fingerprintModal.email)"></p>
+
+            <div x-show="fingerprintModal.loading" class="flex justify-center py-8">
+                <span class="loading loading-spinner text-neon-cyan"></span>
+            </div>
+
+            <div x-show="!fingerprintModal.loading && fingerprintModal.current">
+                <!-- Current Fingerprint -->
+                <div class="bg-space-800/50 border border-space-border/30 rounded-lg p-4 mb-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-2 opacity-10">
+                        <svg class="w-24 h-24 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.873.571-4.241m2.823 10.36c.682-1.365 1.178-2.791 1.406-4.117m8.406 5.828a5.74 5.74 0 00-1.552-1.433" />
+                        </svg>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 relative z-10">
+                        <div>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Device ID</span>
+                            <div class="font-mono text-sm text-neon-cyan break-all" x-text="fingerprintModal.current?.deviceId"></div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">User Agent</span>
+                            <div class="font-mono text-xs text-gray-300 break-words bg-space-900/50 p-2 rounded border border-space-border/20 w-fit max-w-full"
+                                 x-text="fingerprintModal.current?.userAgent"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Platform</span>
+                                <div class="font-mono text-xs text-gray-300"
+                                     x-text="fingerprintModal.current?.clientMetadata?.platform || 'UNK'"></div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Created</span>
+                                <div class="font-mono text-xs text-gray-400"
+                                     x-text="new Date(fingerprintModal.current?.createdAt).toLocaleString()"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Details (Collapsible) -->
+                    <div class="mt-4 pt-4 border-t border-space-border/20" x-data="{ expanded: false }">
+                        <button @click="expanded = !expanded"
+                                class="flex items-center gap-2 text-[10px] uppercase text-gray-500 font-bold tracking-wider hover:text-neon-cyan transition-colors w-full">
+                            <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': expanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                            Advanced Details
+                        </button>
+
+                        <div x-show="expanded" x-collapse class="mt-3 grid grid-cols-1 gap-3 relative z-10">
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">API Client</span>
+                                <div class="font-mono text-xs text-gray-300 break-words" x-text="fingerprintModal.current?.apiClient"></div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Quota User</span>
+                                <div class="font-mono text-xs text-gray-300 break-all" x-text="fingerprintModal.current?.quotaUser"></div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Session Token</span>
+                                <div class="font-mono text-xs text-gray-300 break-all" x-text="fingerprintModal.current?.sessionToken"></div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Metadata</span>
+                                <div class="font-mono text-[10px] text-gray-400 bg-space-900/50 p-2 rounded border border-space-border/20 mt-1">
+                                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                        <div><span class="text-gray-600">OS Version:</span> <span class="text-gray-300" x-text="fingerprintModal.current?.clientMetadata?.osVersion"></span></div>
+                                        <div><span class="text-gray-600">Arch:</span> <span class="text-gray-300" x-text="fingerprintModal.current?.clientMetadata?.arch"></span></div>
+                                        <div><span class="text-gray-600">IDE:</span> <span class="text-gray-300" x-text="fingerprintModal.current?.clientMetadata?.ideType"></span></div>
+                                        <div><span class="text-gray-600">Plugin:</span> <span class="text-gray-300" x-text="fingerprintModal.current?.clientMetadata?.pluginType"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-end mb-6">
+                    <button class="btn btn-sm btn-outline border-neon-cyan text-neon-cyan hover:bg-neon-cyan hover:text-black gap-2"
+                            @click="regenerateFingerprint()"
+                            :disabled="fingerprintModal.regenerating">
+                        <svg class="w-4 h-4" :class="{ 'animate-spin': fingerprintModal.regenerating }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span x-text="fingerprintModal.regenerating ? 'Regenerating...' : 'Regenerate Fingerprint'"></span>
+                    </button>
+                </div>
+
+                <!-- History -->
+                <div x-show="fingerprintModal.history.length > 0">
+                    <h4 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">History</h4>
+                    <div class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        <template x-for="(entry, index) in fingerprintModal.history" :key="entry.timestamp">
+                            <div class="flex items-center justify-between p-3 bg-space-800/30 border border-space-border/20 rounded hover:bg-space-800/50 transition-colors">
+                                <div class="flex-1 min-w-0 mr-4">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xs font-mono text-gray-400 truncate" x-text="entry.fingerprint.deviceId"></span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-space-700 text-gray-500" x-text="entry.reason"></span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-600 font-mono" x-text="new Date(entry.timestamp).toLocaleString()"></div>
+                                </div>
+                                <button class="btn btn-xs btn-ghost text-gray-500 hover:text-white"
+                                        @click="restoreFingerprint(index)"
+                                        :disabled="fingerprintModal.restoring"
+                                        title="Restore this fingerprint">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
