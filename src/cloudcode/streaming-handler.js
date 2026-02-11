@@ -182,6 +182,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             const resetMs = parseResetTime(response, errorText);
                             const consecutiveFailures = accountManager.getConsecutiveFailures?.(account.email) || 0;
 
+                            // Human Pause: 5-10s before retry decision
+                            await sleep(5000 + Math.random() * 5000);
+
                             // Check if capacity issue (NOT quota) - retry same endpoint with progressive backoff
                             if (isModelCapacityExhausted(errorText)) {
                                 if (capacityRetryCount < MAX_CAPACITY_RETRIES) {
@@ -284,6 +287,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help
                         // Mark account as invalid (requires user intervention) and rotate (fixes #248)
                         if (response.status === 403 && isValidationRequired(errorText)) {
+                            // Human Pause: 5-10s before giving up
+                            await sleep(5000 + Math.random() * 5000);
                             const verifyUrl = extractVerificationUrl(errorText);
                             logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
                             accountManager.markInvalid(account.email, 'Account requires verification', verifyUrl);

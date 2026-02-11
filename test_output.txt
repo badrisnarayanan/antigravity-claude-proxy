@@ -1,0 +1,13 @@
+Starting Traffic Shaper Test...
+Task 1 executing
+Task 2 executing
+Task 3 executing
+Total duration: 1119ms
+Results: [
+  { id: 1, time: 1770827706959 },
+  { id: 2, time: 1770827707508 },
+  { id: 3, time: 1770827708078 }
+]
+Diff 1-2: 549ms
+Diff 2-3: 570ms
+Traffic Shaper Test PASSED
