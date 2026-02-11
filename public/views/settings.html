@@ -176,6 +176,26 @@
                             </label>
                         </div>
                     </div>
+
+                    <div class="form-control bg-space-900/50 p-4 rounded-lg border transition-all duration-300 hover:border-amber-500/50"
+                        :class="$store.settings.showConfigWarning ? 'border-amber-500/50 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-space-border/50'">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1">
+                                <span class="label-text font-medium transition-colors"
+                                    :class="$store.settings.showConfigWarning ? 'text-amber-400' : 'text-gray-300'"
+                                    x-text="$store.global.t('showConfigWarning')">Show Config Warning</span>
+                                <span class="text-xs text-gray-500" x-text="$store.global.t('showConfigWarningDesc')">Display a warning on Dashboard when Claude CLI config doesn't match preset.</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" :checked="$store.settings.showConfigWarning === true"
+                                    @change="$store.settings.showConfigWarning = $event.target.checked; $store.settings.saveSettings(true)"
+                                    aria-label="Show config warning toggle">
+                                <div
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1073,6 +1093,239 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Server Configuration Presets -->
+                <div class="card bg-space-900/30 border border-neon-purple/30 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-neon-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <label class="text-xs uppercase text-neon-purple font-semibold"
+                                x-text="$store.global.t('serverPresets')">Server Presets</label>
+                        </div>
+                        <button class="btn btn-xs btn-ghost text-neon-purple hover:bg-neon-purple/10 gap-1"
+                            @click="saveCurrentAsServerPreset()" :disabled="savingServerPreset">
+                            <svg x-show="!savingServerPreset" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span x-show="!savingServerPreset" x-text="$store.global.t('saveAsPreset')">Save as Preset</span>
+                            <span x-show="savingServerPreset" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <select
+                            class="select select-sm bg-space-800 border-space-border text-white flex-1 font-mono text-xs"
+                            :disabled="serverPresets.length === 0 || loadingPreset || editingPresetConfig"
+                            :value="selectedServerPreset"
+                            @change="selectedServerPreset = $event.target.value"
+                            aria-label="Select server preset">
+                            <option value="" disabled x-show="serverPresets.length === 0">No presets available</option>
+                            <template x-for="preset in serverPresets" :key="preset.name">
+                                <option :value="preset.name"
+                                    x-text="preset.builtIn ? preset.name + ' 🔒' : preset.name"
+                                    :selected="preset.name === selectedServerPreset"></option>
+                            </template>
+                        </select>
+                        <button class="btn btn-sm btn-ghost text-neon-purple hover:bg-neon-purple/10"
+                            @click="loadServerPreset(selectedServerPreset)"
+                            :disabled="!selectedServerPreset || loadingPreset || editingPresetConfig"
+                            :title="$store.global.t('loadServerPreset') || 'Load preset'"
+                            :aria-label="$store.global.t('loadServerPreset') || 'Load preset'">
+                            <span x-show="!loadingPreset">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </span>
+                            <span x-show="loadingPreset" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-neon-purple hover:bg-neon-purple/10"
+                            @click="editServerPreset()"
+                            :disabled="!selectedServerPreset || isSelectedPresetBuiltIn() || editingPresetConfig"
+                            :title="$store.global.t('editPreset') || 'Edit preset'"
+                            :aria-label="$store.global.t('editPreset') || 'Edit preset'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-red-400 hover:bg-red-500/10"
+                            @click="deleteSelectedServerPreset()"
+                            :disabled="!selectedServerPreset || isSelectedPresetBuiltIn() || deletingServerPreset || editingPresetConfig"
+                            :title="isSelectedPresetBuiltIn() ? ($store.global.t('cannotDeleteBuiltIn') || 'Cannot delete built-in presets') : ($store.global.t('deletePreset') || 'Delete preset')"
+                            :aria-label="isSelectedPresetBuiltIn() ? ($store.global.t('cannotDeleteBuiltIn') || 'Cannot delete built-in presets') : ($store.global.t('deletePreset') || 'Delete preset')">
+                            <span x-show="!deletingServerPreset">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </span>
+                            <span x-show="deletingServerPreset" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                    </div>
+                    <!-- Preset description (built-in via i18n key, custom via raw description) -->
+                    <template x-if="selectedServerPreset && (serverPresets.find(p => p.name === selectedServerPreset)?.descriptionKey || serverPresets.find(p => p.name === selectedServerPreset)?.description)">
+                        <p class="text-[11px] text-gray-400 mt-2 bg-space-800/50 rounded px-2.5 py-1.5 border border-space-border/30"
+                            x-text="serverPresets.find(p => p.name === selectedServerPreset)?.descriptionKey ? $store.global.t(serverPresets.find(p => p.name === selectedServerPreset).descriptionKey) : serverPresets.find(p => p.name === selectedServerPreset)?.description">
+                        </p>
+                    </template>
+                    <!-- Preset Config Preview -->
+                    <template x-if="selectedServerPreset && getPresetPreviewSections()">
+                        <div class="mt-2" x-data="{ get preview() { return getPresetPreviewSections() } }">
+                            <div class="flex items-center gap-2">
+                                <button class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-neon-purple transition-colors"
+                                    @click="presetPreviewExpanded = !presetPreviewExpanded">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition-transform duration-200"
+                                        :class="presetPreviewExpanded ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    <span x-text="presetPreviewExpanded ? ($store.global.t('presetPreviewHide') || 'Hide Preview') : ($store.global.t('presetPreviewLabel') || 'Preview Config')"></span>
+                                </button>
+                                <!-- Edit Config button -->
+                                <button x-show="presetPreviewExpanded && !isSelectedPresetBuiltIn() && !editingPresetConfig"
+                                    @click="enterPresetConfigEdit()"
+                                    class="text-[10px] text-neon-cyan hover:text-neon-cyan/80 transition-colors flex items-center gap-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span x-text="$store.global.t('editPresetConfig') || 'Edit Config'"></span>
+                                </button>
+                            </div>
+                            <div x-show="presetPreviewExpanded"
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100 translate-y-0"
+                                x-transition:leave-end="opacity-0 -translate-y-1"
+                                class="mt-1.5 bg-space-800/50 rounded border border-space-border/30 px-2.5 py-2"
+                                :class="editingPresetConfig ? 'border-neon-cyan/30' : ''">
+                                <!-- UI/JSON mode toggle -->
+                                <div x-show="editingPresetConfig" class="flex gap-1 mb-2">
+                                    <button class="btn btn-xs"
+                                        :class="configEditMode === 'ui' ? 'bg-neon-cyan hover:bg-neon-cyan/80 text-black' : 'btn-ghost text-gray-400'"
+                                        @click="switchConfigEditMode('ui')">UI</button>
+                                    <button class="btn btn-xs"
+                                        :class="configEditMode === 'json' ? 'bg-neon-cyan hover:bg-neon-cyan/80 text-black' : 'btn-ghost text-gray-400'"
+                                        @click="switchConfigEditMode('json')">JSON</button>
+                                </div>
+                                <!-- Strategy badge (read-only) -->
+                                <div class="mb-2" x-show="!editingPresetConfig">
+                                    <span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+                                        :class="preview.strategyDiffers ? 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/5' : 'text-neon-purple border-neon-purple/30 bg-neon-purple/5'"
+                                        x-text="preview.strategyLabel">
+                                    </span>
+                                </div>
+                                <!-- UI mode content (read-only + UI editing) -->
+                                <div x-show="configEditMode === 'ui' || !editingPresetConfig">
+                                    <!-- Strategy dropdown (editing) -->
+                                    <div class="mb-2" x-show="editingPresetConfig">
+                                        <label class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold">Strategy</label>
+                                        <select class="select select-sm bg-space-800 border-space-border text-white text-xs w-full mt-0.5"
+                                            x-model="editingConfigDraft.accountSelection.strategy">
+                                            <option value="sticky" x-text="$store.global.t('strategyStickyLabel') || 'Sticky'"></option>
+                                            <option value="round-robin" x-text="$store.global.t('strategyRoundRobinLabel') || 'Round Robin'"></option>
+                                            <option value="hybrid" x-text="$store.global.t('strategyHybridLabel') || 'Hybrid'"></option>
+                                        </select>
+                                    </div>
+                                    <!-- Sections -->
+                                    <template x-for="section in preview.sections" :key="section.label">
+                                        <div class="mb-1.5 last:mb-0">
+                                            <div class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-0.5" x-text="section.label"></div>
+                                            <template x-for="row in section.rows" :key="row.key">
+                                                <div class="flex justify-between items-center py-px gap-2">
+                                                    <span class="text-[11px] text-gray-500 shrink-0" x-text="row.label"></span>
+                                                    <!-- Read-only value -->
+                                                    <span x-show="!editingPresetConfig" class="text-[11px] font-mono"
+                                                        :class="row.differs ? 'text-neon-cyan' : 'text-gray-400'"
+                                                        x-text="row.value"></span>
+                                                    <!-- Editable input -->
+                                                    <div x-show="editingPresetConfig" class="flex items-center gap-1">
+                                                        <template x-if="row.type === 'text'">
+                                                            <input type="text"
+                                                                class="input input-xs bg-space-800 text-white font-mono text-[11px] w-32 text-right"
+                                                                :class="editingConfigErrors[row.key] ? '!border-red-500' : '!border-space-border'"
+                                                                :value="editingConfigDraft[row.key]"
+                                                                @change="validatePresetConfigField(row.key, $event.target.value)"
+                                                                @input="editingConfigDraft[row.key] = $event.target.value">
+                                                        </template>
+                                                        <template x-if="row.type !== 'text'">
+                                                            <input type="number"
+                                                                class="input input-xs bg-space-800 text-white font-mono text-[11px] w-20 text-right"
+                                                                :class="editingConfigErrors[row.key] ? '!border-red-500' : '!border-space-border'"
+                                                                :min="row.min" :max="row.max" :step="row.step"
+                                                                :value="editingConfigDraft[row.key]"
+                                                                @change="validatePresetConfigField(row.key, $event.target.value)"
+                                                                @input="editingConfigDraft[row.key] = Number($event.target.value)">
+                                                        </template>
+                                                        <span x-show="row.suffix" class="text-[10px] text-gray-600 w-5" x-text="row.suffix"></span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                                <!-- JSON mode content -->
+                                <div x-show="editingPresetConfig && configEditMode === 'json'">
+                                    <textarea class="textarea w-full font-mono text-[11px] bg-space-800 border-space-border text-white leading-relaxed"
+                                        rows="22" x-model="editingJsonText" @input="validateJsonText()"></textarea>
+                                    <p x-show="jsonParseError" class="text-[10px] text-red-400 mt-1" x-text="jsonParseError"></p>
+                                </div>
+                                <!-- Save/Cancel buttons -->
+                                <div x-show="editingPresetConfig" class="flex justify-end gap-2 mt-2 pt-2 border-t border-space-border/20">
+                                    <button class="btn btn-xs btn-ghost text-gray-400"
+                                        @click="cancelPresetConfigEdit()"
+                                        :disabled="savingPresetConfig"
+                                        x-text="$store.global.t('cancel') || 'Cancel'"></button>
+                                    <button class="btn btn-xs bg-neon-cyan text-black hover:bg-neon-cyan/80"
+                                        @click="savePresetConfig()"
+                                        :disabled="hasPresetConfigErrors() || savingPresetConfig">
+                                        <span x-show="!savingPresetConfig" x-text="$store.global.t('save') || 'Save'"></span>
+                                        <span x-show="savingPresetConfig" class="loading loading-spinner loading-xs"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <p class="text-[10px] text-gray-600 mt-2"
+                        x-text="$store.global.t('serverPresetsHint')">
+                        Select a preset and click the download icon to apply it. Built-in presets (🔒) cannot be deleted.
+                    </p>
+                </div>
+
+                <!-- Save Server Preset Modal -->
+                <dialog id="save_server_preset_modal" class="modal">
+                    <div class="modal-box bg-space-900 border border-space-border max-w-sm">
+                        <h3 class="font-bold text-lg text-white mb-1"
+                            x-text="editingPresetMode ? ($store.global.t('editServerPreset') || 'Edit Preset') : $store.global.t('saveServerPreset')">Save Server Preset</h3>
+                        <p class="text-xs text-gray-500 mb-4"
+                            x-text="editingPresetMode ? ($store.global.t('editServerPresetDesc') || 'Update the preset name or description.') : $store.global.t('saveServerPresetDesc')"></p>
+                        <input type="text" x-model="newServerPresetName" maxlength="50"
+                            class="input input-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white mb-2"
+                            :placeholder="$store.global.t('presetNamePlaceholder')"
+                            @keydown.enter.prevent="editingPresetMode ? executeEditServerPreset() : executeSaveServerPreset(newServerPresetName)">
+                        <textarea x-model="newServerPresetDescription"
+                            x-ref="presetDescTextarea"
+                            x-effect="if(newServerPresetDescription !== undefined && $refs.presetDescTextarea) { $refs.presetDescTextarea.style.height = 'auto'; $refs.presetDescTextarea.style.height = $refs.presetDescTextarea.scrollHeight + 'px'; }"
+                            @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                            class="textarea textarea-sm w-full font-mono text-xs !bg-space-800 !border-space-border !text-white mb-4 resize-none overflow-hidden"
+                            rows="1" maxlength="200"
+                            :placeholder="$store.global.t('presetDescPlaceholder')"></textarea>
+                        <div class="modal-action">
+                            <form method="dialog">
+                                <button class="btn btn-sm btn-ghost" x-text="$store.global.t('cancel')">Cancel</button>
+                            </form>
+                            <button class="btn btn-sm bg-neon-purple text-white hover:bg-neon-purple/80"
+                                @click="editingPresetMode ? executeEditServerPreset() : executeSaveServerPreset(newServerPresetName)"
+                                :disabled="!newServerPresetName.trim() || savingServerPreset">
+                                <span x-show="!savingServerPreset" x-text="editingPresetMode ? ($store.global.t('saveChanges') || 'Save Changes') : $store.global.t('savePreset')">Save Preset</span>
+                                <span x-show="savingServerPreset" class="loading loading-spinner loading-xs"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" class="modal-backdrop">
+                        <button>close</button>
+                    </form>
+                </dialog>
 
                 <!-- ⚡ Common Settings -->
                 <div class="space-y-3">

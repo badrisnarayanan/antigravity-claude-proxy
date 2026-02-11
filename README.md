@@ -173,8 +173,8 @@ Add this configuration:
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "test",
     "ANTHROPIC_BASE_URL": "http://localhost:8080",
-    "ANTHROPIC_MODEL": "claude-opus-4-5-thinking",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-5-thinking",
+    "ANTHROPIC_MODEL": "claude-opus-4-6-thinking",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6-thinking",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-thinking",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-5",
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-5-thinking",
@@ -280,12 +280,26 @@ function claude-antigravity {
 
 Then run `claude` for official API or `claude-antigravity` for this proxy.
 
+### Running as a System Service (systemd)
+
+When running as a systemd service, the proxy runs under a different user (e.g. `root`), so it can't find your Claude CLI settings at `~/.claude/settings.json`. Set `CLAUDE_CONFIG_PATH` to point to the real user's `.claude` directory:
+
+```ini
+# /etc/systemd/system/antigravity-proxy.service
+[Service]
+Environment=CLAUDE_CONFIG_PATH=/home/youruser/.claude
+ExecStart=/usr/bin/node /path/to/antigravity-claude-proxy/src/index.js
+```
+
+Without this, the WebUI's Claude CLI tab won't be able to read or write your Claude Code configuration.
+
 ---
 
 ## Documentation
 
 - [Available Models](docs/models.md)
 - [Multi-Account Load Balancing](docs/load-balancing.md)
+- [Device Fingerprinting](docs/fingerprinting.md)
 - [Web Management Console](docs/web-console.md)
 - [Advanced Configuration](docs/configuration.md)
 - [macOS Menu Bar App](docs/menubar-app.md)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-5-thinking`, `claude-opus-4-5-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3-pro-low`, `gemini-3-pro-high`) with Claude Code CLI.
+Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-5-thinking`, `claude-opus-4-6-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3-pro-low`, `gemini-3-pro-high`) with Claude Code CLI.
 
 The proxy translates requests from Anthropic Messages API format → Google Generative AI format → Antigravity Cloud Code API, then converts responses back to Anthropic format with full thinking/streaming support.
 
@@ -133,6 +133,7 @@ src/
 │   └── signature-cache.js      # Signature cache (tool_use + thinking signatures)
 │
 └── utils/                      # Utilities
+    ├── claude-config.js        # Claude CLI settings file I/O (supports CLAUDE_CONFIG_PATH env var)
     ├── helpers.js              # formatDuration, sleep, isNetworkError
     ├── logger.js               # Structured logging
     └── native-module-helper.js # Auto-rebuild for native modules
@@ -285,6 +286,12 @@ Each account object in `accounts.json` contains:
 - Called at the START of `convertAnthropicToGoogle()` before any other processing
 - Additional sanitizers (`sanitizeTextBlock`, `sanitizeToolUseBlock`) provide defense-in-depth
 - Pattern inspired by Antigravity-Manager's `clean_cache_control_from_messages()`
+
+**Claude CLI Config Path (systemd fix):**
+- `getClaudeConfigPath()` in `src/utils/claude-config.js` resolves the path to `~/.claude/settings.json`
+- When running as a systemd service, `os.homedir()` returns the service user's home (e.g. `/root`), not the real user's
+- Set `CLAUDE_CONFIG_PATH` env var to the real user's `.claude` directory (e.g. `/home/user/.claude`)
+- The env var is checked first; falls back to `os.homedir()/.claude` if unset
 
 **Native Module Auto-Rebuild:**
 - When Node.js is updated, native modules like `better-sqlite3` may become incompatible

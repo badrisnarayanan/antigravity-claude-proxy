@@ -33,7 +33,7 @@ function getAntigravityDbPath() {
 function getPlatformUserAgent() {
     const os = platform();
     const architecture = arch();
-    return `antigravity/1.16.5 ${os}/${architecture}`;
+    return `antigravity/${ANTIGRAVITY_VERSION} ${os}/${architecture}`;
 }
 
 // IDE Type enum (numeric values as expected by Cloud Code API)
@@ -91,6 +91,9 @@ export const ANTIGRAVITY_ENDPOINT_FALLBACKS = [
     ANTIGRAVITY_ENDPOINT_DAILY,
     ANTIGRAVITY_ENDPOINT_PROD
 ];
+
+// Antigravity version used for User-Agent
+export const ANTIGRAVITY_VERSION = '1.16.5';
 
 // Required headers for Antigravity API requests
 export const ANTIGRAVITY_HEADERS = {
@@ -267,10 +270,10 @@ export const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, a powerful a
 
 // Model fallback mapping - maps primary model to fallback when quota exhausted
 export const MODEL_FALLBACK_MAP = {
-    'gemini-3-pro-high': 'claude-opus-4-5-thinking',
+    'gemini-3-pro-high': 'claude-opus-4-6-thinking',
     'gemini-3-pro-low': 'claude-sonnet-4-5',
     'gemini-3-flash': 'claude-sonnet-4-5-thinking',
-    'claude-opus-4-5-thinking': 'gemini-3-pro-high',
+    'claude-opus-4-6-thinking': 'gemini-3-pro-high',
     'claude-sonnet-4-5-thinking': 'gemini-3-flash',
     'claude-sonnet-4-5': 'gemini-3-flash'
 };
@@ -288,8 +291,8 @@ export const DEFAULT_PRESETS = [
         config: {
             ANTHROPIC_AUTH_TOKEN: 'test',
             ANTHROPIC_BASE_URL: 'http://localhost:8080',
-            ANTHROPIC_MODEL: 'claude-opus-4-5-thinking',
-            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-5-thinking',
+            ANTHROPIC_MODEL: 'claude-opus-4-6-thinking',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-thinking',
             ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-5-thinking',
             ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-sonnet-4-5',
             CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-4-5-thinking',
@@ -307,6 +310,157 @@ export const DEFAULT_PRESETS = [
             ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-3-flash[1m]',
             CLAUDE_CODE_SUBAGENT_MODEL: 'gemini-3-flash[1m]',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
+        }
+    }
+];
+
+/**
+ * Built-in server configuration presets.
+ * Each preset has builtIn: true and cannot be deleted by users.
+ */
+export const DEFAULT_SERVER_PRESETS = [
+    {
+        name: 'Default (3-5 Accounts)',
+        builtIn: true,
+        descriptionKey: 'presetDefaultDesc',
+        config: {
+            maxRetries: 5,
+            retryBaseMs: 1000,
+            retryMaxMs: 30000,
+            defaultCooldownMs: 10000,
+            maxWaitBeforeErrorMs: 120000,
+            maxAccounts: 10,
+            globalQuotaThreshold: 0,
+            rateLimitDedupWindowMs: 2000,
+            maxConsecutiveFailures: 3,
+            extendedCooldownMs: 60000,
+            maxCapacityRetries: 5,
+            switchAccountDelayMs: 5000,
+            capacityBackoffTiersMs: [5000, 10000, 20000, 30000, 60000],
+            accountSelection: {
+                strategy: 'hybrid',
+                healthScore: {
+                    initial: 70,
+                    successReward: 1,
+                    rateLimitPenalty: -10,
+                    failurePenalty: -20,
+                    recoveryPerHour: 10,
+                    minUsable: 50,
+                    maxScore: 100
+                },
+                tokenBucket: {
+                    maxTokens: 50,
+                    tokensPerMinute: 6,
+                    initialTokens: 50
+                },
+                quota: {
+                    lowThreshold: 0.10,
+                    criticalThreshold: 0.05,
+                    staleMs: 300000
+                },
+                weights: {
+                    health: 2,
+                    tokens: 5,
+                    quota: 3,
+                    lru: 0.1
+                }
+            }
+        }
+    },
+    {
+        name: 'Many Accounts (10+)',
+        builtIn: true,
+        descriptionKey: 'presetManyAccountsDesc',
+        config: {
+            maxRetries: 3,
+            retryBaseMs: 500,
+            retryMaxMs: 15000,
+            defaultCooldownMs: 5000,
+            maxWaitBeforeErrorMs: 60000,
+            maxAccounts: 50,
+            globalQuotaThreshold: 0.10,
+            rateLimitDedupWindowMs: 1000,
+            maxConsecutiveFailures: 2,
+            extendedCooldownMs: 30000,
+            maxCapacityRetries: 3,
+            switchAccountDelayMs: 3000,
+            capacityBackoffTiersMs: [3000, 6000, 12000, 20000, 40000],
+            accountSelection: {
+                strategy: 'hybrid',
+                healthScore: {
+                    initial: 70,
+                    successReward: 1,
+                    rateLimitPenalty: -15,
+                    failurePenalty: -25,
+                    recoveryPerHour: 5,
+                    minUsable: 40,
+                    maxScore: 100
+                },
+                tokenBucket: {
+                    maxTokens: 30,
+                    tokensPerMinute: 8,
+                    initialTokens: 30
+                },
+                quota: {
+                    lowThreshold: 0.15,
+                    criticalThreshold: 0.05,
+                    staleMs: 180000
+                },
+                weights: {
+                    health: 5,
+                    tokens: 2,
+                    quota: 3,
+                    lru: 0.01
+                }
+            }
+        }
+    },
+    {
+        name: 'Conservative',
+        builtIn: true,
+        descriptionKey: 'presetConservativeDesc',
+        config: {
+            maxRetries: 8,
+            retryBaseMs: 2000,
+            retryMaxMs: 60000,
+            defaultCooldownMs: 20000,
+            maxWaitBeforeErrorMs: 240000,
+            maxAccounts: 10,
+            globalQuotaThreshold: 0.20,
+            rateLimitDedupWindowMs: 3000,
+            maxConsecutiveFailures: 5,
+            extendedCooldownMs: 120000,
+            maxCapacityRetries: 8,
+            switchAccountDelayMs: 8000,
+            capacityBackoffTiersMs: [8000, 15000, 30000, 45000, 90000],
+            accountSelection: {
+                strategy: 'sticky',
+                healthScore: {
+                    initial: 80,
+                    successReward: 2,
+                    rateLimitPenalty: -5,
+                    failurePenalty: -10,
+                    recoveryPerHour: 3,
+                    minUsable: 50,
+                    maxScore: 100
+                },
+                tokenBucket: {
+                    maxTokens: 80,
+                    tokensPerMinute: 4,
+                    initialTokens: 80
+                },
+                quota: {
+                    lowThreshold: 0.20,
+                    criticalThreshold: 0.10,
+                    staleMs: 300000
+                },
+                weights: {
+                    health: 3,
+                    tokens: 4,
+                    quota: 2,
+                    lru: 0.05
+                }
+            }
         }
     }
 ];
@@ -358,5 +512,6 @@ export default {
     MODEL_FALLBACK_MAP,
     TEST_MODELS,
     DEFAULT_PRESETS,
+    DEFAULT_SERVER_PRESETS,
     ANTIGRAVITY_SYSTEM_INSTRUCTION
 };

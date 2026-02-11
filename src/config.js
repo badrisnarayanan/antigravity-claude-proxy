@@ -3,6 +3,31 @@ import path from 'path';
 import os from 'os';
 import { logger } from './utils/logger.js';
 
+function isObject(item) {
+    return (item && typeof item === 'object' && !Array.isArray(item));
+}
+
+const DENIED_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+function deepMerge(target, source) {
+    const output = { ...target };
+    if (isObject(target) && isObject(source)) {
+        Object.keys(source).forEach(key => {
+            if (DENIED_KEYS.includes(key)) return;
+            if (isObject(source[key])) {
+                if (!(key in target)) {
+                    Object.assign(output, { [key]: source[key] });
+                } else {
+                    output[key] = deepMerge(target[key], source[key]);
+                }
+            } else {
+                Object.assign(output, { [key]: source[key] });
+            }
+        });
+    }
+    return output;
+}
+
 // Default config
 const DEFAULT_CONFIG = {
     apiKey: '',
@@ -25,6 +50,8 @@ const DEFAULT_CONFIG = {
     maxConsecutiveFailures: 3,     // Before applying extended cooldown
     extendedCooldownMs: 60000,     // 1 minute extended cooldown
     maxCapacityRetries: 5,         // Max retries for capacity exhaustion
+    switchAccountDelayMs: 5000,    // Delay before switching accounts on rate limit
+    capacityBackoffTiersMs: [5000, 10000, 20000, 30000, 60000], // Progressive backoff tiers for capacity exhaustion
     modelMapping: {},
     // Account selection strategy configuration
     accountSelection: {
@@ -35,7 +62,7 @@ const DEFAULT_CONFIG = {
             successReward: 1,         // Points on successful request
             rateLimitPenalty: -10,    // Points on rate limit
             failurePenalty: -20,      // Points on other failures
-            recoveryPerHour: 2,       // Passive recovery rate
+            recoveryPerHour: 10,      // Passive recovery rate (matches health-tracker.js)
             minUsable: 50,            // Minimum score to be selected
             maxScore: 100             // Maximum score cap
         },
@@ -48,6 +75,12 @@ const DEFAULT_CONFIG = {
             lowThreshold: 0.10,       // 10% - reduce score
             criticalThreshold: 0.05,  // 5% - exclude from candidates
             staleMs: 300000           // 5 min - max age of quota data to trust
+        },
+        weights: {
+            health: 2,                // Weight for health score component
+            tokens: 5,                // Weight for token bucket component
+            quota: 3,                 // Weight for quota awareness component
+            lru: 0.1                  // Weight for LRU freshness component
         }
     }
 };
@@ -77,14 +110,14 @@ function loadConfig() {
         if (fs.existsSync(CONFIG_FILE)) {
             const fileContent = fs.readFileSync(CONFIG_FILE, 'utf8');
             const userConfig = JSON.parse(fileContent);
-            config = { ...DEFAULT_CONFIG, ...userConfig };
+            config = deepMerge(DEFAULT_CONFIG, userConfig);
         } else {
              // Try looking in current dir for config.json as fallback
              const localConfigPath = path.resolve('config.json');
              if (fs.existsSync(localConfigPath)) {
                  const fileContent = fs.readFileSync(localConfigPath, 'utf8');
                  const userConfig = JSON.parse(fileContent);
-                 config = { ...DEFAULT_CONFIG, ...userConfig };
+                 config = deepMerge(DEFAULT_CONFIG, userConfig);
              }
         }
 
@@ -118,8 +151,8 @@ export function getPublicConfig() {
 
 export function saveConfig(updates) {
     try {
-        // Apply updates
-        config = { ...config, ...updates };
+        // Apply updates (deep merge to preserve nested configs)
+        config = deepMerge(config, updates);
 
         // Save to disk
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');

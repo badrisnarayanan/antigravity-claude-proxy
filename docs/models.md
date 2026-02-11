@@ -5,7 +5,7 @@
 | Model ID                     | Description                              |
 | ---------------------------- | ---------------------------------------- |
 | `claude-sonnet-4-5-thinking` | Claude Sonnet 4.5 with extended thinking |
-| `claude-opus-4-5-thinking`   | Claude Opus 4.5 with extended thinking   |
+| `claude-opus-4-6-thinking`   | Claude Opus 4.6 with extended thinking   |
 | `claude-sonnet-4-5`          | Claude Sonnet 4.5 without thinking       |
 
 ## Gemini Models

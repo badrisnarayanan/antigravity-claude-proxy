@@ -576,6 +576,8 @@ app.get('/account-limits', async (req, res) => {
                     // Quota threshold settings
                     quotaThreshold: metadata.quotaThreshold,
                     modelQuotaThresholds: metadata.modelQuotaThresholds || {},
+                    // Include fingerprint existence (details via /api/accounts/:email/fingerprint)
+                    hasFingerprint: !!metadata.fingerprint,
                     // Subscription data (new)
                     subscription: acc.subscription || metadata.subscription || { tier: 'unknown', projectId: null },
                     // Quota limits

@@ -15,6 +15,7 @@ import {
     EXTENDED_COOLDOWN_MS,
     CAPACITY_BACKOFF_TIERS_MS,
     MAX_CAPACITY_RETRIES,
+    BACKOFF_BY_ERROR_TYPE,
     isThinkingModel
 } from '../constants.js';
 import { convertGoogleToAnthropic } from '../format/index.js';
@@ -144,7 +145,7 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
                     const response = await throttledFetch(url, {
                         method: 'POST',
-                        headers: buildHeaders(token, model, isThinking ? 'text/event-stream' : 'application/json'),
+                        headers: buildHeaders(token, model, isThinking ? 'text/event-stream' : 'application/json', account.fingerprint),
                         body: JSON.stringify(payload)
                     });
 

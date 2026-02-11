@@ -64,8 +64,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         init() {
-            console.log('App controller initialized');
-
             // Handle responsive sidebar transitions
             let lastWidth = window.innerWidth;
             let resizeTimeout = null;
