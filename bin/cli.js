@@ -200,7 +200,7 @@ async function startServer() {
   // Wait for service to be ready
   if (await waitForService()) {
     console.log('╭' + '─'.repeat(48) + '╮');
-    console.log('│⚡ Proxy is now in orbit!');
+    console.log('│ ⚡ Proxy is now in orbit!                      │');
     console.log('╰' + '─'.repeat(48) + '╯');
 
     console.log('');
@@ -362,7 +362,7 @@ async function openUI() {
 function showHelp() {
   console.log(`
 ╭${'─'.repeat(58)}╮
-│  🛸 Antigravity Claude Proxy v${packageJson.version.padEnd(28)}│
+│  🛸 Antigravity Claude Proxy v${packageJson.version.padEnd(27)}│
 ╰${'─'.repeat(58)}╯
 
 Route Claude Code CLI through Antigravity's multi-model API
