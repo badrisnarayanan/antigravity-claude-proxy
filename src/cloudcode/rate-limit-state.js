@@ -140,6 +140,18 @@ export function extractVerificationUrl(errorText) {
 }
 
 /**
+ * Detect if 403 error is due to a permanent account ban (ToS violation).
+ * These accounts are permanently disabled by Google and cannot be recovered
+ * by retrying or re-authenticating. User must contact Google support to appeal.
+ * @param {string} errorText - Error message from API
+ * @returns {boolean} True if account is permanently banned
+ */
+export function isAccountBanned(errorText) {
+    const lower = (errorText || '').toLowerCase();
+    return lower.includes('has been disabled') && lower.includes('violation of terms of service');
+}
+
+/**
  * Detect if 429 error is due to model capacity (not user quota).
  * Capacity issues should retry on same account with shorter delay.
  * @param {string} errorText - Error message from API
