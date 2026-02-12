@@ -28,6 +28,9 @@ const modelCache = {
  * @returns {boolean} True if model is supported
  */
 function isSupportedModel(modelId) {
+    // Explicitly support the virtual web-search model
+    if (modelId === 'web-search') return true;
+
     const family = getModelFamily(modelId);
     return family === 'claude' || family === 'gemini';
 }
@@ -308,6 +311,9 @@ async function populateModelCache(token, projectId = null) {
  * @returns {Promise<boolean>} True if model is valid
  */
 export async function isValidModel(modelId, token, projectId = null) {
+    // Explicitly validate the virtual web-search model
+    if (modelId === 'web-search') return true;
+
     try {
         // Populate cache if needed
         await populateModelCache(token, projectId);

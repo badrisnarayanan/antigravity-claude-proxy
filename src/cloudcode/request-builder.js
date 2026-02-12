@@ -45,9 +45,17 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
         }
     }
 
+    // Handle web-search model
+    let targetModel = model;
+    if (model === 'web-search' || model.includes('web-search')) {
+        targetModel = 'gemini-2.5-flash';
+        googleRequest.tools = googleRequest.tools || [];
+        googleRequest.tools.push({ googleSearch: {} });
+    }
+
     const payload = {
         project: projectId,
-        model: model,
+        model: targetModel,
         request: googleRequest,
         userAgent: 'antigravity',
         requestType: 'agent',  // CLIProxyAPI v6.6.89 compatibility
