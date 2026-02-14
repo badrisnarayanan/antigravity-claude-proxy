@@ -7,6 +7,8 @@
 
 import { gotScraping } from 'got-scraping';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { logger } from '../utils/logger.js';
 import { sleep, getGotScrapingOptions } from '../utils/helpers.js';
 import { ANTIGRAVITY_HEADERS, CLIENT_METADATA } from '../constants.js';
@@ -146,6 +148,65 @@ async function sendTelemetryForActiveAccounts() {
         }
     } catch (error) {
         logger.error('[Telemetry] Error processing active accounts:', error);
+    }
+}
+
+/**
+ * Inspect Google configurations for an account (Reverse Engineering Helper)
+ * @param {Object} account
+ * @returns {Promise<Object>} The fetched config data
+ */
+export async function inspectConfigs(account) {
+    if (!_accountManager) {
+        throw new Error('Telemetry not initialized');
+    }
+
+    try {
+        const token = await _accountManager.getTokenForAccount(account);
+        const projectId = account.subscription?.projectId || account.projectId;
+
+        if (!projectId) {
+            throw new Error('No project ID found for account');
+        }
+
+        const headers = {
+            ...HEADERS_TEMPLATE,
+            'Authorization': `Bearer ${token}`
+        };
+
+        logger.info(`[Telemetry] Inspecting configs for ${account.email}...`);
+
+        const [userInfo, experiments] = await Promise.allSettled([
+            callEndpoint(ENDPOINTS.FETCH_USER_INFO, { project: projectId }, headers),
+            callEndpoint(ENDPOINTS.LIST_EXPERIMENTS, { project: projectId, parent: `projects/${projectId}` }, headers)
+        ]);
+
+        const result = {
+            timestamp: new Date().toISOString(),
+            email: account.email,
+            projectId,
+            userInfo: userInfo.status === 'fulfilled' ? userInfo.value : { error: userInfo.reason?.message },
+            experiments: experiments.status === 'fulfilled' ? experiments.value : { error: experiments.reason?.message }
+        };
+
+        // Write to log file
+        const logDir = path.join(process.cwd(), 'logs');
+        if (!fs.existsSync(logDir)) {
+            fs.mkdirSync(logDir, { recursive: true });
+        }
+
+        const sanitizedEmail = account.email.replace(/[^a-zA-Z0-9]/g, '_');
+        const filename = `config_dump_${sanitizedEmail}_${Date.now()}.json`;
+        const filepath = path.join(logDir, filename);
+
+        fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
+        logger.success(`[Telemetry] Config dump saved to ${filepath}`);
+
+        return result;
+
+    } catch (error) {
+        logger.error(`[Telemetry] Inspection failed for ${account.email}:`, error);
+        throw error;
     }
 }
 

@@ -253,6 +253,40 @@ app.get('/api/liveness', (req, res) => {
 });
 
 /**
+ * Debug endpoint - Inspect Google Configs
+ * Triggers listExperiments and fetchUserInfo for analysis
+ */
+app.post('/api/debug/inspect-configs', async (req, res) => {
+    try {
+        await ensureInitialized();
+        const email = req.query.email || req.body.email;
+        const results = [];
+
+        const accounts = email
+            ? accountManager.getAllAccounts().filter(a => a.email === email)
+            : accountManager.getAvailableAccounts();
+
+        if (accounts.length === 0) {
+            return res.status(404).json({ error: 'No matching accounts found' });
+        }
+
+        for (const account of accounts) {
+            try {
+                const result = await telemetry.inspectConfigs(account);
+                results.push(result);
+            } catch (err) {
+                results.push({ email: account.email, error: err.message });
+            }
+        }
+
+        res.json({ status: 'ok', count: results.length, results });
+    } catch (error) {
+        logger.error('[API] Inspect configs failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * Health check endpoint - Detailed status
  * Returns status of all accounts including rate limits and model quotas
  */
