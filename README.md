@@ -141,6 +141,12 @@ curl http://localhost:8080/health
 curl "http://localhost:8080/account-limits?format=table"
 ```
 
+### 4. Connect Google Search (optional)
+
+you can connect search MCP to replace Claude build-in search, as it requires api access to Antropic servers, Instead you can use gemini-flash-2.5 to preform a search, using web-search tool, reversed-enginnered from gemini-cli, make sure you cloned the repo to get `web_search_mcp.py`
+```bash
+claude mcp add antigravity-search python3 ./web_search_mcp.py
+```
 ---
 
 ## Using with Claude Code CLI

@@ -27,6 +27,25 @@ export function convertGoogleToAnthropic(googleResponse, model) {
     const anthropicContent = [];
     let hasToolCalls = false;
 
+    // Handle Grounding Metadata (Search Results)
+    const groundingMetadata = firstCandidate.groundingMetadata;
+    let searchResultsText = '';
+
+    if (groundingMetadata && groundingMetadata.groundingChunks) {
+        const chunks = groundingMetadata.groundingChunks;
+        if (chunks.length > 0) {
+            searchResultsText += '\n\n**Search Results:**\n';
+            chunks.forEach((chunk, index) => {
+                if (chunk.web) {
+                    const title = chunk.web.title || 'Untitled';
+                    const uri = chunk.web.uri || '#';
+                    searchResultsText += `${index + 1}. [${title}](${uri})\n`;
+                }
+            });
+            searchResultsText += '\n';
+        }
+    }
+
     for (const part of parts) {
         if (part.text !== undefined) {
             // Handle thinking blocks
@@ -48,8 +67,10 @@ export function convertGoogleToAnthropic(googleResponse, model) {
             } else {
                 anthropicContent.push({
                     type: 'text',
-                    text: part.text
+                    text: part.text + (anthropicContent.length === 0 && !part.thought ? searchResultsText : '') // Append search results to first text block
                 });
+                // Clear searchResultsText so it's not added again
+                if (anthropicContent.length > 0 && !part.thought) searchResultsText = '';
             }
         } else if (part.functionCall) {
             // Convert functionCall to tool_use
@@ -82,6 +103,15 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                 }
             });
         }
+    }
+
+    // If we have search results but no text parts were found/processed to attach them to,
+    // add a dedicated text block for them
+    if (searchResultsText) {
+        anthropicContent.push({
+            type: 'text',
+            text: searchResultsText
+        });
     }
 
     // Determine stop reason
