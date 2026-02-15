@@ -259,9 +259,11 @@ app.get('/health', async (req, res) => {
 
                 // Skip invalid accounts for quota check
                 if (account.isInvalid) {
+                    const isBanned = account.invalidReason?.toLowerCase().includes('banned') || 
+                                     account.invalidReason?.toLowerCase().includes('terms of service');
                     return {
                         ...baseInfo,
-                        status: 'invalid',
+                        status: isBanned ? 'banned' : 'invalid',
                         error: account.invalidReason,
                         models: {}
                     };
@@ -394,6 +396,17 @@ app.get('/account-limits', async (req, res) => {
                         models: quotas
                     };
                 } catch (error) {
+                    // Detect ToS ban from quota/subscription fetch and mark account invalid
+                    if (error.message?.startsWith('ACCOUNT_BANNED:')) {
+                        accountManager.markInvalid(account.email, 'Account banned — Gemini disabled for Terms of Service violation');
+                        return {
+                            email: account.email,
+                            status: 'banned',
+                            error: 'Account banned — Gemini disabled for Terms of Service violation',
+                            subscription: account.subscription || { tier: 'unknown', projectId: null },
+                            models: {}
+                        };
+                    }
                     return {
                         email: account.email,
                         status: 'error',

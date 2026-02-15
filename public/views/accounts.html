@@ -190,12 +190,18 @@
                                 <div class="w-2 h-2 rounded-full flex-shrink-0"
                                      :class="acc.status === 'ok' ?
                                              'bg-neon-green shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' :
-                                             'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'">
+                                             (acc.status === 'banned' ? 
+                                              'bg-red-800 shadow-[0_0_8px_rgba(153,27,27,0.6)]' :
+                                              'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]')">
                                 </div>
                                 <span class="text-xs font-mono font-semibold"
-                                      :class="acc.status === 'ok' ? 'text-neon-green' : 'text-red-400'"
+                                      :class="acc.status === 'ok' ? 'text-neon-green' : (acc.status === 'banned' ? 'text-red-800' : 'text-red-400')"
                                       x-text="acc.status.toUpperCase()">
                                 </span>
+                                <p x-show="acc.status === 'banned'" 
+                                   class="text-[9px] text-red-600/70 mt-0.5 max-w-[200px] leading-tight"
+                                   x-text="acc.error || 'Gemini disabled for ToS violation'">
+                                </p>
                             </div>
                         </td>
                         <td class="py-4 pr-6">
@@ -207,6 +213,13 @@
                                     x-text="$store.global.t('fix')">
                                     FIX
                                 </button>
+                                <!-- Appeal Button (banned accounts only) -->
+                                <a x-show="acc.status === 'banned'"
+                                   href="mailto:gemini-code-assist-user-feedback@google.com"
+                                   class="px-3 py-1 text-[10px] font-bold font-mono uppercase tracking-wider rounded bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800/30 hover:border-red-800/50 transition-all"
+                                   title="Email Google to appeal this ban">
+                                   APPEAL
+                                </a>
                                 <!-- Settings Button (threshold) -->
                                 <button class="p-2 rounded hover:bg-white/10 text-gray-500 hover:text-neon-yellow transition-colors"
                                     @click="openThresholdModal(acc)"

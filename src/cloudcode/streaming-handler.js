@@ -32,6 +32,7 @@ import {
     isModelCapacityExhausted,
     isValidationRequired,
     extractVerificationUrl,
+    isAccountBanned,
     calculateSmartBackoff
 } from './rate-limit-state.js';
 import crypto from 'crypto';
@@ -287,6 +288,14 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             const verifyUrl = extractVerificationUrl(errorText);
                             logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
                             accountManager.markInvalid(account.email, 'Account requires verification', verifyUrl);
+                            throw new AccountForbiddenError(errorText, account.email);
+                        }
+
+                        // 403 with permanent ToS ban — account is permanently disabled by Google
+                        // Unlike VALIDATION_REQUIRED, this cannot be resolved by verification
+                        if (response.status === 403 && isAccountBanned(errorText)) {
+                            logger.warn(`[CloudCode] 403 ToS BANNED for ${account.email}, marking invalid permanently...`);
+                            accountManager.markInvalid(account.email, 'Account banned — Gemini disabled for Terms of Service violation');
                             throw new AccountForbiddenError(errorText, account.email);
                         }
 
