@@ -9,6 +9,7 @@ window.Components.logsViewer = () => ({
     isAutoScroll: true,
     eventSource: null,
     searchQuery: '',
+    expandedLogs: new Set(), // Store timestamps instead of indices for stability
     filters: {
         INFO: true,
         WARN: true,
@@ -103,6 +104,44 @@ window.Components.logsViewer = () => ({
         if (container) container.scrollTop = container.scrollHeight;
     },
 
+    /**
+     * Toggle log expansion by timestamp (stable ID) instead of index
+     * @param {string} timestamp - Log timestamp as stable identifier
+     */
+    toggleLog(timestamp) {
+        if (this.expandedLogs.has(timestamp)) {
+            this.expandedLogs.delete(timestamp);
+        } else {
+            this.expandedLogs.add(timestamp);
+        }
+    },
+
+    /**
+     * Check if a log is expanded by its timestamp
+     * @param {string} timestamp - Log timestamp
+     * @returns {boolean}
+     */
+    isExpanded(timestamp) {
+        return this.expandedLogs.has(timestamp);
+    },
+
+    formatData(data) {
+        if (!data) return '';
+        try {
+            const json = JSON.stringify(data, null, 2);
+            if (Alpine.store('settings')?.redactMode && window.Redact) {
+                return window.Redact.logMessage(json);
+            }
+            return json;
+        } catch (e) {
+            const str = String(data);
+            if (Alpine.store('settings')?.redactMode && window.Redact) {
+                return window.Redact.logMessage(str);
+            }
+            return str;
+        }
+    },
+
     clearLogs() {
         this.logs = [];
     },
@@ -114,7 +153,11 @@ window.Components.logsViewer = () => ({
         const lines = this.logs.map(log => {
             const ts = new Date(log.timestamp).toISOString();
             const message = shouldRedact ? window.Redact.logMessage(log.message) : log.message;
-            return `[${ts}] [${log.level}] ${message}`;
+            let line = `[${ts}] [${log.level}] ${message}`;
+            if (log.data) {
+                line += `\nDATA: ${this.formatData(log.data)}`;
+            }
+            return line;
         });
 
         const text = lines.join('\n');
