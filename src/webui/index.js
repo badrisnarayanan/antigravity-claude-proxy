@@ -608,6 +608,10 @@ export function mountWebUI(app, dirname, accountManager) {
             if (typeof requestDelayMs === 'number' && requestDelayMs >= 100 && requestDelayMs <= 5000) {
                 updates.requestDelayMs = requestDelayMs;
             }
+            const { thinkingTagMode } = req.body;
+            if (thinkingTagMode && ['passthrough', 'strip', 'native'].includes(thinkingTagMode)) {
+                updates.thinkingTagMode = thinkingTagMode;
+            }
 
             if (Object.keys(updates).length === 0) {
                 return res.status(400).json({

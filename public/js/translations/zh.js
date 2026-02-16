@@ -469,6 +469,14 @@ window.translations.zh = {
     weightTokens: "令牌权重",
     weightQuota: "配额权重",
     weightLru: "LRU 权重",
+    // Thinking Tag 模式
+    thinkingTagMode: "Thinking Tag 模式",
+    thinkingTagModeLabel: "Thinking Tag 处理",
+    thinkingTagModeDesc: "如何处理响应中的 <thinking> 文本标签",
+    thinkingTagPassthrough: "透传（不修改）",
+    thinkingTagStrip: "移除（删除）",
+    thinkingTagNative: "原生（转换为思考块）",
+    thinkingTagModeUpdated: "Thinking Tag 模式已更新",
     // 模型下拉菜单
     clearSelection: "清除选择",
 };

@@ -407,6 +407,14 @@ window.translations.pt = {
     // Mensagens de erro de presets
     presetNameRequired: "Nome do preset é obrigatório",
     deletePresetConfirm: "Excluir preset \"{name}\"?",
+    // Modo Thinking Tag
+    thinkingTagMode: "Modo Thinking Tag",
+    thinkingTagModeLabel: "Processamento de Thinking Tag",
+    thinkingTagModeDesc: "Como as tags de texto <thinking> nas respostas são tratadas",
+    thinkingTagPassthrough: "Passagem (Sem Alteração)",
+    thinkingTagStrip: "Remover (Excluir)",
+    thinkingTagNative: "Nativo (Converter em Blocos de Pensamento)",
+    thinkingTagModeUpdated: "Modo Thinking Tag atualizado",
     // Dropdown de Modelo
     clearSelection: "Limpar seleção",
 };

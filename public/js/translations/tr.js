@@ -454,6 +454,14 @@ window.translations.tr = {
     weightTokens: "Token Ağırlığı",
     weightQuota: "Kota Ağırlığı",
     weightLru: "LRU Ağırlığı",
+    // Thinking Tag Modu
+    thinkingTagMode: "Thinking Tag Modu",
+    thinkingTagModeLabel: "Thinking Tag İşleme",
+    thinkingTagModeDesc: "Yanıtlardaki <thinking> metin etiketlerinin nasıl işleneceği",
+    thinkingTagPassthrough: "Geçiş (Değişiklik Yok)",
+    thinkingTagStrip: "Kaldır (Sil)",
+    thinkingTagNative: "Yerel (Düşünce Bloklarına Dönüştür)",
+    thinkingTagModeUpdated: "Thinking Tag Modu güncellendi",
     // Model Açılır Menüsü
     clearSelection: "Seçimi temizle",
 };

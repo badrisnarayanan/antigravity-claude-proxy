@@ -1531,6 +1531,33 @@
                 <div class="space-y-3">
                     <div class="flex items-center gap-2 mb-1 px-1">
                         <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
+                            x-text="$store.global.t('thinkingTagMode')">Thinking Tag Mode</span>
+                        <div class="h-px flex-1 bg-space-border/30"></div>
+                    </div>
+
+                    <div class="form-control view-card border-space-border/50 hover:border-neon-purple/50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-1 flex-1">
+                                <span class="text-sm font-medium text-gray-200"
+                                    x-text="$store.global.t('thinkingTagModeLabel')">Thinking Tag Processing</span>
+                                <span class="text-[11px] text-gray-500"
+                                    x-text="$store.global.t('thinkingTagModeDesc')">How &lt;thinking&gt; text tags in responses are handled</span>
+                            </div>
+                            <select
+                                class="select bg-space-800 border-space-border text-gray-200 focus:border-neon-purple focus:ring-neon-purple/20 w-64"
+                                :value="serverConfig.thinkingTagMode || 'passthrough'"
+                                @change="toggleThinkingTagMode($el.value)" aria-label="Thinking tag mode">
+                                <option value="passthrough" x-text="$store.global.t('thinkingTagPassthrough')">Passthrough (No Change)</option>
+                                <option value="strip" x-text="$store.global.t('thinkingTagStrip')">Strip (Remove)</option>
+                                <option value="native" x-text="$store.global.t('thinkingTagNative')">Native (Convert to Thinking Blocks)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2 mb-1 px-1">
+                        <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
                             x-text="$store.global.t('accountSelectionStrategy')">Account Selection Strategy</span>
                         <div class="h-px flex-1 bg-space-border/30"></div>
                     </div>
