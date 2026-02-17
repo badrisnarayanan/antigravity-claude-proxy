@@ -64,6 +64,12 @@ async function removeAccount(email) {
     const newActiveIndex = activeIndex >= accounts.length ? Math.max(0, accounts.length - 1) : activeIndex;
     await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, newActiveIndex);
     logger.info(`[WebUI] Account ${email} removed`);
+
+    // Notify Discord
+    const bot = globalThis.discordBot;
+    if (bot) {
+        bot.emitNotification('accountRemoved', { email });
+    }
 }
 
 /**
@@ -105,6 +111,12 @@ async function addAccount(accountData) {
     }
 
     await saveAccounts(ACCOUNT_CONFIG_PATH, accounts, settings, activeIndex);
+
+    // Notify Discord
+    const bot = globalThis.discordBot;
+    if (bot) {
+        bot.emitNotification('accountAdded', { email: accountData.email });
+    }
 }
 
 /**
@@ -609,6 +621,35 @@ export function mountWebUI(app, dirname, accountManager) {
                 updates.requestDelayMs = requestDelayMs;
             }
 
+            // Discord config validation
+            if (req.body.discord && typeof req.body.discord === 'object') {
+                const dc = req.body.discord;
+                const dcUpdate = {};
+                if (typeof dc.enabled === 'boolean') dcUpdate.enabled = dc.enabled;
+                if (typeof dc.botToken === 'string') dcUpdate.botToken = dc.botToken;
+                if (dc.channels && typeof dc.channels === 'object') {
+                    const ch = {};
+                    if (typeof dc.channels.logs === 'string') ch.logs = dc.channels.logs;
+                    if (typeof dc.channels.notifications === 'string') ch.notifications = dc.channels.notifications;
+                    if (typeof dc.channels.models === 'string') ch.models = dc.channels.models;
+                    if (Object.keys(ch).length > 0) dcUpdate.channels = ch;
+                }
+                if (dc.notifications && typeof dc.notifications === 'object') {
+                    const notif = {};
+                    for (const [key, val] of Object.entries(dc.notifications)) {
+                        if (typeof val === 'boolean') notif[key] = val;
+                    }
+                    if (Object.keys(notif).length > 0) dcUpdate.notifications = notif;
+                }
+                if (typeof dc.logBatchIntervalMs === 'number' && dc.logBatchIntervalMs >= 1000 && dc.logBatchIntervalMs <= 30000) {
+                    dcUpdate.logBatchIntervalMs = dc.logBatchIntervalMs;
+                }
+                if (typeof dc.modelUpdateIntervalMs === 'number' && dc.modelUpdateIntervalMs >= 60000 && dc.modelUpdateIntervalMs <= 3600000) {
+                    dcUpdate.modelUpdateIntervalMs = dc.modelUpdateIntervalMs;
+                }
+                if (Object.keys(dcUpdate).length > 0) updates.discord = dcUpdate;
+            }
+
             if (Object.keys(updates).length === 0) {
                 return res.status(400).json({
                     status: 'error',
@@ -623,6 +664,27 @@ export function mountWebUI(app, dirname, accountManager) {
                 if (updates.accountSelection?.strategy && accountManager) {
                     await accountManager.reload();
                     logger.info(`[WebUI] Strategy hot-reloaded to: ${updates.accountSelection.strategy}`);
+
+                    // Notify Discord of strategy change
+                    const bot = globalThis.discordBot;
+                    if (bot) {
+                        bot.emitNotification('strategyChanged', { strategy: updates.accountSelection.strategy });
+                    }
+                }
+
+                // Handle Discord bot lifecycle changes
+                if (updates.discord) {
+                    const bot = globalThis.discordBot;
+                    if (bot) {
+                        if (updates.discord.enabled === false) {
+                            await bot.disconnect();
+                        } else if (updates.discord.enabled === true || updates.discord.botToken) {
+                            await bot.disconnect();
+                            if (config.discord?.enabled && config.discord?.botToken) {
+                                bot.connect().catch(err => logger.error('[Discord] Reconnect failed:', err.message));
+                            }
+                        }
+                    }
                 }
 
                 res.json({
@@ -1106,6 +1168,142 @@ export function mountWebUI(app, dirname, accountManager) {
                 logger.off('log', sendLog);
             }
         });
+    });
+
+    // ==========================================
+    // Auto-Update API
+    // ==========================================
+
+    /**
+     * GET /api/updates/status - Get current update status
+     */
+    app.get('/api/updates/status', (req, res) => {
+        try {
+            const updater = globalThis.autoUpdater;
+            if (!updater) {
+                return res.json({ status: 'ok', updateAvailable: false, currentVersion: packageVersion });
+            }
+            res.json({ status: 'ok', ...updater.getStatus() });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/updates/check - Trigger an update check
+     */
+    app.post('/api/updates/check', async (req, res) => {
+        try {
+            const updater = globalThis.autoUpdater;
+            if (!updater) {
+                return res.status(400).json({ status: 'error', error: 'Auto-updater not available' });
+            }
+            const result = await updater.checkForUpdates();
+            res.json({ status: 'ok', ...result });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/updates/install - Install available update
+     */
+    app.post('/api/updates/install', async (req, res) => {
+        try {
+            const updater = globalThis.autoUpdater;
+            if (!updater) {
+                return res.status(400).json({ status: 'error', error: 'Auto-updater not available' });
+            }
+            const result = await updater.installUpdate();
+            res.json({ status: 'ok', ...result });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/updates/restart - Restart the server
+     */
+    app.post('/api/updates/restart', (req, res) => {
+        try {
+            const updater = globalThis.autoUpdater;
+            if (!updater) {
+                return res.status(400).json({ status: 'error', error: 'Auto-updater not available' });
+            }
+            res.json({ status: 'ok', message: 'Server restarting...' });
+            // Delay restart to let response flush
+            setTimeout(() => updater.restartServer(), 500);
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    // ==========================================
+    // Discord Bot API
+    // ==========================================
+
+    /**
+     * GET /api/discord/status - Get Discord bot status
+     */
+    app.get('/api/discord/status', (req, res) => {
+        try {
+            const bot = globalThis.discordBot;
+            if (!bot) {
+                return res.json({ status: 'ok', enabled: false, connected: false, botUser: null, guilds: 0 });
+            }
+            res.json({ status: 'ok', ...bot.getStatus() });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/discord/test - Send a test notification
+     */
+    app.post('/api/discord/test', async (req, res) => {
+        try {
+            const bot = globalThis.discordBot;
+            if (!bot) {
+                return res.status(400).json({ status: 'error', error: 'Discord bot not available' });
+            }
+
+            const botStatus = bot.getStatus();
+            if (!botStatus.connected) {
+                return res.status(400).json({ status: 'error', error: 'Discord bot is not connected' });
+            }
+
+            await bot.emitNotification('configChanged', {
+                message: 'This is a test notification from the Antigravity Proxy WebUI.',
+                fields: [{ name: 'Source', value: 'Test Button' }]
+            });
+
+            res.json({ status: 'ok', message: 'Test notification sent' });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/discord/reconnect - Force reconnect the bot
+     */
+    app.post('/api/discord/reconnect', async (req, res) => {
+        try {
+            const bot = globalThis.discordBot;
+            if (!bot) {
+                return res.status(400).json({ status: 'error', error: 'Discord bot not available' });
+            }
+
+            if (!config.discord?.enabled || !config.discord?.botToken) {
+                return res.status(400).json({ status: 'error', error: 'Discord is not enabled or token is missing' });
+            }
+
+            await bot.disconnect();
+            await bot.connect();
+
+            res.json({ status: 'ok', message: 'Discord bot reconnected', ...bot.getStatus() });
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
     });
 
     // ==========================================

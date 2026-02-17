@@ -312,6 +312,36 @@ Without this, the WebUI's Claude CLI tab won't be able to read or write your Cla
 - [Legal](docs/legal.md)
 - [Development](docs/development.md)
 
+### Discord Bot Integration
+
+Connect the proxy to Discord for real-time observability without opening the WebUI.
+
+**Setup:**
+1. Create a bot at [discord.com/developers/applications](https://discord.com/developers/applications)
+2. Invite the bot to your server with the `applications.commands` scope
+3. In the WebUI, go to **Settings → Discord**, paste your bot token, set channel IDs, and enable the toggle
+
+**Features:**
+- **Log Streaming** — Server logs batched and sent to a Discord channel as code blocks
+- **Notifications** — Embeds for account events (rate limited, quota exhausted, added/removed), server lifecycle, and config changes
+- **Model Status** — Periodic pinned message with model quota bars
+- **Slash Commands** — `/status`, `/models`, `/accounts` (ephemeral), `/add-account` (ephemeral)
+
+**Environment variables:**
+```bash
+DISCORD_BOT_TOKEN=your-bot-token
+DISCORD_ENABLED=true
+```
+
+### Auto-Updates
+
+The proxy checks for updates automatically and supports one-click installation from the WebUI.
+
+**How it works:**
+1. Checks GitHub for new releases every 6 hours (or manually via **Settings → Updates**)
+2. When an update is found, click **Install Update** to run `git pull` + `npm install`
+3. Click **Restart Now** to apply — the page auto-reloads when the server comes back
+
 ---
 
 ## Credits

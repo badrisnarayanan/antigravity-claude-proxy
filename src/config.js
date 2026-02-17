@@ -53,6 +53,36 @@ const DEFAULT_CONFIG = {
     switchAccountDelayMs: 5000,    // Delay before switching accounts on rate limit
     capacityBackoffTiersMs: [5000, 10000, 20000, 30000, 60000], // Progressive backoff tiers for capacity exhaustion
     modelMapping: {},
+    // Auto-update configuration
+    autoUpdate: {
+        checkIntervalHours: 6,     // Check every 6 hours
+        lastCheckTime: null,       // Timestamp of last check
+        pendingVersion: null       // Version waiting to be installed
+    },
+    // Discord bot configuration
+    discord: {
+        enabled: false,
+        botToken: '',
+        channels: {
+            logs: '',           // Channel ID for log streaming
+            notifications: '',  // Channel ID for alerts/events
+            models: ''          // Channel ID for model status
+        },
+        notifications: {
+            accountRateLimited: true,
+            accountQuotaExhausted: true,
+            accountInvalidated: true,
+            accountAdded: true,
+            accountRemoved: true,
+            serverStarted: true,
+            serverStopped: true,
+            strategyChanged: true,
+            configChanged: true,
+            errorOccurred: true
+        },
+        logBatchIntervalMs: 3000,    // Batch logs every 3s to avoid Discord rate limits
+        modelUpdateIntervalMs: 300000 // Update model status every 5 min
+    },
     // Account selection strategy configuration
     accountSelection: {
         strategy: 'hybrid',           // 'sticky' | 'round-robin' | 'hybrid'
@@ -126,6 +156,14 @@ function loadConfig() {
         if (process.env.WEBUI_PASSWORD) config.webuiPassword = process.env.WEBUI_PASSWORD;
         if (process.env.DEBUG === 'true') config.debug = true;
         if (process.env.DEV_MODE === 'true') config.devMode = true;
+        if (process.env.DISCORD_BOT_TOKEN) {
+            if (!config.discord) config.discord = {};
+            config.discord.botToken = process.env.DISCORD_BOT_TOKEN;
+        }
+        if (process.env.DISCORD_ENABLED === 'true') {
+            if (!config.discord) config.discord = {};
+            config.discord.enabled = true;
+        }
 
         // Backward compat: debug implies devMode
         if (config.debug && !config.devMode) config.devMode = true;
@@ -145,6 +183,7 @@ export function getPublicConfig() {
     // Redact sensitive values
     if (publicConfig.webuiPassword) publicConfig.webuiPassword = '********';
     if (publicConfig.apiKey) publicConfig.apiKey = '********';
+    if (publicConfig.discord?.botToken) publicConfig.discord.botToken = '********';
 
     return publicConfig;
 }

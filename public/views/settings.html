@@ -55,6 +55,22 @@
                     </svg>
                     <span x-text="$store.global.t('tabServer')">Server</span>
                 </button>
+                <button @click="$store.global.settingsTab = 'discord'"
+                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+                    :class="$store.global.settingsTab === 'discord' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/>
+                    </svg>
+                    Discord
+                </button>
+                <button @click="$store.global.settingsTab = 'updates'"
+                    class="pb-3 border-b-2 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+                    :class="$store.global.settingsTab === 'updates' ? 'border-neon-purple text-white' : 'border-transparent text-gray-500 hover:text-gray-300'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Updates
+                </button>
             </div>
         </div>
 
@@ -1982,6 +1998,291 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: Discord Bot Configuration -->
+            <div x-show="$store.global.settingsTab === 'discord'" x-data="window.Components.discordConfig()"
+                class="space-y-6 animate-fade-in pb-10">
+
+                <!-- Enable/Disable Toggle + Connection Status -->
+                <div class="view-card" :class="discordStatus.connected ? 'border-green-500/20 bg-green-500/5' : 'border-indigo-500/20 bg-indigo-500/5'">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                :class="discordStatus.connected ? 'bg-green-500/10 text-green-400' : 'bg-indigo-500/10 text-indigo-400'">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white">Discord Bot</h4>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <div class="w-2 h-2 rounded-full" :class="discordStatus.connected ? 'bg-green-500 animate-pulse' : (discordConfig.enabled ? 'bg-yellow-500' : 'bg-gray-600')"></div>
+                                    <span class="text-sm" :class="discordStatus.connected ? 'text-green-400' : 'text-gray-400'"
+                                        x-text="discordStatus.connected ? ('Connected as ' + (discordStatus.botUser?.tag || '')) : (discordConfig.enabled ? 'Connecting...' : 'Disconnected')"></span>
+                                    <span x-show="discordStatus.connected" class="text-gray-500 text-xs" x-text="'(' + (discordStatus.guilds || 0) + ' servers)'"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <template x-if="discordStatus.connected">
+                                <button class="btn btn-xs btn-ghost text-indigo-400 hover:text-indigo-300"
+                                    @click="testDiscord()" :disabled="testingDiscord">
+                                    <span x-show="!testingDiscord">Test</span>
+                                    <span x-show="testingDiscord" class="loading loading-spinner loading-xs"></span>
+                                </button>
+                            </template>
+                            <template x-if="discordConfig.enabled && !discordStatus.connected && discordConfig.botToken === '********'">
+                                <button class="btn btn-xs btn-ghost text-indigo-400 hover:text-indigo-300"
+                                    @click="reconnectDiscord()" :disabled="reconnectingDiscord">
+                                    <span x-show="!reconnectingDiscord">Reconnect</span>
+                                    <span x-show="reconnectingDiscord" class="loading loading-spinner loading-xs"></span>
+                                </button>
+                            </template>
+                            <span class="text-xs font-medium" :class="discordConfig.enabled ? 'text-indigo-400' : 'text-gray-500'" x-text="discordConfig.enabled ? 'ON' : 'OFF'"></span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer"
+                                    :checked="discordConfig.enabled"
+                                    @change="toggleDiscord($event.target.checked)">
+                                <div
+                                    class="w-9 h-5 bg-space-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-600 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500 peer-checked:after:bg-white">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Token -->
+                <div class="view-card">
+                    <h4 class="font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        </svg>
+                        Bot Token
+                    </h4>
+                    <div class="form-control">
+                        <input type="password"
+                            class="input input-sm input-bordered w-full bg-space-800 border-space-border text-white font-mono"
+                            :placeholder="discordConfig.botToken === '********' ? 'Token saved (enter new value to replace)' : 'Paste your Discord bot token here'"
+                            :value="discordConfig.botToken === '********' ? '' : (discordConfig.botToken || '')"
+                            @change="saveDiscordField('botToken', $event.target.value)"
+                            aria-label="Discord bot token">
+                        <label class="label">
+                            <span class="label-text-alt text-gray-500">Create a bot at discord.com/developers/applications. Also set via DISCORD_BOT_TOKEN env var.</span>
+                            <span x-show="discordConfig.botToken === '********'" class="label-text-alt text-green-500">Saved</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Channel IDs -->
+                <div class="view-card">
+                    <h4 class="font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                        </svg>
+                        Channel IDs
+                    </h4>
+                    <p class="text-sm text-gray-400 mb-4">Enable Developer Mode in Discord (Settings &gt; Advanced) to copy channel IDs.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text text-gray-300">Logs Channel</span></label>
+                            <input type="text"
+                                class="input input-sm input-bordered w-full bg-space-800 border-space-border text-white font-mono"
+                                placeholder="Channel ID"
+                                :value="discordConfig.channels?.logs || ''"
+                                @input="saveDiscordChannel('logs', $event.target.value)"
+                                aria-label="Logs channel ID">
+                            <label class="label"><span class="label-text-alt text-gray-500">Live log streaming</span></label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text text-gray-300">Notifications Channel</span></label>
+                            <input type="text"
+                                class="input input-sm input-bordered w-full bg-space-800 border-space-border text-white font-mono"
+                                placeholder="Channel ID"
+                                :value="discordConfig.channels?.notifications || ''"
+                                @input="saveDiscordChannel('notifications', $event.target.value)"
+                                aria-label="Notifications channel ID">
+                            <label class="label"><span class="label-text-alt text-gray-500">Alerts &amp; events</span></label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text text-gray-300">Models Channel</span></label>
+                            <input type="text"
+                                class="input input-sm input-bordered w-full bg-space-800 border-space-border text-white font-mono"
+                                placeholder="Channel ID"
+                                :value="discordConfig.channels?.models || ''"
+                                @input="saveDiscordChannel('models', $event.target.value)"
+                                aria-label="Models channel ID">
+                            <label class="label"><span class="label-text-alt text-gray-500">Model status updates</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Filters -->
+                <div class="view-card" x-data="{ expanded: false }">
+                    <button @click="expanded = !expanded" class="flex items-center justify-between w-full text-left">
+                        <h4 class="font-semibold text-white flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                            Notification Filters
+                        </h4>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="expanded" x-collapse class="mt-4 space-y-3">
+                        <p class="text-sm text-gray-400 mb-3">Choose which events send notifications to Discord.</p>
+                        <template x-for="item in notificationTypes" :key="item.key">
+                            <div class="flex items-center justify-between py-1">
+                                <div>
+                                    <span class="text-sm text-gray-300" x-text="item.label"></span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer"
+                                        :checked="discordConfig.notifications?.[item.key] !== false"
+                                        @change="toggleNotification(item.key, $event.target.checked)">
+                                    <div
+                                        class="w-9 h-5 bg-space-700 rounded-full peer peer-checked:bg-indigo-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
+                                    </div>
+                                </label>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Help info -->
+                <div class="text-sm text-gray-500 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Slash commands: /status, /models, /accounts, /add-account. Invite your bot with the <code class="text-indigo-400">applications.commands</code> scope.</span>
+                </div>
+            </div>
+
+            <!-- Tab 6: Updates -->
+            <div x-show="$store.global.settingsTab === 'updates'" x-data="window.Components.updatesConfig()"
+                class="space-y-6 animate-fade-in pb-10">
+
+                <!-- Version + Update Status Card -->
+                <div class="view-card" :class="updateStatus.updateAvailable ? 'border-green-500/20 bg-green-500/5' : 'border-space-border'">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                :class="updateStatus.updateAvailable ? 'bg-green-500/10 text-green-400' : 'bg-space-700 text-gray-400'">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white">
+                                    <span x-text="updateStatus.updateAvailable ? 'Update Available' : 'Up to Date'"></span>
+                                </h4>
+                                <div class="flex items-center gap-3 mt-0.5">
+                                    <span class="text-sm text-gray-400">
+                                        Current: <span class="font-mono text-white" x-text="'v' + (updateStatus.currentVersion || $store.global.version)"></span>
+                                    </span>
+                                    <template x-if="updateStatus.updateAvailable && updateStatus.latestVersion">
+                                        <span class="text-sm text-green-400">
+                                            Latest: <span class="font-mono font-bold" x-text="'v' + updateStatus.latestVersion"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="btn btn-sm btn-ghost text-gray-400 hover:text-white"
+                                @click="checkForUpdates()" :disabled="checking">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="checking ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span x-text="checking ? 'Checking...' : 'Check Now'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Last check time -->
+                    <div x-show="updateStatus.lastCheck" class="mt-3 pt-3 border-t border-space-border/50">
+                        <span class="text-xs text-gray-500">Last checked: <span x-text="formatTime(updateStatus.lastCheck)"></span></span>
+                    </div>
+                </div>
+
+                <!-- Update Actions Card (shown when update available) -->
+                <template x-if="updateStatus.updateAvailable">
+                    <div class="view-card border-green-500/20">
+                        <div class="space-y-4">
+                            <!-- Changelog -->
+                            <div x-show="updateStatus.changelog" class="bg-space-800/50 rounded-lg p-4">
+                                <h5 class="text-sm font-semibold text-gray-300 mb-2">What's New</h5>
+                                <p class="text-sm text-gray-400 whitespace-pre-line" x-text="updateStatus.changelog"></p>
+                            </div>
+
+                            <!-- Release link -->
+                            <div x-show="updateStatus.releaseUrl" class="text-sm">
+                                <a :href="updateStatus.releaseUrl" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">
+                                    View release on GitHub
+                                </a>
+                            </div>
+
+                            <!-- Progress -->
+                            <div x-show="updateStatus.installProgress" class="flex items-center gap-2 text-sm text-yellow-400">
+                                <span class="loading loading-spinner loading-xs"></span>
+                                <span x-text="updateStatus.installProgress"></span>
+                            </div>
+
+                            <!-- Action buttons -->
+                            <div class="flex gap-3">
+                                <button class="btn btn-sm bg-green-600 hover:bg-green-700 border-none text-white"
+                                    @click="installUpdate()" :disabled="installing || updateStatus.installProgress">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    <span x-text="installing ? 'Installing...' : 'Install Update'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Restart Required Card (shown after install) -->
+                <template x-if="!updateStatus.updateAvailable && updateStatus.installProgress === 'Update installed!'">
+                    <div class="view-card border-yellow-500/20 bg-yellow-500/5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                </svg>
+                                <div>
+                                    <span class="text-white font-medium">Restart Required</span>
+                                    <p class="text-sm text-gray-400">Update has been installed. Restart the server to apply changes.</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm bg-yellow-600 hover:bg-yellow-700 border-none text-white"
+                                @click="restartServer()" :disabled="restarting">
+                                <span x-text="restarting ? 'Restarting...' : 'Restart Now'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Error display -->
+                <template x-if="updateStatus.error">
+                    <div class="view-card border-red-500/20 bg-red-500/5">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm text-red-300" x-text="updateStatus.error"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Info -->
+                <div class="text-sm text-gray-500 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Updates are checked automatically every 6 hours. You can also check manually.</span>
                 </div>
             </div>
 

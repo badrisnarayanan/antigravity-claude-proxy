@@ -13,6 +13,8 @@ import { config } from './config.js';
 import { getStrategyLabel, STRATEGY_NAMES, DEFAULT_STRATEGY } from './account-manager/strategies/index.js';
 import { getPackageVersion } from './utils/helpers.js';
 import tlsClient from './utils/tls-client.js';
+import discordBot from './modules/discord-bot.js';
+import autoUpdater from './modules/auto-updater.js';
 import path from 'path';
 import os from 'os';
 
@@ -157,11 +159,25 @@ ${environmentSection}
     if (isDebug) {
         logger.warn('Running in DEVELOPER mode - verbose logs enabled');
     }
+
+    // Start Discord bot if configured
+    if (config.discord?.enabled && config.discord?.botToken) {
+        discordBot.connect().catch(err => logger.error('[Discord] Startup failed:', err.message));
+    }
+
+    // Start periodic update checks
+    autoUpdater.startPeriodicChecks();
 });
 
 // Graceful shutdown
 const shutdown = async () => {
     logger.info('Shutting down server...');
+
+    try {
+        await discordBot.disconnect();
+    } catch (err) {
+        // ignore
+    }
 
     try {
         await tlsClient.exit();

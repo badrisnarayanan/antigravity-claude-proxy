@@ -1201,3 +1201,359 @@ window.Components.serverConfig = () => ({
         }
     }
 });
+
+/**
+ * Discord Config Component
+ * Handles Discord bot configuration in the settings tab
+ */
+window.Components.discordConfig = () => ({
+    discordConfig: {},
+    discordStatus: { enabled: false, connected: false, botUser: null, guilds: 0 },
+    testingDiscord: false,
+    reconnectingDiscord: false,
+    debounceTimers: {},
+
+    notificationTypes: [
+        { key: 'accountRateLimited', label: 'Account Rate Limited' },
+        { key: 'accountQuotaExhausted', label: 'Account Quota Exhausted' },
+        { key: 'accountInvalidated', label: 'Account Invalidated' },
+        { key: 'accountAdded', label: 'Account Added' },
+        { key: 'accountRemoved', label: 'Account Removed' },
+        { key: 'serverStarted', label: 'Server Started' },
+        { key: 'serverStopped', label: 'Server Stopped' },
+        { key: 'strategyChanged', label: 'Strategy Changed' },
+        { key: 'configChanged', label: 'Configuration Changed' },
+        { key: 'errorOccurred', label: 'Error Occurred' }
+    ],
+
+    init() {
+        if (this.$store.global.settingsTab === 'discord') {
+            this.fetchDiscordConfig();
+            this.fetchDiscordStatus();
+        }
+
+        this.$watch('$store.global.settingsTab', (tab, oldTab) => {
+            if (tab === 'discord' && oldTab !== undefined) {
+                this.fetchDiscordConfig();
+                this.fetchDiscordStatus();
+            }
+        });
+    },
+
+    async fetchDiscordConfig() {
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {}, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+            if (!response.ok) throw new Error('Failed to fetch config');
+            const data = await response.json();
+            this.discordConfig = data.config?.discord || {};
+        } catch (e) {
+            console.error('Failed to fetch discord config:', e);
+        }
+    },
+
+    async fetchDiscordStatus() {
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/discord/status', {}, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+            if (!response.ok) throw new Error('Failed to fetch status');
+            const data = await response.json();
+            this.discordStatus = data;
+        } catch (e) {
+            console.error('Failed to fetch discord status:', e);
+        }
+    },
+
+    async toggleDiscord(enabled) {
+        const store = Alpine.store('global');
+        const previous = this.discordConfig.enabled;
+        this.discordConfig.enabled = enabled;
+
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ discord: { enabled } })
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(`Discord bot ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                // Give the bot time to connect/disconnect, then poll status
+                setTimeout(() => this.fetchDiscordStatus(), 2000);
+                setTimeout(() => this.fetchDiscordStatus(), 5000);
+            } else {
+                throw new Error(data.error || 'Failed to update');
+            }
+        } catch (e) {
+            this.discordConfig.enabled = previous;
+            store.showToast('Failed to toggle Discord: ' + e.message, 'error');
+        }
+    },
+
+    saveDiscordField(field, value) {
+        if (this.debounceTimers[field]) clearTimeout(this.debounceTimers[field]);
+
+        this.debounceTimers[field] = setTimeout(async () => {
+            const store = Alpine.store('global');
+            try {
+                const payload = { discord: {} };
+                payload.discord[field] = value;
+
+                const { response, newPassword } = await window.utils.request('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }, store.webuiPassword);
+                if (newPassword) store.webuiPassword = newPassword;
+
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    store.showToast('Discord config saved', 'success');
+                    // For botToken, mark as saved locally without refetching
+                    // (refetch would return '********' and clear the input)
+                    if (field === 'botToken' && value) {
+                        this.discordConfig.botToken = '********';
+                    } else {
+                        await this.fetchDiscordConfig();
+                    }
+                }
+            } catch (e) {
+                store.showToast('Failed to save Discord config: ' + e.message, 'error');
+            }
+        }, 800);
+    },
+
+    saveDiscordChannel(channelName, value) {
+        if (this.debounceTimers['ch_' + channelName]) clearTimeout(this.debounceTimers['ch_' + channelName]);
+
+        this.debounceTimers['ch_' + channelName] = setTimeout(async () => {
+            const store = Alpine.store('global');
+            try {
+                const channels = {};
+                channels[channelName] = value;
+
+                const { response, newPassword } = await window.utils.request('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ discord: { channels } })
+                }, store.webuiPassword);
+                if (newPassword) store.webuiPassword = newPassword;
+
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    store.showToast(`${channelName} channel saved`, 'success');
+                    await this.fetchDiscordConfig();
+                }
+            } catch (e) {
+                store.showToast('Failed to save channel: ' + e.message, 'error');
+            }
+        }, 800);
+    },
+
+    async toggleNotification(key, enabled) {
+        const store = Alpine.store('global');
+        try {
+            const notifications = {};
+            notifications[key] = enabled;
+
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ discord: { notifications } })
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                if (!this.discordConfig.notifications) this.discordConfig.notifications = {};
+                this.discordConfig.notifications[key] = enabled;
+            }
+        } catch (e) {
+            store.showToast('Failed to update notification: ' + e.message, 'error');
+        }
+    },
+
+    async testDiscord() {
+        this.testingDiscord = true;
+        const store = Alpine.store('global');
+        try {
+            const { response, newPassword } = await window.utils.request('/api/discord/test', {
+                method: 'POST'
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast('Test notification sent to Discord', 'success');
+            } else {
+                throw new Error(data.error || 'Test failed');
+            }
+        } catch (e) {
+            store.showToast('Discord test failed: ' + e.message, 'error');
+        } finally {
+            this.testingDiscord = false;
+        }
+    },
+
+    async reconnectDiscord() {
+        this.reconnectingDiscord = true;
+        const store = Alpine.store('global');
+        try {
+            const { response, newPassword } = await window.utils.request('/api/discord/reconnect', {
+                method: 'POST'
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast('Discord bot reconnected', 'success');
+                this.discordStatus = data;
+            } else {
+                throw new Error(data.error || 'Reconnect failed');
+            }
+        } catch (e) {
+            store.showToast('Discord reconnect failed: ' + e.message, 'error');
+        } finally {
+            this.reconnectingDiscord = false;
+            setTimeout(() => this.fetchDiscordStatus(), 1000);
+        }
+    }
+});
+
+/**
+ * Updates Config Component
+ * Handles auto-update checking, installing, and restarting
+ */
+window.Components.updatesConfig = () => ({
+    updateStatus: { updateAvailable: false, currentVersion: null, latestVersion: null, lastCheck: null, error: null, installProgress: null },
+    checking: false,
+    installing: false,
+    restarting: false,
+
+    init() {
+        if (this.$store.global.settingsTab === 'updates') {
+            this.fetchUpdateStatus();
+        }
+
+        this.$watch('$store.global.settingsTab', (tab, oldTab) => {
+            if (tab === 'updates' && oldTab !== undefined) {
+                this.fetchUpdateStatus();
+            }
+        });
+    },
+
+    async fetchUpdateStatus() {
+        const password = Alpine.store('global').webuiPassword;
+        try {
+            const { response, newPassword } = await window.utils.request('/api/updates/status', {}, password);
+            if (newPassword) Alpine.store('global').webuiPassword = newPassword;
+            if (!response.ok) throw new Error('Failed to fetch status');
+            const data = await response.json();
+            this.updateStatus = data;
+        } catch (e) {
+            console.error('Failed to fetch update status:', e);
+        }
+    },
+
+    async checkForUpdates() {
+        this.checking = true;
+        const store = Alpine.store('global');
+        try {
+            const { response, newPassword } = await window.utils.request('/api/updates/check', {
+                method: 'POST'
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                this.updateStatus = data;
+                if (data.updateAvailable) {
+                    store.showToast(`Update available: v${data.latestVersion}`, 'success');
+                } else {
+                    store.showToast('Already up to date', 'success');
+                }
+            } else {
+                throw new Error(data.error || 'Check failed');
+            }
+        } catch (e) {
+            store.showToast('Update check failed: ' + e.message, 'error');
+        } finally {
+            this.checking = false;
+        }
+    },
+
+    async installUpdate() {
+        this.installing = true;
+        const store = Alpine.store('global');
+        try {
+            const { response, newPassword } = await window.utils.request('/api/updates/install', {
+                method: 'POST'
+            }, store.webuiPassword);
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.success) {
+                store.showToast(`Updated to v${data.version}. Restart to apply.`, 'success');
+                await this.fetchUpdateStatus();
+            } else {
+                throw new Error(data.error || 'Install failed');
+            }
+        } catch (e) {
+            store.showToast('Update install failed: ' + e.message, 'error');
+        } finally {
+            this.installing = false;
+        }
+    },
+
+    async restartServer() {
+        this.restarting = true;
+        const store = Alpine.store('global');
+        try {
+            await window.utils.request('/api/updates/restart', {
+                method: 'POST'
+            }, store.webuiPassword);
+
+            store.showToast('Server restarting... page will reload shortly.', 'success');
+
+            // Poll until server comes back
+            setTimeout(() => {
+                const poll = setInterval(async () => {
+                    try {
+                        const r = await fetch('/health');
+                        if (r.ok) {
+                            clearInterval(poll);
+                            window.location.reload();
+                        }
+                    } catch { /* server still down */ }
+                }, 2000);
+
+                // Give up after 30s
+                setTimeout(() => clearInterval(poll), 30000);
+            }, 3000);
+        } catch (e) {
+            store.showToast('Restart failed: ' + e.message, 'error');
+            this.restarting = false;
+        }
+    },
+
+    formatTime(isoString) {
+        if (!isoString) return 'Never';
+        try {
+            const d = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - d;
+            const diffMin = Math.floor(diffMs / 60000);
+            if (diffMin < 1) return 'Just now';
+            if (diffMin < 60) return `${diffMin}m ago`;
+            const diffHr = Math.floor(diffMin / 60);
+            if (diffHr < 24) return `${diffHr}h ago`;
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return isoString;
+        }
+    }
+});

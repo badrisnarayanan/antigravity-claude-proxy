@@ -118,7 +118,8 @@ src/
 │   └── index.js                # Express router and API endpoints
 │
 ├── modules/                    # Feature modules
-│   └── usage-stats.js          # Request tracking and history persistence
+│   ├── usage-stats.js          # Request tracking and history persistence
+│   └── discord-bot.js          # Discord bot integration (logs, notifications, commands)
 │
 ├── cli/                        # CLI tools
 │   └── accounts.js             # Account management CLI
@@ -194,6 +195,7 @@ public/
 - **src/config.js**: Runtime configuration with defaults (`globalQuotaThreshold`, `maxAccounts`, `accountSelection`, `devMode`, etc.)
 - **src/constants.js**: API endpoints, model mappings, fallback config, OAuth config, and all configuration values
 - **src/modules/usage-stats.js**: Tracks request volume by model/family, persists 30-day history to JSON, and auto-prunes old data.
+- **src/modules/discord-bot.js**: Discord bot integration with log streaming, notifications, model status, and slash commands
 - **src/fallback-config.js**: Model fallback mappings (`getFallbackModel()`, `hasFallback()`)
 - **src/errors.js**: Custom error classes (`RateLimitError`, `AuthError`, `ApiError`, etc.)
 
@@ -316,6 +318,30 @@ Each account object in `accounts.json` contains:
 - Placeholder data is purely client-side (generated in `data-store.js`, no backend changes)
 - All sub-toggles use unified neon-purple styling
 
+**Discord Bot Integration:**
+- Optional Discord bot for server observability without opening the WebUI
+- Enable via WebUI Settings → Discord tab, `DISCORD_ENABLED=true` env var, or `config.discord.enabled` in config.json
+- Bot token set via WebUI, `DISCORD_BOT_TOKEN` env var, or `config.discord.botToken`
+- **Features:**
+  - **Log Streaming**: Batches server logs (3s window) and sends as code blocks to a logs channel
+  - **Notifications**: Sends embeds for account events (rate limited, quota exhausted, added/removed, invalidated), server lifecycle (start/stop), strategy changes, and config updates
+  - **Model Status**: Periodically updates a pinned message with model quota bars (every 5 min)
+  - **Slash Commands**: `/status` (server info), `/models` (quota bars), `/accounts` (ephemeral account list), `/add-account` (OAuth link)
+- **Configuration** (`config.discord`):
+  - `enabled`: boolean - toggle bot on/off
+  - `botToken`: string - Discord bot token
+  - `channels.logs`: Channel ID for log streaming
+  - `channels.notifications`: Channel ID for alert embeds
+  - `channels.models`: Channel ID for model status
+  - `notifications.*`: boolean toggles for each notification type
+  - `logBatchIntervalMs`: Log batching interval (default 3000ms)
+  - `modelUpdateIntervalMs`: Model status update interval (default 300000ms)
+- **Architecture**: Single-file module (`src/modules/discord-bot.js`), lifecycle managed via `globalThis.discordBot`
+- **API Routes**:
+  - `GET /api/discord/status` - Bot connection status
+  - `POST /api/discord/test` - Send test notification
+  - `POST /api/discord/reconnect` - Force reconnect
+
 **Web Management UI:**
 
 - **Stack**: Vanilla JS + Alpine.js + Tailwind CSS (local build with PostCSS)
@@ -403,6 +429,9 @@ Each account object in `accounts.json` contains:
   - `PATCH /api/accounts/:email` - Update account quota thresholds (`quotaThreshold`, `modelQuotaThresholds`)
 - `/api/config/*` - Server configuration (read/write, includes `globalQuotaThreshold`, `devMode`)
 - `/api/strategy/health` - Strategy health data for hybrid strategy (gated behind `devMode`)
+- `/api/discord/status` - Discord bot connection status
+- `/api/discord/test` - Send test notification to Discord
+- `/api/discord/reconnect` - Force disconnect + reconnect Discord bot
 - `/api/claude/config` - Claude CLI settings
 - `/api/claude/mode` - Switch between Proxy/Paid mode (updates settings.json)
 - `/api/logs/stream` - SSE endpoint for real-time logs

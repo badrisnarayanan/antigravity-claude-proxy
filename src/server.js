@@ -21,6 +21,8 @@ import { clearThinkingSignatureCache } from './format/signature-cache.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
+import discordBot from './modules/discord-bot.js';
+import autoUpdater from './modules/auto-updater.js';
 
 // Parse fallback flag directly from command line args to avoid circular dependency
 const args = process.argv.slice(2);
@@ -43,6 +45,11 @@ app.disable('x-powered-by');
 
 // Initialize account manager (will be fully initialized on first request or startup)
 export const accountManager = new AccountManager();
+
+// Expose on globalThis for cross-module access (discord bot, etc.)
+globalThis.accountManager = accountManager;
+globalThis.discordBot = discordBot;
+globalThis.autoUpdater = autoUpdater;
 
 // Track initialization status
 let isInitialized = false;

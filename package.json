@@ -1,6 +1,6 @@
 {
   "name": "antigravity-claude-proxy",
-  "version": "2.7.6",
+  "version": "2.8.6",
   "description": "Proxy server to use Antigravity's Claude models with Claude Code CLI",
   "main": "src/index.js",
   "type": "module",
@@ -62,6 +62,7 @@
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^12.5.0",
     "cors": "^2.8.5",
+    "discord.js": "^14.25.1",
     "express": "^4.18.2",
     "undici": "^7.20.0",
     "wreq-js": "^2.0.1"
