@@ -162,6 +162,14 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                 const signatureFamily = getCachedSignatureFamily(block.signature);
                 const targetFamily = isClaudeModel ? 'claude' : isGeminiModel ? 'gemini' : null;
 
+                // For Claude: drop unknown or non-Claude signatures.
+                // This prevents resumed sessions from forwarding stale signatures that
+                // fail upstream validation with "Invalid `signature` in `thinking` block".
+                if (isClaudeModel && (!signatureFamily || signatureFamily !== 'claude')) {
+                    logger.debug('[ContentConverter] Dropping untrusted thinking signature for Claude model');
+                    continue;
+                }
+
                 // Drop blocks with incompatible signatures for Gemini (cross-model switch)
                 if (isGeminiModel && signatureFamily && targetFamily && signatureFamily !== targetFamily) {
                     logger.debug(`[ContentConverter] Dropping incompatible ${signatureFamily} thinking for ${targetFamily} model`);
