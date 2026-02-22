@@ -47,6 +47,19 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 4. Sends to Antigravity's Cloud Code API
 5. Converts responses back to **Anthropic format** with full thinking/streaming support
 
+## Key Features
+
+- **Anthropic-Compatible API** — Drop-in replacement for the Anthropic Messages API; works with Claude Code CLI, Gemini CLI, and OpenClaw
+- **Claude + Gemini Models** — Access Claude Sonnet 4.5, Claude Opus 4.6, Gemini 3 Flash, Gemini 3.1 Pro (all with thinking support)
+- **Multi-Account Load Balancing** — Add multiple Google accounts with Hybrid, Sticky, or Round-Robin selection strategies
+- **Web Management Console** — Real-time dashboard with quota monitoring, account management, live logs, and multi-language support
+- **Per-Account Quota Protection** — Set minimum quota thresholds per account and per model to proactively rotate before exhaustion
+- **Full Thinking/Streaming Support** — Extended thinking with `thoughtSignature` handling for multi-turn conversations
+- **Security Options** — Protect API endpoints with `API_KEY` and the dashboard with `WEBUI_PASSWORD`
+- **HTTP/HTTPS Proxy Support** — Route outbound requests through corporate firewalls and VPNs
+- **Developer Mode** — Granular debug toggles, log export, health inspector, and screenshot mode
+- **macOS Menu Bar App** — Native companion app for one-click server control ([antigravity-claude-proxy-bar](https://github.com/IrvanFza/antigravity-claude-proxy-bar))
+
 ## Prerequisites
 
 - **Node.js** 18 or later
@@ -70,7 +83,7 @@ antigravity-claude-proxy start
 ### Option 2: Clone Repository
 
 ```bash
-git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
+git clone https://github.com/badrisnarayanan/antigravity-claude-proxy.git
 cd antigravity-claude-proxy
 npm install
 npm start
@@ -158,7 +171,8 @@ You can configure these settings in two ways:
    - **Paid Mode**: Uses the official Anthropic Credits directly (requires your own subscription). This hides proxy settings to prevent accidental misconfiguration.
 4. Click **Apply to Claude CLI** to save your changes.
 
-> [!TIP] > **Configuration Precedence**: System environment variables (set in shell profile like `.zshrc`) take precedence over the `settings.json` file. If you use the Web Console to manage settings, ensure you haven't manually exported conflicting variables in your terminal.
+> [!TIP]
+> **Configuration Precedence**: System environment variables (set in shell profile like `.zshrc`) take precedence over the `settings.json` file. If you use the Web Console to manage settings, ensure you haven't manually exported conflicting variables in your terminal.
 
 #### **Manual Configuration**
 
@@ -294,6 +308,38 @@ ExecStart=/usr/bin/node /path/to/antigravity-claude-proxy/src/index.js
 ```
 
 Without this, the WebUI's Claude CLI tab won't be able to read or write your Claude Code configuration.
+
+---
+
+## Using with Gemini CLI
+
+The proxy also works with [Gemini CLI](https://github.com/google-gemini/gemini-cli). Set the following environment variables:
+
+```bash
+export GEMINI_API_KEY="test"
+export GEMINI_BASE_URL="http://localhost:8080"
+```
+
+Or configure in your shell profile and run `gemini` as usual. The proxy translates requests for Gemini models the same way it does for Claude Code.
+
+---
+
+## Security & Advanced Configuration
+
+The proxy supports several environment variables for security and tuning:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `PORT` | Server port | `8080` |
+| `HOST` | Bind address (use `127.0.0.1` on VPS) | `0.0.0.0` |
+| `API_KEY` | Protect `/v1/*` API endpoints | — |
+| `WEBUI_PASSWORD` | Password-protect the web dashboard | — |
+| `HTTP_PROXY` / `HTTPS_PROXY` | Route outbound requests through a proxy | — |
+| `DEBUG` | Enable debug logging | `false` |
+| `DEV_MODE` | Enable developer mode | `false` |
+| `OAUTH_CALLBACK_PORT` | Custom OAuth callback port (Windows fix) | `51121` |
+
+See [Advanced Configuration](docs/configuration.md) for the full list including retry logic, rate limit handling, and load balancing options.
 
 ---
 
