@@ -82,8 +82,17 @@ npm start
 
 ### 1. Start the Proxy Server
 
+The proxy now supports background process management.
+
 ```bash
-# If installed via npm
+# Using the shorthand alias (recommended)
+acc start          # Start server as background process
+acc stop           # Stop the server
+acc restart        # Restart the server
+acc status         # Check server status
+acc ui             # Open WebUI in browser
+
+# Or using the full command name
 antigravity-claude-proxy start
 
 # If using npx
@@ -94,6 +103,12 @@ npm start
 ```
 
 The server runs on `http://localhost:8080` by default.
+
+**Background Process Features:**
+- Server runs in the background (detached process)
+- PID file stored in `~/.config/antigravity-proxy/server.pid`
+- Survives terminal closure
+- Easy start/stop/restart management
 
 ### 2. Link Account(s)
 

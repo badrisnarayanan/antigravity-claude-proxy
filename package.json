@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "bin": {
-    "antigravity-claude-proxy": "bin/cli.js"
+    "antigravity-claude-proxy": "bin/cli.js",
+    "acc": "bin/cli.js"
   },
   "files": [
     "src",
