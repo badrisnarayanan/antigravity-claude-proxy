@@ -464,6 +464,14 @@ window.translations.en = {
     weightTokens: "Tokens Weight",
     weightQuota: "Quota Weight",
     weightLru: "LRU Weight",
+    // Thinking Tag Mode
+    thinkingTagMode: "Thinking Tag Mode",
+    thinkingTagModeLabel: "Thinking Tag Processing",
+    thinkingTagModeDesc: "How <thinking> text tags in responses are handled",
+    thinkingTagPassthrough: "Passthrough (No Change)",
+    thinkingTagStrip: "Strip (Remove)",
+    thinkingTagNative: "Native (Convert to Thinking Blocks)",
+    thinkingTagModeUpdated: "Thinking Tag Mode updated",
     // Model Dropdown
     clearSelection: "Clear selection",
 };

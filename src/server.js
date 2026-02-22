@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
+import { processThinkingTagsNonStreaming, wrapStreamWithThinkingProcessor } from './format/thinking-tag-processor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -790,8 +791,9 @@ app.post('/v1/messages', async (req, res) => {
             // to ensure we don't send a 200 OK if the upstream fails immediately (e.g. 429/503).
 
             try {
-                // Initialize the generator
-                const generator = sendMessageStream(request, accountManager, FALLBACK_ENABLED);
+                // Initialize the generator, wrap with thinking tag processor if needed
+                const rawGenerator = sendMessageStream(request, accountManager, FALLBACK_ENABLED);
+                const generator = wrapStreamWithThinkingProcessor(rawGenerator, config.thinkingTagMode);
                 
                 // BUFFERING STRATEGY:
                 // Pull the first event *before* sending headers. 
@@ -850,7 +852,7 @@ app.post('/v1/messages', async (req, res) => {
         } else {
             // Handle non-streaming response
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
-            res.json(response);
+            res.json(processThinkingTagsNonStreaming(response, config.thinkingTagMode));
         }
 
     } catch (error) {

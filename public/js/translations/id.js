@@ -508,6 +508,14 @@ window.translations.id = {
     weightTokens: "Bobot Token",
     weightQuota: "Bobot Kuota",
     weightLru: "Bobot LRU",
+    // Mode Thinking Tag
+    thinkingTagMode: "Mode Thinking Tag",
+    thinkingTagModeLabel: "Pemrosesan Thinking Tag",
+    thinkingTagModeDesc: "Cara menangani tag teks <thinking> dalam respons",
+    thinkingTagPassthrough: "Teruskan (Tanpa Perubahan)",
+    thinkingTagStrip: "Hapus (Buang)",
+    thinkingTagNative: "Natif (Konversi ke Blok Pemikiran)",
+    thinkingTagModeUpdated: "Mode Thinking Tag diperbarui",
     // Dropdown Model
     clearSelection: "Hapus pilihan",
 };

@@ -385,6 +385,39 @@ window.Components.serverConfig = () => ({
             (v) => window.Validators.validateRange(v, MAX_CAPACITY_RETRIES_MIN, MAX_CAPACITY_RETRIES_MAX, 'Max Capacity Retries'));
     },
 
+    async toggleThinkingTagMode(mode) {
+        const store = Alpine.store('global');
+        const validModes = ['passthrough', 'strip', 'native'];
+
+        if (!validModes.includes(mode)) {
+            store.showToast('Invalid thinking tag mode', 'error');
+            return;
+        }
+
+        const previousValue = this.serverConfig.thinkingTagMode || 'passthrough';
+        this.serverConfig.thinkingTagMode = mode;
+
+        try {
+            const { response, newPassword } = await window.utils.request('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ thinkingTagMode: mode })
+            }, store.webuiPassword);
+
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(store.t('thinkingTagModeUpdated'), 'success');
+            } else {
+                throw new Error(data.error || 'Failed to update');
+            }
+        } catch (e) {
+            this.serverConfig.thinkingTagMode = previousValue;
+            store.showToast('Failed to update Thinking Tag Mode: ' + e.message, 'error');
+        }
+    },
+
     // Toggle Account Selection Strategy
     async toggleStrategy(strategy) {
         const store = Alpine.store('global');
