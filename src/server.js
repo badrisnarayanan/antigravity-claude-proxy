@@ -188,8 +188,10 @@ app.use((req, res, next) => {
         const status = res.statusCode;
         const logMsg = `[${req.method}] ${req.originalUrl} ${status} (${duration}ms)`;
 
-        // Skip standard logging for event logging batch unless in debug mode
-        if (req.originalUrl === '/api/event_logging/batch' || req.originalUrl.startsWith('/v1/messages/count_tokens') || req.originalUrl.startsWith('/.well-known/')) {
+        // Skip standard logging for event logging batch, /v1/messages, and token counting unless in debug mode
+        if (req.originalUrl === '/api/event_logging/batch' ||
+            req.originalUrl.startsWith('/v1/messages') ||
+            req.originalUrl.startsWith('/.well-known/')) {
             if (logger.isDebugEnabled) {
                 logger.debug(logMsg);
             }
@@ -773,6 +775,30 @@ app.post('/v1/messages', async (req, res) => {
 
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
 
+        // Only include full request payloads in debug mode to protect sensitive data
+        // In normal mode, only include metadata (model, stream flag, message count/roles)
+        const logDetails = logger.isDebugEnabled ? {
+            request: {
+                model: request.model,
+                stream: !!request.stream,
+                messages: request.messages,
+                system: request.system,
+                tools: request.tools,
+                thinking: request.thinking
+            }
+        } : {
+            request: {
+                model: request.model,
+                stream: !!request.stream,
+                messageCount: request.messages?.length || 0,
+                hasSystem: !!request.system,
+                toolCount: request.tools?.length || 0,
+                thinking: !!request.thinking
+            }
+        };
+
+        logger.debug(`[API] Request for model: ${request.model}, stream: ${!!stream}`, logger.withData(logDetails));
+
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
         if (logger.isDebugEnabled) {
             logger.debug('[API] Message structure:');
@@ -792,11 +818,82 @@ app.post('/v1/messages', async (req, res) => {
             try {
                 // Initialize the generator
                 const generator = sendMessageStream(request, accountManager, FALLBACK_ENABLED);
-                
+
                 // BUFFERING STRATEGY:
-                // Pull the first event *before* sending headers. 
+                // Pull the first event *before* sending headers.
                 // If this throws, we can safely send a 4xx/5xx error JSON.
                 const firstResult = await generator.next();
+
+                // Accumulator for logging
+                let streamResponse = {
+                    id: null,
+                    type: 'message',
+                    role: 'assistant',
+                    model: request.model,
+                    content: [],
+                    usage: { input_tokens: 0, output_tokens: 0 }
+                };
+
+                // Helper to accumulate stream events for logging
+                const accumulateStreamEvent = (event) => {
+                    switch (event.type) {
+                        case 'message_start':
+                            if (event.message) {
+                                streamResponse.id = event.message.id;
+                                streamResponse.role = event.message.role;
+                                streamResponse.model = event.message.model;
+                                if (event.message.usage) {
+                                    streamResponse.usage.input_tokens = event.message.usage.input_tokens || 0;
+                                }
+                            }
+                            break;
+                        case 'content_block_start':
+                            if (event.content_block) {
+                                streamResponse.content[event.index] = { ...event.content_block };
+                                if (streamResponse.content[event.index].type === 'text' && !streamResponse.content[event.index].text) {
+                                    streamResponse.content[event.index].text = '';
+                                } else if (streamResponse.content[event.index].type === 'tool_use' && !streamResponse.content[event.index].input) {
+                                    streamResponse.content[event.index].input = '';
+                                } else if (streamResponse.content[event.index].type === 'thinking' && !streamResponse.content[event.index].thinking) {
+                                    streamResponse.content[event.index].thinking = '';
+                                }
+                            }
+                            break;
+                        case 'content_block_delta':
+                            if (event.delta && streamResponse.content[event.index]) {
+                                const block = streamResponse.content[event.index];
+                                if (event.delta.type === 'text_delta') {
+                                    block.text = (block.text || '') + (event.delta.text || '');
+                                } else if (event.delta.type === 'input_json_delta') {
+                                    block.input = (block.input || '') + (event.delta.partial_json || '');
+                                } else if (event.delta.type === 'thinking_delta') {
+                                    block.thinking = (block.thinking || '') + (event.delta.thinking || '');
+                                } else if (event.delta.type === 'signature_delta') {
+                                    block.signature = (block.signature || '') + (event.delta.signature || '');
+                                }
+                            }
+                            break;
+                        case 'message_delta':
+                            if (event.usage) {
+                                streamResponse.usage.output_tokens = event.usage.output_tokens || streamResponse.usage.output_tokens;
+                            }
+                            break;
+                    }
+                };
+
+                const finalizeAccumulatedResponse = () => {
+                    // Parse tool_use input if it's a string
+                    streamResponse.content.forEach(block => {
+                        if (block.type === 'tool_use' && typeof block.input === 'string') {
+                            try {
+                                block.input = JSON.parse(block.input);
+                            } catch (e) {
+                                // Keep as string if invalid JSON
+                            }
+                        }
+                    });
+                    return streamResponse;
+                };
 
                 // If we get here, the stream started successfully.
                 res.status(200);
@@ -808,22 +905,42 @@ app.post('/v1/messages', async (req, res) => {
 
                 // If the generator isn't done, send the first chunk
                 if (!firstResult.done) {
-                    res.write(`event: ${firstResult.value.type}\ndata: ${JSON.stringify(firstResult.value)}\n\n`);
+                    const event = firstResult.value;
+                    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     if (res.flush) res.flush();
+                    accumulateStreamEvent(event);
                 }
 
                 // Continue with the rest of the stream
                 for await (const event of generator) {
                     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
                     if (res.flush) res.flush();
+                    accumulateStreamEvent(event);
                 }
+
+                // Log final accumulated response
+                // Only include full response in debug mode to protect sensitive data
+                const responseLogData = logger.isDebugEnabled 
+                    ? finalizeAccumulatedResponse()
+                    : {
+                        usage: finalizeAccumulatedResponse().usage,
+                        model: request.model
+                    };
                 
+                logger.info(`[API] Transaction finished for model: ${request.model}`, logger.withData({
+                    request: logDetails.request,
+                    response: responseLogData
+                }));
+
                 res.end();
 
             } catch (error) {
                 // If we haven't sent headers yet, we can send a proper error status
                 if (!res.headersSent) {
-                    logger.error('[API] Initial stream error:', error);
+                    logger.error(`[API] Transaction failed for model: ${request.model}`, error, logger.withData({
+                        request: logDetails.request,
+                        error: { message: error.message, stack: logger.isDebugEnabled ? error.stack : undefined }
+                    }));
                     const { errorType, statusCode, errorMessage } = parseError(error);
                     
                     return res.status(statusCode).json({
@@ -850,11 +967,29 @@ app.post('/v1/messages', async (req, res) => {
         } else {
             // Handle non-streaming response
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            // Only include full response in debug mode to protect sensitive data
+            const responseLogData = logger.isDebugEnabled 
+                ? response
+                : {
+                    usage: response.usage,
+                    model: response.model
+                };
+            
+            logger.info(`[API] Transaction finished for model: ${request.model}`, logger.withData({
+                request: logDetails.request,
+                response: responseLogData
+            }));
             res.json(response);
         }
 
     } catch (error) {
-        logger.error('[API] Error:', error);
+        logger.error('[API] Error:', error, logger.withData({
+            request: typeof logDetails !== 'undefined' ? logDetails.request : null,
+            error: {
+                message: error.message,
+                stack: logger.isDebugEnabled ? error.stack : undefined
+            }
+        }));
 
         let { errorType, statusCode, errorMessage } = parseError(error);
 
