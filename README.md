@@ -143,6 +143,103 @@ curl "http://localhost:8080/account-limits?format=table"
 
 ---
 
+## API 接入（适用于任意客户端）
+
+该代理提供 **Anthropic 兼容 API**。
+
+### 基础地址
+
+使用：
+
+```text
+http://localhost:8080
+```
+
+### 鉴权
+
+如果你在代理服务端配置了 `API_KEY`，所有 `/v1/*` 请求都必须带上：
+
+```http
+Authorization: Bearer <API_KEY>
+```
+
+如果未配置 `API_KEY`，`/v1/*` 端点默认不强制鉴权。  
+对于必须填写 token 的工具，填 `test` 即可。
+
+### 可用端点
+
+- `GET /v1/models` - 获取可用模型列表
+- `POST /v1/messages` - Anthropic Messages API（支持非流式和流式）
+- `GET /health` - 查看服务与账号健康状态
+
+说明：`POST /v1/messages/count_tokens` 当前返回 `501 not_implemented`。
+
+### cURL 示例
+
+获取模型列表：
+
+```bash
+curl http://localhost:8080/v1/models \
+  -H "Authorization: Bearer <YOUR_API_KEY_OR_TEST>"
+```
+
+发送消息：
+
+```bash
+curl http://localhost:8080/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_API_KEY_OR_TEST>" \
+  -d '{
+    "model": "claude-sonnet-4-5-thinking",
+    "max_tokens": 512,
+    "messages": [
+      { "role": "user", "content": "你好" }
+    ]
+  }'
+```
+
+流式输出：
+
+```bash
+curl -N http://localhost:8080/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_API_KEY_OR_TEST>" \
+  -d '{
+    "model": "claude-sonnet-4-5-thinking",
+    "max_tokens": 512,
+    "stream": true,
+    "messages": [
+      { "role": "user", "content": "写一首简短的诗。" }
+    ]
+  }'
+```
+
+### Anthropic SDK 示例（JavaScript）
+
+```js
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_AUTH_TOKEN || "test",
+  baseURL: process.env.ANTHROPIC_BASE_URL || "http://localhost:8080"
+});
+
+const resp = await client.messages.create({
+  model: "claude-sonnet-4-5-thinking",
+  max_tokens: 512,
+  messages: [{ role: "user", content: "来自其他程序的调用测试" }]
+});
+
+console.log(resp.content);
+```
+
+### 兼容性说明
+
+本项目支持 Anthropic 风格端点（`/v1/messages`）。  
+不直接提供 OpenAI Chat Completions（`/v1/chat/completions`）端点。
+
+---
+
 ## Using with Claude Code CLI
 
 ### Configure Claude Code
