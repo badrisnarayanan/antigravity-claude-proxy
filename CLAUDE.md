@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-5-thinking`, `claude-opus-4-6-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3.1-pro-low`, `gemini-3.1-pro-high`) with Claude Code CLI.
+Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-6-thinking`, `claude-opus-4-6-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3.1-pro-low`, `gemini-3.1-pro-high`) with Claude Code CLI.
 
 The proxy translates requests from Anthropic Messages API format → Google Generative AI format → Antigravity Cloud Code API, then converts responses back to Anthropic format with full thinking/streaming support.
 
@@ -266,7 +266,7 @@ Each account object in `accounts.json` contains:
 **Model Fallback (--fallback flag):**
 - When all accounts are exhausted for a model, automatically falls back to an alternate model
 - Fallback mappings defined in `MODEL_FALLBACK_MAP` in `src/constants.js`
-- Thinking models fall back to thinking models (e.g., `claude-sonnet-4-5-thinking` → `gemini-3-flash`)
+- Thinking models fall back to thinking models (e.g., `claude-sonnet-4-6-thinking` → `gemini-3-flash`)
 - Fallback is disabled on recursive calls to prevent infinite chains
 - Enable with `npm start -- --fallback` or `FALLBACK=true` environment variable
 

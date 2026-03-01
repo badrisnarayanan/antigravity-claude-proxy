@@ -278,16 +278,16 @@ export const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, a powerful a
 // Model fallback mapping - maps primary model to fallback when quota exhausted
 export const MODEL_FALLBACK_MAP = {
     'gemini-3.1-pro-high': 'claude-opus-4-6-thinking',
-    'gemini-3.1-pro-low': 'claude-sonnet-4-5',
-    'gemini-3-flash': 'claude-sonnet-4-5-thinking',
+    'gemini-3.1-pro-low': 'claude-sonnet-4-6',
+    'gemini-3-flash': 'claude-sonnet-4-6-thinking',
     'claude-opus-4-6-thinking': 'gemini-3.1-pro-high',
-    'claude-sonnet-4-5-thinking': 'gemini-3-flash',
-    'claude-sonnet-4-5': 'gemini-3-flash'
+    'claude-sonnet-4-6-thinking': 'gemini-3-flash',
+    'claude-sonnet-4-6': 'gemini-3-flash'
 };
 
 // Default test models for each family (used by test suite)
 export const TEST_MODELS = {
-    claude: 'claude-sonnet-4-5-thinking',
+    claude: 'claude-sonnet-4-6-thinking',
     gemini: 'gemini-3-flash'
 };
 
@@ -300,9 +300,9 @@ export const DEFAULT_PRESETS = [
             ANTHROPIC_BASE_URL: 'http://localhost:8080',
             ANTHROPIC_MODEL: 'claude-opus-4-6-thinking',
             ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-thinking',
-            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-5-thinking',
-            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-sonnet-4-5',
-            CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-4-5-thinking',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6-thinking',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-sonnet-4-6',
+            CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-4-6-thinking',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
         }
     },

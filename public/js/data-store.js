@@ -81,7 +81,7 @@ document.addEventListener('alpine:init', () => {
                         this.models = data.models;
                         this.modelConfig = data.modelConfig || {};
                         this.usageHistory = data.usageHistory || {};
-                        
+
                         // Don't show loading on initial load if we have cache
                         this.initialLoad = false;
                         this.computeQuotaRows();
@@ -351,7 +351,7 @@ document.addEventListener('alpine:init', () => {
 
             this.quotaRows = rows.sort((a, b) => {
                 if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-                
+
                 let valA = a[sortCol];
                 let valB = b[sortCol];
 
@@ -436,8 +436,8 @@ document.addEventListener('alpine:init', () => {
         _generatePlaceholderData() {
             const models = [
                 'claude-opus-4-6-thinking',
-                'claude-sonnet-4-5-thinking',
-                'claude-sonnet-4-5',
+                'claude-sonnet-4-6-thinking',
+                'claude-sonnet-4-6',
                 'gemini-3.1-pro-high',
                 'gemini-3.1-pro-low',
                 'gemini-3-flash'

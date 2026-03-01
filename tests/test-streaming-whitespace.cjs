@@ -67,7 +67,7 @@ async function runTests() {
         ];
 
         const response = new MockResponse(chunks);
-        const originalModel = 'claude-sonnet-4-5';
+        const originalModel = 'claude-sonnet-4-6';
 
         let fullText = '';
         const generator = streamSSEResponse(response, originalModel);
@@ -91,7 +91,7 @@ async function runTests() {
         ];
 
         const response = new MockResponse(chunks);
-        const originalModel = 'claude-sonnet-4-5';
+        const originalModel = 'claude-sonnet-4-6';
 
         let fullText = '';
         const generator = streamSSEResponse(response, originalModel);
