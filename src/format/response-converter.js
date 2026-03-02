@@ -67,10 +67,8 @@ export function convertGoogleToAnthropic(googleResponse, model) {
             } else {
                 anthropicContent.push({
                     type: 'text',
-                    text: part.text + (anthropicContent.length === 0 && !part.thought ? searchResultsText : '') // Append search results to first text block
+                    text: part.text
                 });
-                // Clear searchResultsText so it's not added again
-                if (anthropicContent.length > 0 && !part.thought) searchResultsText = '';
             }
         } else if (part.functionCall) {
             // Convert functionCall to tool_use
@@ -105,13 +103,17 @@ export function convertGoogleToAnthropic(googleResponse, model) {
         }
     }
 
-    // If we have search results but no text parts were found/processed to attach them to,
-    // add a dedicated text block for them
+    // Append search results to the last text block, or add a new one
     if (searchResultsText) {
-        anthropicContent.push({
-            type: 'text',
-            text: searchResultsText
-        });
+        const lastTextBlock = [...anthropicContent].reverse().find(b => b.type === 'text');
+        if (lastTextBlock) {
+            lastTextBlock.text += searchResultsText;
+        } else {
+            anthropicContent.push({
+                type: 'text',
+                text: searchResultsText
+            });
+        }
     }
 
     // Determine stop reason
