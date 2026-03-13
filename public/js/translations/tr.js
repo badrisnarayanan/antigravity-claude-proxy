@@ -311,7 +311,7 @@ window.translations.tr = {
     mcpCliDesc: "Daha az bağlam tüketimi ile güvenilir araç kullanımı için deneysel MCP entegrasyonunu etkinleştirir.",
     gemini1mMode: "Gemini 1M Bağlam Modu",
     gemini1mDesc: "1M bağlam penceresi desteği için Gemini modellerine [1m] son eki ekler.",
-    gemini1mWarning: "⚠ Büyük bağlam, Gemini-3-Pro performansını düşürebilir.",
+    gemini1mWarning: "⚠ Büyük bağlam, Gemini performansını düşürebilir.",
     clickToSet: "Yapılandırmak için tıklayın...",
     none: "Hiçbiri",
     // Quota Distribution

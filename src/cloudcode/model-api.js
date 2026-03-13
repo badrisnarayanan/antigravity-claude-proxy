@@ -14,6 +14,7 @@ import {
     MODEL_VALIDATION_CACHE_TTL_MS
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
+import { throttledFetch } from '../utils/helpers.js';
 
 // Model validation cache
 const modelCache = {
@@ -28,9 +29,6 @@ const modelCache = {
  * @returns {boolean} True if model is supported
  */
 function isSupportedModel(modelId) {
-    // Explicitly support the virtual web-search model
-    if (modelId === 'web-search') return true;
-
     const family = getModelFamily(modelId);
     return family === 'claude' || family === 'gemini';
 }
@@ -51,21 +49,12 @@ export async function listModels(token) {
     const modelList = Object.entries(data.models)
         .filter(([modelId]) => isSupportedModel(modelId))
         .map(([modelId, modelData]) => ({
-        id: modelId,
-        object: 'model',
-        created: Math.floor(Date.now() / 1000),
-        owned_by: 'anthropic',
-        description: modelData.displayName || modelId
-    }));
-
-    // Add web-search explicitly
-    modelList.push({
-        id: 'web-search',
-        object: 'model',
-        created: Math.floor(Date.now() / 1000),
-        owned_by: 'anthropic',
-        description: 'Google Web Search (powered by Gemini)'
-    });
+            id: modelId,
+            object: 'model',
+            created: Math.floor(Date.now() / 1000),
+            owned_by: 'anthropic',
+            description: modelData.displayName || modelId
+        }));
 
     // Warm the model validation cache
     modelCache.validModels = new Set(modelList.map(m => m.id));
@@ -98,7 +87,7 @@ export async function fetchAvailableModels(token, projectId = null) {
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
             const url = `${endpoint}/v1internal:fetchAvailableModels`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body)
@@ -107,6 +96,13 @@ export async function fetchAvailableModels(token, projectId = null) {
             if (!response.ok) {
                 const errorText = await response.text();
                 logger.warn(`[CloudCode] fetchAvailableModels error at ${endpoint}: ${response.status}`);
+                // Detect permanent ToS ban — no point trying other endpoints
+                if (response.status === 403) {
+                    const lower = (errorText || '').toLowerCase();
+                    if (lower.includes('has been disabled') && lower.includes('violation of terms of service')) {
+                        throw new Error(`ACCOUNT_BANNED: ${errorText}`);
+                    }
+                }
                 continue;
             }
 
@@ -190,19 +186,25 @@ export async function getSubscriptionTier(token) {
     for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
         try {
             const url = `${endpoint}/v1internal:loadCodeAssist`;
-            const response = await fetch(url, {
+            const response = await throttledFetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
-                    metadata: {
-                        ...CLIENT_METADATA,
-                        duetProject: 'rising-fact-p41fc'
-                    }
+                    metadata: CLIENT_METADATA,
+                    mode: 1
                 })
             });
 
             if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
                 logger.warn(`[CloudCode] loadCodeAssist error at ${endpoint}: ${response.status}`);
+                // Detect permanent ToS ban — no point trying other endpoints
+                if (response.status === 403) {
+                    const lower = (errorText || '').toLowerCase();
+                    if (lower.includes('has been disabled') && lower.includes('violation of terms of service')) {
+                        throw new Error(`ACCOUNT_BANNED: ${errorText}`);
+                    }
+                }
                 continue;
             }
 
@@ -320,9 +322,6 @@ async function populateModelCache(token, projectId = null) {
  * @returns {Promise<boolean>} True if model is valid
  */
 export async function isValidModel(modelId, token, projectId = null) {
-    // Explicitly validate the virtual web-search model
-    if (modelId === 'web-search') return true;
-
     try {
         // Populate cache if needed
         await populateModelCache(token, projectId);

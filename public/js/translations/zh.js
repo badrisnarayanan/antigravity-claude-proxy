@@ -106,7 +106,7 @@ window.translations.zh = {
     loadPreset: "加载预设到表单",
     load: "加载",
     presetHint: "选择预设以加载。点击“应用到 Claude CLI”以保存更改。",
-    presetLoaded: "预设已加载。点击"应用到 Claude CLI"以保存。",
+    presetLoaded: "预设已加载。点击 \"应用到 Claude CLI\" 以保存。",
     presetSaved: "预设已保存",
     presetDeleted: "预设已删除",
     claudeConfigNotApplied: "Claude CLI 未配置",
@@ -329,7 +329,7 @@ window.translations.zh = {
     mcpCliDesc: "启用实验性 MCP 集成，减少上下文消耗，提高工具调用可靠性。",
     gemini1mMode: "Gemini 1M 上下文模式",
     gemini1mDesc: "为 Gemini 模型添加 [1m] 后缀以支持 1M 上下文窗口。",
-    gemini1mWarning: "⚠ 大上下文可能降低 Gemini-3-Pro 性能。",
+    gemini1mWarning: "⚠ 大上下文可能降低 Gemini 性能。",
     clickToSet: "点击进行配置...",
     none: "无",
     // Quota Distribution

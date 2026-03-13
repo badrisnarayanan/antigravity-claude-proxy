@@ -36,8 +36,8 @@ Add the following configuration:
             "maxTokens": 65536
           },
           {
-            "id": "gemini-3-pro-high",
-            "name": "Gemini 3 Pro High",
+            "id": "gemini-3.1-pro-high",
+            "name": "Gemini 3.1 Pro High",
             "reasoning": true,
             "input": ["text", "image"],
             "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
@@ -45,8 +45,8 @@ Add the following configuration:
             "maxTokens": 65536
           },
           {
-            "id": "claude-sonnet-4-5",
-            "name": "Claude Sonnet 4.5",
+            "id": "claude-sonnet-4-6",
+            "name": "Claude Sonnet 4.6",
             "reasoning": false,
             "input": ["text", "image"],
             "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
@@ -54,8 +54,8 @@ Add the following configuration:
             "maxTokens": 16384
           },
           {
-            "id": "claude-sonnet-4-5-thinking",
-            "name": "Claude Sonnet 4.5 Thinking",
+            "id": "claude-sonnet-4-6-thinking",
+            "name": "Claude Sonnet 4.6 Thinking",
             "reasoning": true,
             "input": ["text", "image"],
             "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
@@ -63,8 +63,8 @@ Add the following configuration:
             "maxTokens": 16384
           },
           {
-            "id": "claude-opus-4-5-thinking",
-            "name": "Claude Opus 4.5 Thinking",
+            "id": "claude-opus-4-6-thinking",
+            "name": "Claude Opus 4.6 Thinking",
             "reasoning": true,
             "input": ["text", "image"],
             "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
@@ -79,7 +79,7 @@ Add the following configuration:
     "defaults": {
       "model": {
         "primary": "antigravity-proxy/gemini-3-flash",
-        "fallbacks": ["antigravity-proxy/gemini-3-pro-high"]
+        "fallbacks": ["antigravity-proxy/gemini-3.1-pro-high"]
       },
       "models": {
         "antigravity-proxy/gemini-3-flash": {}
@@ -118,7 +118,7 @@ You should see models prefixed with `antigravity-proxy/` in the list.
 To change the default model:
 
 ```bash
-openclaw models set antigravity-proxy/claude-opus-4-5-thinking
+openclaw models set antigravity-proxy/claude-opus-4-6-thinking
 ```
 
 Or edit the `model.primary` field in your config file.

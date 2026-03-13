@@ -329,7 +329,7 @@ window.translations.en = {
     mcpCliDesc: "Enables experimental MCP integration for reliable tool usage with reduced context consumption.",
     gemini1mMode: "Gemini 1M Context Mode",
     gemini1mDesc: "Appends [1m] suffix to Gemini models for 1M context window support.",
-    gemini1mWarning: "⚠ Large context may reduce Gemini-3-Pro performance.",
+    gemini1mWarning: "⚠ Large context may reduce Gemini performance.",
     clickToSet: "Click to configure...",
     none: "None",
     // Quota Distribution

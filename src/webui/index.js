@@ -292,6 +292,15 @@ export function mountWebUI(app, dirname, accountManager) {
             const { email } = req.params;
             accountManager.clearTokenCache(email);
             accountManager.clearProjectCache(email);
+
+            // For verification errors (403 VALIDATION_REQUIRED), clear isInvalid on refresh.
+            // The user has completed verification on Google's site and clicks Refresh to re-enable.
+            // Auth errors (no verifyUrl) still require OAuth re-auth via FIX button.
+            const account = accountManager.getAllAccounts().find(a => a.email === email);
+            if (account && account.isInvalid && account.verifyUrl) {
+                accountManager.clearInvalid(email);
+            }
+
             res.json({
                 status: 'ok',
                 message: `Token cache cleared for ${email}`
@@ -572,7 +581,7 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/config', async (req, res) => {
         try {
-            const { debug, devMode, logLevel, persistTokenCache } = req.body;
+            const { debug, devMode, logLevel, persistTokenCache, requestThrottlingEnabled, requestDelayMs } = req.body;
 
             // Validate tunable config fields via shared helper
             const updates = validateConfigFields(req.body);
@@ -592,6 +601,12 @@ export function mountWebUI(app, dirname, accountManager) {
             }
             if (typeof persistTokenCache === 'boolean') {
                 updates.persistTokenCache = persistTokenCache;
+            }
+            if (typeof requestThrottlingEnabled === 'boolean') {
+                updates.requestThrottlingEnabled = requestThrottlingEnabled;
+            }
+            if (typeof requestDelayMs === 'number' && requestDelayMs >= 100 && requestDelayMs <= 5000) {
+                updates.requestDelayMs = requestDelayMs;
             }
 
             if (Object.keys(updates).length === 0) {

@@ -4,12 +4,14 @@
  * Handles loading and saving account configuration to disk.
  */
 
-import { readFile, writeFile, mkdir, access } from 'fs/promises';
+import { readFile, writeFile, mkdir, access, rename } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
 import { dirname } from 'path';
 import { ACCOUNT_CONFIG_PATH } from '../constants.js';
 import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
+
+let writeLock = null;
 
 /**
  * Load accounts from the config file
@@ -28,9 +30,11 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             ...acc,
             lastUsed: acc.lastUsed || null,
             enabled: acc.enabled !== false, // Default to true if not specified
-            // Reset invalid flag on startup - give accounts a fresh chance to refresh
-            isInvalid: false,
-            invalidReason: null,
+            // Reset invalid flag on startup - give accounts a fresh chance
+            // EXCEPT accounts with a verifyUrl — those need user intervention
+            isInvalid: acc.verifyUrl ? (acc.isInvalid || false) : false,
+            invalidReason: acc.verifyUrl ? (acc.invalidReason || null) : null,
+            verifyUrl: acc.verifyUrl || null,
             modelRateLimits: acc.modelRateLimits || {},
             // New fields for subscription and quota tracking
             subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
@@ -105,8 +109,18 @@ export function loadDefaultAccount(dbPath) {
  * @param {number} activeIndex - Current active account index
  */
 export async function saveAccounts(configPath, accounts, settings, activeIndex) {
+    // Serialize writes to prevent concurrent corruption
+    const previousLock = writeLock;
+    let resolve;
+    writeLock = new Promise(r => { resolve = r; });
+
     try {
-        // Ensure directory exists
+        if (previousLock) await previousLock;
+    } catch {
+        // Previous write failed, proceed anyway
+    }
+
+    try {
         const dir = dirname(configPath);
         await mkdir(dir, { recursive: true });
 
@@ -114,7 +128,7 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
             accounts: accounts.map(acc => ({
                 email: acc.email,
                 source: acc.source,
-                enabled: acc.enabled !== false, // Persist enabled state
+                enabled: acc.enabled !== false,
                 dbPath: acc.dbPath || null,
                 refreshToken: acc.source === 'oauth' ? acc.refreshToken : undefined,
                 apiKey: acc.source === 'manual' ? acc.apiKey : undefined,
@@ -122,21 +136,30 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 addedAt: acc.addedAt || undefined,
                 isInvalid: acc.isInvalid || false,
                 invalidReason: acc.invalidReason || null,
+                verifyUrl: acc.verifyUrl || null,
                 modelRateLimits: acc.modelRateLimits || {},
                 lastUsed: acc.lastUsed,
-                // Persist subscription and quota data
                 subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
                 quota: acc.quota || { models: {}, lastChecked: null },
-                // Persist quota threshold settings
-                quotaThreshold: acc.quotaThreshold,  // undefined omitted from JSON
+                quotaThreshold: acc.quotaThreshold,
                 modelQuotaThresholds: Object.keys(acc.modelQuotaThresholds || {}).length > 0 ? acc.modelQuotaThresholds : undefined
             })),
             settings: settings,
             activeIndex: activeIndex
         };
 
-        await writeFile(configPath, JSON.stringify(config, null, 2));
+        const json = JSON.stringify(config, null, 2);
+
+        // Validate JSON before writing (prevent saving corrupt data)
+        JSON.parse(json);
+
+        // Atomic write: write to temp file then rename
+        const tmpPath = configPath + '.tmp';
+        await writeFile(tmpPath, json);
+        await rename(tmpPath, configPath);
     } catch (error) {
         logger.error('[AccountManager] Failed to save config:', error.message);
+    } finally {
+        resolve();
     }
 }

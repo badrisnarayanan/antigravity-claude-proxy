@@ -259,9 +259,11 @@ app.get('/health', async (req, res) => {
 
                 // Skip invalid accounts for quota check
                 if (account.isInvalid) {
+                    const isBanned = account.invalidReason?.toLowerCase().includes('banned') || 
+                                     account.invalidReason?.toLowerCase().includes('terms of service');
                     return {
                         ...baseInfo,
-                        status: 'invalid',
+                        status: isBanned ? 'banned' : 'invalid',
                         error: account.invalidReason,
                         models: {}
                     };
@@ -394,6 +396,17 @@ app.get('/account-limits', async (req, res) => {
                         models: quotas
                     };
                 } catch (error) {
+                    // Detect ToS ban from quota/subscription fetch and mark account invalid
+                    if (error.message?.startsWith('ACCOUNT_BANNED:')) {
+                        accountManager.markInvalid(account.email, 'Account banned — Gemini disabled for Terms of Service violation');
+                        return {
+                            email: account.email,
+                            status: 'banned',
+                            error: 'Account banned — Gemini disabled for Terms of Service violation',
+                            subscription: account.subscription || { tier: 'unknown', projectId: null },
+                            models: {}
+                        };
+                    }
                     return {
                         email: account.email,
                         status: 'error',
@@ -571,6 +584,7 @@ app.get('/account-limits', async (req, res) => {
                     projectId: metadata.projectId || null,
                     isInvalid: metadata.isInvalid || false,
                     invalidReason: metadata.invalidReason || null,
+                    verifyUrl: metadata.verifyUrl || null,
                     lastUsed: metadata.lastUsed || null,
                     modelRateLimits: metadata.modelRateLimits || {},
                     // Quota threshold settings
@@ -720,20 +734,15 @@ app.post('/v1/messages', async (req, res) => {
 
         const modelId = requestedModel;
 
-        // Add support for web-search virtual model
-        if (modelId === 'web-search') {
-            // Valid virtual model
-        } else {
-            // Validate model ID before processing
-            const { account: validationAccount } = accountManager.selectAccount();
-            if (validationAccount) {
-                const token = await accountManager.getTokenForAccount(validationAccount);
-                const projectId = validationAccount.subscription?.projectId || null;
-                const valid = await isValidModel(modelId, token, projectId);
+        // Validate model ID before processing
+        const { account: validationAccount } = accountManager.selectAccount();
+        if (validationAccount) {
+            const token = await accountManager.getTokenForAccount(validationAccount);
+            const projectId = validationAccount.subscription?.projectId || null;
+            const valid = await isValidModel(modelId, token, projectId);
 
-                if (!valid) {
-                    throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
-                }
+            if (!valid) {
+                throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
             }
         }
 

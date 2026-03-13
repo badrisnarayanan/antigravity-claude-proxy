@@ -17,6 +17,7 @@ The proxy supports the following environment variables:
 | `DEBUG` | Enable debug logging (`true`/`false`) | `false` |
 | `DEV_MODE` | Enable developer mode (`true`/`false`) | `false` |
 | `FALLBACK` | Enable model fallback (`true`/`false`) | `false` |
+| `CLAUDE_CONFIG_PATH` | Path to `.claude` directory for CLI settings (for systemd/service deployments) | `~/.claude` |
 
 ### Setting Environment Variables
 

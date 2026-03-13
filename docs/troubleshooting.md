@@ -7,7 +7,7 @@
 - [401 Authentication Errors](#401-authentication-errors)
 - [Rate Limiting (429)](#rate-limiting-429)
 - [Account Shows as "Invalid"](#account-shows-as-invalid)
-- [403 Permission Denied](#403-permission-denied)
+- [403 Permission Denied / VALIDATION_REQUIRED](#403-permission-denied--validation_required)
 
 ---
 
@@ -105,19 +105,41 @@ antigravity-claude-proxy accounts
 # Choose "Re-authenticate" for the invalid account
 ```
 
-## 403 Permission Denied
+## 403 Permission Denied / VALIDATION_REQUIRED
 
 If you see:
 
 ```
-403 permission_error - Permission denied
+403 VALIDATION_REQUIRED - Account requires verification
 ```
 
-This usually means your Google account requires phone number verification:
+This means Google requires your account to complete verification (phone number, captcha, or terms acceptance).
 
-1. Download the Antigravity app from https://antigravity.google/download
-2. Log in with the affected account(s)
-3. Complete phone number verification when prompted (or use QR code on Android)
-4. After verification, the account should work properly with the proxy
+**The proxy handles this automatically:**
 
-> **Note:** This verification is required by Google and cannot be bypassed through the proxy.
+1. The affected account is marked invalid and the proxy rotates to the next available account
+2. If a verification URL is provided by Google, it's stored and shown in the WebUI
+3. Other accounts continue working normally while the affected account is paused
+
+**To fix the affected account:**
+
+1. Open the WebUI (http://localhost:8080)
+2. Find the account marked with an error badge
+3. Click the **FIX** button — this opens the Google verification page directly
+4. Complete the verification (phone number, captcha, etc.)
+5. Click the **↻ Refresh** button on the account to re-enable it
+
+**If the FIX button opens an OAuth page instead** (no verification URL was provided), re-authenticate the account:
+
+```bash
+antigravity-claude-proxy accounts
+# Choose "Re-authenticate" for the invalid account
+```
+
+**If all accounts are invalid**, the proxy returns an error immediately instead of waiting indefinitely:
+
+```
+All accounts are invalid: Account requires verification. Visit the WebUI to fix them.
+```
+
+> **Note:** Verification errors persist across server restarts until resolved. Auth errors (token revoked/expired) are reset on restart and require OAuth re-authentication via the FIX button.

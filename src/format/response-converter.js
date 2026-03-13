@@ -27,25 +27,6 @@ export function convertGoogleToAnthropic(googleResponse, model) {
     const anthropicContent = [];
     let hasToolCalls = false;
 
-    // Handle Grounding Metadata (Search Results)
-    const groundingMetadata = firstCandidate.groundingMetadata;
-    let searchResultsText = '';
-
-    if (groundingMetadata && groundingMetadata.groundingChunks) {
-        const chunks = groundingMetadata.groundingChunks;
-        if (chunks.length > 0) {
-            searchResultsText += '\n\n**Search Results:**\n';
-            chunks.forEach((chunk, index) => {
-                if (chunk.web) {
-                    const title = chunk.web.title || 'Untitled';
-                    const uri = chunk.web.uri || '#';
-                    searchResultsText += `${index + 1}. [${title}](${uri})\n`;
-                }
-            });
-            searchResultsText += '\n';
-        }
-    }
-
     for (const part of parts) {
         if (part.text !== undefined) {
             // Handle thinking blocks
@@ -99,19 +80,6 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                     media_type: part.inlineData.mimeType,
                     data: part.inlineData.data
                 }
-            });
-        }
-    }
-
-    // Append search results to the last text block, or add a new one
-    if (searchResultsText) {
-        const lastTextBlock = [...anthropicContent].reverse().find(b => b.type === 'text');
-        if (lastTextBlock) {
-            lastTextBlock.text += searchResultsText;
-        } else {
-            anthropicContent.push({
-                type: 'text',
-                text: searchResultsText
             });
         }
     }

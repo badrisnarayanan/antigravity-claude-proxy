@@ -368,7 +368,7 @@ window.translations.id = {
     mcpCliDesc: "Aktifkan integrasi MCP eksperimental untuk penggunaan tool yang lebih stabil dengan konsumsi konteks lebih rendah.",
     gemini1mMode: "Mode Konteks Gemini 1M",
     gemini1mDesc: "Tambahkan suffix [1m] ke model Gemini untuk context window 1M.",
-    gemini1mWarning: "⚠ Konteks besar dapat menurunkan performa Gemini-3-Pro.",
+    gemini1mWarning: "⚠ Konteks besar dapat menurunkan performa Gemini-3.",
     clickToSet: "Klik untuk atur...",
 
     // Quota Distribution
