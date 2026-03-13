@@ -15,7 +15,7 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="search",
-            description="Performs a Google Search using the Antigravity Proxy.",
+            description="Performs a web search using DuckDuckGo.",
             inputSchema={
                 "type": "object",
                 "properties": {
