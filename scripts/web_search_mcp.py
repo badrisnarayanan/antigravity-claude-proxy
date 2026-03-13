@@ -42,7 +42,7 @@ async def call_tool(
         raise ValueError("Missing required parameter 'query'")
 
     try:
-        results = DDGS().text(query, max_results=5)
+        results = await asyncio.to_thread(DDGS().text, query, max_results=5)
 
         if not results:
             return [types.TextContent(type="text", text="No results found.")]
