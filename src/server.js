@@ -720,15 +720,20 @@ app.post('/v1/messages', async (req, res) => {
 
         const modelId = requestedModel;
 
-        // Validate model ID before processing
-        const { account: validationAccount } = accountManager.selectAccount();
-        if (validationAccount) {
-            const token = await accountManager.getTokenForAccount(validationAccount);
-            const projectId = validationAccount.subscription?.projectId || null;
-            const valid = await isValidModel(modelId, token, projectId);
+        // Add support for web-search virtual model
+        if (modelId === 'web-search') {
+            // Valid virtual model
+        } else {
+            // Validate model ID before processing
+            const { account: validationAccount } = accountManager.selectAccount();
+            if (validationAccount) {
+                const token = await accountManager.getTokenForAccount(validationAccount);
+                const projectId = validationAccount.subscription?.projectId || null;
+                const valid = await isValidModel(modelId, token, projectId);
 
-            if (!valid) {
-                throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
+                if (!valid) {
+                    throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
+                }
             }
         }
 

@@ -58,6 +58,15 @@ export async function listModels(token) {
         description: modelData.displayName || modelId
     }));
 
+    // Add web-search explicitly
+    modelList.push({
+        id: 'web-search',
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'anthropic',
+        description: 'Google Web Search (powered by Gemini)'
+    });
+
     // Warm the model validation cache
     modelCache.validModels = new Set(modelList.map(m => m.id));
     modelCache.lastFetched = Date.now();
