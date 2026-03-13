@@ -159,7 +159,10 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     }
 
     // Enable thinking for thinking models (Claude and Gemini 3+)
-    if (isThinking) {
+    // Skip if explicitly disabled (e.g., from custom MCP tools trying to save latency)
+    const thinkingDisabled = thinking && (thinking.type === 'none' || thinking.type === 'disabled');
+
+    if (isThinking && !thinkingDisabled) {
         if (isClaudeModel) {
             // Claude thinking config
             const thinkingConfig = {
