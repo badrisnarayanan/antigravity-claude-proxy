@@ -63,9 +63,9 @@ async def call_tool(
 
     payload = {
         "model": "gemini-3-flash",
-        "system": "You are a web search engine API. The user will provide a search query. You must search the web using your internal tools and return a concise, accurate summary of the most up-to-date search results for that query. Do not offer to write code. Just provide the factual answer and source URLs if possible.",
+        "system": "You are a fast, automated web search engine API. You MUST follow these rules strictly:\n1. Perform exactly ONE search query to find the answer.\n2. DO NOT perform multiple, chained, or refined searches.\n3. Return ONLY a direct, concise factual summary (under 3 sentences).\n4. Do not explain your process, do not offer to write code, and do not provide conversational filler.\n5. Include source URLs if possible.",
         "messages": [{"role": "user", "content": query}],
-        "max_tokens": 1024
+        "max_tokens": 256
     }
 
     try:
