@@ -2,8 +2,11 @@ import sys
 import json
 import requests
 import traceback
-
 import os
+from mcp.server import Server, NotificationOptions
+from mcp.server.models import InitializationOptions
+import mcp.server.stdio
+import mcp.types as types
 
 def get_proxy_config():
     config_path = os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
@@ -19,18 +22,48 @@ def get_proxy_config():
 # Configuration
 PROXY_URL, API_KEY = get_proxy_config()
 
+app = Server("antigravity-search")
 
-def search(query: str) -> str:
-    """
-    Performs a Google Search using the Antigravity Proxy.
-    """
+@app.list_tools()
+async def list_tools() -> list[types.Tool]:
+    """List available tools."""
+    return [
+        types.Tool(
+            name="search",
+            description="Performs a Google Search using the Antigravity Proxy.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["query"]
+            }
+        )
+    ]
+
+@app.call_tool()
+async def call_tool(
+    name: str, arguments: dict
+) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+    """Handle tool calls."""
+    if name != "search":
+        raise ValueError(f"Unknown tool: {name}")
+
+    query = arguments.get("query")
+    if not query:
+        raise ValueError("Missing required parameter 'query'")
+
     headers = {
         "x-api-key": API_KEY,
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "web-search",
+        "model": "gemini-3-flash",
+        "system": "You are a web search engine API. The user will provide a search query. You must search the web using your internal tools and return a concise, accurate summary of the most up-to-date search results for that query. Do not offer to write code. Just provide the factual answer and source URLs if possible.",
         "messages": [{"role": "user", "content": query}],
         "max_tokens": 1024
     }
@@ -38,7 +71,10 @@ def search(query: str) -> str:
     try:
         response = requests.post(PROXY_URL, headers=headers, json=payload)
         if response.status_code != 200:
-            return f"Error: Proxy returned status {response.status_code} - {response.text}"
+            return [types.TextContent(
+                type="text",
+                text=f"Error: Proxy returned status {response.status_code} - {response.text}"
+            )]
 
         data = response.json()
         content_blocks = data.get("content", [])
@@ -48,151 +84,34 @@ def search(query: str) -> str:
             if block.get("type") == "text":
                 text_response += block.get("text", "")
 
-        return text_response if text_response else "No results found."
+        return [types.TextContent(
+            type="text",
+            text=text_response if text_response else "No results found."
+        )]
 
     except Exception as e:
-        return f"Request failed: {str(e)}"
+        return [types.TextContent(
+            type="text",
+            text=f"Request failed: {str(e)}\n{traceback.format_exc()}"
+        )]
 
-
-def handle_request(request):
-    method = request.get("method")
-    params = request.get("params", {})
-    req_id = request.get("id")
-
-    if method == "initialize":
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "tools": {}
-                },
-                "serverInfo": {
-                    "name": "Antigravity Search",
-                    "version": "1.0.0"
-                }
-            }
-        }
-
-    if method == "notifications/initialized":
-        return None  # No response needed
-
-    if method == "tools/list":
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {
-                "tools": [{
-                    "name": "search",
-                    "description": "Performs a Google Search using the Antigravity Proxy.",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "The search query"
-                            }
-                        },
-                        "required": ["query"]
-                    }
-                }]
-            }
-        }
-
-    if method == "tools/call":
-        tool_name = params.get("name")
-        args = params.get("arguments", {})
-
-        if tool_name == "search":
-            query = args.get("query")
-            if not query:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "content": [{
-                            "type": "text",
-                            "text": "Error: Missing required parameter 'query'"
-                        }]
-                    }
-                }
-            result = search(query)
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "result": {
-                    "content": [{
-                        "type": "text",
-                        "text": result
-                    }]
-                }
-            }
-
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "error": {
-                "code": -32601,
-                "message": f"Tool not found: {tool_name}"
-            }
-        }
-
-    return None
-
-
-def read_message():
-    """Read a JSON-RPC message using Content-Length header framing."""
-    headers = {}
-    while True:
-        line = sys.stdin.readline()
-        if not line:
-            return None  # EOF
-        line = line.strip()
-        if line == "":
-            break  # End of headers
-        if ":" in line:
-            key, value = line.split(":", 1)
-            headers[key.strip()] = value.strip()
-
-    content_length = int(headers.get("Content-Length", 0))
-    if content_length == 0:
-        return None
-
-    body = sys.stdin.read(content_length)
-    return json.loads(body)
-
-
-def write_message(response):
-    """Write a JSON-RPC message using Content-Length header framing."""
-    body = json.dumps(response)
-    body_bytes = body.encode('utf-8')
-    header = f"Content-Length: {len(body_bytes)}\r\n\r\n"
-    sys.stdout.buffer.write(header.encode('utf-8'))
-    sys.stdout.buffer.write(body_bytes)
-    sys.stdout.buffer.flush()
-
-
-def main():
-    # Write to stderr for logging since stdout is for JSON-RPC
-    sys.stderr.write("Starting MCP Server (Content-Length framing)...\n")
-
-    while True:
-        try:
-            request = read_message()
-            if request is None:
-                break
-
-            response = handle_request(request)
-
-            if response:
-                write_message(response)
-
-        except json.JSONDecodeError as e:
-            sys.stderr.write(f"Failed to decode JSON: {e}\n")
-        except Exception:
-            sys.stderr.write(traceback.format_exc())
-
+async def main():
+    sys.stderr.write("Starting Antigravity Search MCP Server...\n")
+    sys.stderr.flush()
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await app.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="antigravity-search",
+                server_version="1.0.0",
+                capabilities=app.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={},
+                )
+            ),
+        )
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
