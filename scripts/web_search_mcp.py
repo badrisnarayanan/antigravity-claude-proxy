@@ -57,9 +57,11 @@ async def call_tool(
         return [types.TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
+        sys.stderr.write(f"Search error: {traceback.format_exc()}\n")
+        sys.stderr.flush()
         return [types.TextContent(
             type="text",
-            text=f"Search failed: {str(e)}\n{traceback.format_exc()}"
+            text=f"Search failed: {str(e)}"
         )]
 
 async def main():
