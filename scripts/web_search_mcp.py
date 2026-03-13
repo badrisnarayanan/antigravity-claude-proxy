@@ -41,6 +41,9 @@ async def call_tool(
     if not query:
         raise ValueError("Missing required parameter 'query'")
 
+    if len(query) > 500:
+        raise ValueError("Query too long (max 500 characters)")
+
     try:
         results = await asyncio.to_thread(DDGS().text, query, max_results=5)
 
