@@ -3,9 +3,21 @@ import json
 import requests
 import traceback
 
+import os
+
+def get_proxy_config():
+    config_path = os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+            base_url = config.get("apiBaseUrl", "http://localhost:8080")
+            api_key = config.get("apiKey", "test")
+            return f"{base_url}/v1/messages", api_key
+    except Exception:
+        return "http://localhost:8080/v1/messages", "test"
+
 # Configuration
-PROXY_URL = "http://localhost:8080/v1/messages"
-API_KEY = "test"  # Default API key for local proxy
+PROXY_URL, API_KEY = get_proxy_config()
 
 
 def search(query: str) -> str:
@@ -154,10 +166,11 @@ def read_message():
 def write_message(response):
     """Write a JSON-RPC message using Content-Length header framing."""
     body = json.dumps(response)
-    header = f"Content-Length: {len(body)}\r\n\r\n"
-    sys.stdout.write(header)
-    sys.stdout.write(body)
-    sys.stdout.flush()
+    body_bytes = body.encode('utf-8')
+    header = f"Content-Length: {len(body_bytes)}\r\n\r\n"
+    sys.stdout.buffer.write(header.encode('utf-8'))
+    sys.stdout.buffer.write(body_bytes)
+    sys.stdout.buffer.flush()
 
 
 def main():
