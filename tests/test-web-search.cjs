@@ -7,9 +7,10 @@
  * Requires the proxy server to be running on port 8080.
  *
  * Verifies:
- * 1. A search query returns a 200 with text content
- * 2. The response contains actual text (not empty)
- * 3. Invalid model rejection doesn't occur (gemini-3-flash is valid)
+ * 1. Google Search grounding returns live results via google_search tool
+ * 2. Minimal thinking budget works with grounding
+ * 3. Response format matches Anthropic Messages API
+ * 4. Grounding tool doesn't leak into functionDeclarations (no regression)
  */
 const { makeRequest } = require('./helpers/http-client.cjs');
 
@@ -23,8 +24,8 @@ async function runTests() {
     let allPassed = true;
     const results = [];
 
-    // ===== TEST 1: Basic search returns text content =====
-    console.log('TEST 1: Basic search query returns text content');
+    // ===== TEST 1: Google Search grounding returns live results =====
+    console.log('TEST 1: Google Search grounding returns live text content');
     console.log('-'.repeat(40));
 
     try {
@@ -32,8 +33,9 @@ async function runTests() {
             model: 'gemini-3-flash',
             max_tokens: 512,
             stream: false,
-            system: 'You are a concise search assistant. Answer the query using your Google Search grounding tool. Return ONLY factual results in 2-3 sentences with source URLs. No code, no filler.',
+            system: 'You are a concise search assistant. Return ONLY factual results in 2-3 sentences with source URLs. No code, no filler.',
             thinking: { budget_tokens: 1 },
+            tools: [{ name: 'google_search', input_schema: { type: 'object' } }],
             messages: [
                 { role: 'user', content: 'What is the current price of Bitcoin?' }
             ]
@@ -51,17 +53,17 @@ async function runTests() {
         console.log(`  Result: ${passed ? 'PASS ✓' : 'FAIL ✗'}`);
 
         if (!passed) allPassed = false;
-        results.push({ name: 'Basic search', passed });
+        results.push({ name: 'Google Search grounding', passed });
     } catch (error) {
         console.log(`  Error: ${error.message}`);
         console.log('  Result: FAIL ✗');
         allPassed = false;
-        results.push({ name: 'Basic search', passed: false });
+        results.push({ name: 'Google Search grounding', passed: false });
     }
     console.log('');
 
-    // ===== TEST 2: Search with minimal thinking budget =====
-    console.log('TEST 2: Search with minimal thinking budget (budget_tokens: 1)');
+    // ===== TEST 2: Grounding with minimal thinking budget =====
+    console.log('TEST 2: Grounding with minimal thinking budget (budget_tokens: 1)');
     console.log('-'.repeat(40));
 
     try {
@@ -71,6 +73,7 @@ async function runTests() {
             max_tokens: 256,
             stream: false,
             thinking: { budget_tokens: 1 },
+            tools: [{ name: 'google_search', input_schema: { type: 'object' } }],
             messages: [
                 { role: 'user', content: 'What year is it?' }
             ]
@@ -88,12 +91,12 @@ async function runTests() {
         console.log(`  Result: ${passed ? 'PASS ✓' : 'FAIL ✗'}`);
 
         if (!passed) allPassed = false;
-        results.push({ name: 'Minimal thinking budget', passed });
+        results.push({ name: 'Minimal thinking + grounding', passed });
     } catch (error) {
         console.log(`  Error: ${error.message}`);
         console.log('  Result: FAIL ✗');
         allPassed = false;
-        results.push({ name: 'Minimal thinking budget', passed: false });
+        results.push({ name: 'Minimal thinking + grounding', passed: false });
     }
     console.log('');
 
@@ -131,6 +134,46 @@ async function runTests() {
         console.log('  Result: FAIL ✗');
         allPassed = false;
         results.push({ name: 'Response format', passed: false });
+    }
+    console.log('');
+
+    // ===== TEST 4: google_search tool is not treated as a function declaration =====
+    console.log('TEST 4: google_search tool is separated from function declarations');
+    console.log('-'.repeat(40));
+
+    try {
+        // Send only google_search tool - should NOT return a tool_use call for "google_search"
+        // because it should be converted to native grounding, not a function declaration
+        const result = await makeRequest({
+            model: 'gemini-3-flash',
+            max_tokens: 512,
+            stream: false,
+            thinking: { budget_tokens: 1 },
+            tools: [{ name: 'google_search', input_schema: { type: 'object' } }],
+            messages: [
+                { role: 'user', content: 'What is the latest news today?' }
+            ]
+        });
+
+        // Should return text content (grounding result), not a tool_use block
+        const hasText = result.content?.some(b => b.type === 'text' && b.text?.length > 10);
+        const hasToolUse = result.content?.some(b => b.type === 'tool_use' && b.name === 'google_search');
+        const passed = result.statusCode === 200 && hasText && !hasToolUse;
+
+        const textBlock = result.content?.find(b => b.type === 'text');
+        console.log(`  Status: ${result.statusCode}`);
+        console.log(`  Has text content: ${hasText ? '✓' : '✗'}`);
+        console.log(`  No google_search tool_use: ${!hasToolUse ? '✓' : '✗ (leaked as function call)'}`);
+        console.log(`  Text preview: ${textBlock?.text?.substring(0, 120)}...`);
+        console.log(`  Result: ${passed ? 'PASS ✓' : 'FAIL ✗'}`);
+
+        if (!passed) allPassed = false;
+        results.push({ name: 'Grounding not leaked as function call', passed });
+    } catch (error) {
+        console.log(`  Error: ${error.message}`);
+        console.log('  Result: FAIL ✗');
+        allPassed = false;
+        results.push({ name: 'Grounding not leaked as function call', passed: false });
     }
     console.log('');
 

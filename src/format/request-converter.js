@@ -159,10 +159,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     }
 
     // Enable thinking for thinking models (Claude and Gemini 3+)
-    // Skip if explicitly disabled (e.g., from custom MCP tools trying to save latency)
-    const thinkingDisabled = thinking && (thinking.type === 'none' || thinking.type === 'disabled');
-
-    if (isThinking && !thinkingDisabled) {
+    if (isThinking) {
         if (isClaudeModel) {
             // Claude thinking config
             const thinkingConfig = {
@@ -205,43 +202,72 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
     // Convert tools to Google format
     if (tools && tools.length > 0) {
-        const functionDeclarations = tools.map((tool, idx) => {
-            // Extract name from various possible locations
-            const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
+        // Separate Google Search grounding tools from regular function declarations.
+        // Clients signal grounding by including a tool named "google_search" or
+        // "googleSearchRetrieval" in the Anthropic tools array. These are converted
+        // to native Gemini grounding entries instead of functionDeclarations.
+        const GROUNDING_TOOL_NAMES = new Set(['google_search', 'googleSearchRetrieval']);
+        const regularTools = [];
+        const groundingEntries = [];
 
-            // Extract description from various possible locations
-            const description = tool.description || tool.function?.description || tool.custom?.description || '';
+        for (const tool of tools) {
+            const name = tool.name || tool.function?.name || tool.custom?.name || '';
+            if (GROUNDING_TOOL_NAMES.has(name)) {
+                groundingEntries.push({ google_search: {} });
+                logger.debug('[RequestConverter] Google Search grounding enabled');
+            } else {
+                regularTools.push(tool);
+            }
+        }
 
-            // Extract schema from various possible locations
-            const schema = tool.input_schema
-                || tool.function?.input_schema
-                || tool.function?.parameters
-                || tool.custom?.input_schema
-                || tool.parameters
-                || { type: 'object' };
+        const googleTools = [];
 
-            // Sanitize schema for general compatibility
-            let parameters = sanitizeSchema(schema);
+        if (regularTools.length > 0) {
+            const functionDeclarations = regularTools.map((tool, idx) => {
+                // Extract name from various possible locations
+                const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
 
-            // Apply Google-format cleaning for ALL models since they all go through
-            // Cloud Code API which validates schemas using Google's protobuf format.
-            // This fixes issue #82: /compact command fails with schema transformation error
-            // "Proto field is not repeating, cannot start list" for Claude models.
-            parameters = cleanSchema(parameters);
+                // Extract description from various possible locations
+                const description = tool.description || tool.function?.description || tool.custom?.description || '';
 
-            return {
-                name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
-                description: description,
-                parameters
-            };
-        });
+                // Extract schema from various possible locations
+                const schema = tool.input_schema
+                    || tool.function?.input_schema
+                    || tool.function?.parameters
+                    || tool.custom?.input_schema
+                    || tool.parameters
+                    || { type: 'object' };
 
-        googleRequest.tools = [{ functionDeclarations }];
-        logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+                // Sanitize schema for general compatibility
+                let parameters = sanitizeSchema(schema);
+
+                // Apply Google-format cleaning for ALL models since they all go through
+                // Cloud Code API which validates schemas using Google's protobuf format.
+                // This fixes issue #82: /compact command fails with schema transformation error
+                // "Proto field is not repeating, cannot start list" for Claude models.
+                parameters = cleanSchema(parameters);
+
+                return {
+                    name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+                    description: description,
+                    parameters
+                };
+            });
+
+            googleTools.push({ functionDeclarations });
+        }
+
+        // Append grounding tools as separate entries in the tools array
+        googleTools.push(...groundingEntries);
+
+        if (googleTools.length > 0) {
+            googleRequest.tools = googleTools;
+            logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+        }
 
         // For Claude models, set functionCallingConfig.mode = "VALIDATED"
         // This ensures strict parameter validation (matches opencode-antigravity-auth)
-        if (isClaudeModel) {
+        if (isClaudeModel && regularTools.length > 0) {
             googleRequest.toolConfig = {
                 functionCallingConfig: {
                     mode: 'VALIDATED'

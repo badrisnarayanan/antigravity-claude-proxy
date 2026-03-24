@@ -89,7 +89,13 @@ An MCP server that provides Google Search grounding via Gemini through the proxy
 pip install -r scripts/requirements.txt
 ```
 
-**How it works:** Sends queries to `gemini-3-flash` through the proxy with Google Search grounding enabled and a minimal thinking budget (`budget_tokens: 1`) for fast responses. Returns live search results, not training data.
+**How it works:** Sends queries to `gemini-3-flash` through the proxy with a `google_search` tool that activates Google Search grounding, plus a minimal thinking budget (`budget_tokens: 1`) for fast responses. Returns live search results, not training data.
+
+**Google Search Grounding (Proxy-level):**
+- Any Anthropic-format request can enable grounding by including a tool named `google_search` or `googleSearchRetrieval`
+- The proxy converts these to native Gemini `{ google_search: {} }` entries, separate from `functionDeclarations`
+- Grounding cannot be mixed with function declarations in the same request (Cloud Code API limitation)
+- Grounding is only supported on Gemini models
 
 ## Architecture
 
