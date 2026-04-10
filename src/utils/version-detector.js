@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
  */
 
 // Fallback constant
-const FALLBACK_ANTIGRAVITY_VERSION = '1.21.9';
+const FALLBACK_ANTIGRAVITY_VERSION = '1.22.2';
 
 // Cache for the generated User-Agent string
 let cachedUserAgent = null;
