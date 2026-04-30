@@ -9,8 +9,8 @@ import { existsSync } from 'fs';
  * Falls back to hard-coded stable versions if detection fails.
  */
 
-// Fallback constant
-const FALLBACK_ANTIGRAVITY_VERSION = '1.20.6';
+// Fallback constant (can be overridden via FALLBACK_ANTIGRAVITY_VERSION env var)
+const FALLBACK_ANTIGRAVITY_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '1.20.6';
 
 // Cache for the generated User-Agent string
 let cachedUserAgent = null;
