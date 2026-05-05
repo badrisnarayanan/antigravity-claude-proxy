@@ -1063,6 +1063,62 @@ export function mountWebUI(app, dirname, accountManager) {
         }
     });
 
+    /**
+     * POST /api/models - Add a custom model ID
+     */
+    app.post('/api/models', async (req, res) => {
+        try {
+            const { modelId } = req.body;
+            if (!modelId || typeof modelId !== 'string') {
+                return res.status(400).json({ status: 'error', error: 'modelId is required' });
+            }
+
+            const customModels = config.customModels || [];
+            if (customModels.includes(modelId)) {
+                return res.json({ status: 'ok', message: 'Model already exists', customModels });
+            }
+
+            customModels.push(modelId);
+            const success = saveConfig({ customModels });
+
+            if (success) {
+                logger.info(`[WebUI] Custom model added: ${modelId}`);
+                res.json({ status: 'ok', customModels });
+            } else {
+                throw new Error('Failed to save configuration');
+            }
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
+    /**
+     * DELETE /api/models/:modelId - Remove a custom model ID
+     */
+    app.delete('/api/models/:modelId', async (req, res) => {
+        try {
+            const { modelId } = req.params;
+            const customModels = config.customModels || [];
+            const index = customModels.indexOf(modelId);
+
+            if (index === -1) {
+                return res.status(404).json({ status: 'error', error: 'Custom model not found' });
+            }
+
+            customModels.splice(index, 1);
+            const success = saveConfig({ customModels });
+
+            if (success) {
+                logger.info(`[WebUI] Custom model removed: ${modelId}`);
+                res.json({ status: 'ok', customModels });
+            } else {
+                throw new Error('Failed to save configuration');
+            }
+        } catch (error) {
+            res.status(500).json({ status: 'error', error: error.message });
+        }
+    });
+
     // ==========================================
     // Logs API
     // ==========================================

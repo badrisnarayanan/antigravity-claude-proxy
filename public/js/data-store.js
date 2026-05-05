@@ -10,6 +10,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.store('data', {
         accounts: [],
         models: [], // Source of truth
+        customModels: [], // User-added custom models
         modelConfig: {}, // Model metadata (hidden, pinned, alias)
         quotaRows: [], // Filtered view
         usageHistory: {}, // Usage statistics history (from /account-limits?includeHistory=true)
@@ -79,6 +80,7 @@ document.addEventListener('alpine:init', () => {
                     if (data.accounts && data.models) {
                         this.accounts = data.accounts;
                         this.models = data.models;
+                        this.customModels = data.customModels || [];
                         this.modelConfig = data.modelConfig || {};
                         this.usageHistory = data.usageHistory || {};
 
@@ -98,6 +100,7 @@ document.addEventListener('alpine:init', () => {
                 const cacheData = {
                     accounts: this.accounts,
                     models: this.models,
+                    customModels: this.customModels,
                     modelConfig: this.modelConfig,
                     usageHistory: this.usageHistory,
                     timestamp: Date.now()
@@ -130,6 +133,7 @@ document.addEventListener('alpine:init', () => {
                 if (data.models && data.models.length > 0) {
                     this.models = data.models;
                 }
+                this.customModels = data.customModels || [];
                 this.modelConfig = data.modelConfig || {};
                 this.globalQuotaThreshold = data.globalQuotaThreshold || 0;
 
