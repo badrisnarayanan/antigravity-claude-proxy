@@ -6,7 +6,7 @@
 import { homedir, platform, arch } from 'os';
 import { join } from 'path';
 import { config } from './config.js';
-import { generateSmartUserAgent } from './utils/version-detector.js';
+import { generateSmartUserAgent, getClientVersion } from './utils/version-detector.js';
 
 /**
  * Get the Antigravity database path based on the current platform.
@@ -104,7 +104,7 @@ export const ANTIGRAVITY_HEADERS = {
     'User-Agent': getPlatformUserAgent(),
     'Content-Type': 'application/json',
     'X-Client-Name': 'antigravity',
-    'X-Client-Version': '1.107.0', // Match product.json version
+    'X-Client-Version': getClientVersion(),
     'x-goog-api-client': 'gl-node/18.18.2 fire/0.8.6 grpc/1.10.x' // Simulate Google Node.js client environment
 };
 

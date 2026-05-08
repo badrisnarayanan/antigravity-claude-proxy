@@ -1,24 +1,35 @@
 import { execSync } from 'child_process';
 import { platform, homedir } from 'os';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 /**
  * Intelligent Version Detection for Antigravity
- * Attempts to find the local installation and extract its version.
- * Falls back to hard-coded stable versions if detection fails.
+ *
+ * Detects versions from the local Antigravity installation's product.json.
+ * Two version values are tracked:
+ *   - "version" field      → X-Client-Version header (API version gate)
+ *   - "ideVersion" field   → User-Agent version string
+ *
+ * Detection priority (for each):
+ *   1. Environment variable override
+ *   2. product.json from local Antigravity app
+ *   3. OS-specific detection (macOS plist / Windows exe)
+ *   4. Hardcoded fallback
  */
 
-// Fallback constant (can be overridden via FALLBACK_ANTIGRAVITY_VERSION env var)
-const FALLBACK_ANTIGRAVITY_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '1.23.2';
+// Fallback for User-Agent version (ideVersion in product.json)
+const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '1.23.2';
 
-// Cache for the generated User-Agent string
+// Fallback for X-Client-Version (top-level "version" in product.json)
+const FALLBACK_CLIENT_VERSION = '1.110.0';
+
 let cachedUserAgent = null;
+let cachedClientVersion = null;
+let cachedProductJson = undefined; // undefined = not yet attempted
 
 /**
  * Compares two semver-ish version strings (X.Y.Z).
- * @param {string} v1 - Version string 1
- * @param {string} v2 - Version string 2
  * @returns {boolean} True if v1 > v2
  */
 function isVersionHigher(v1, v2) {
@@ -35,15 +46,99 @@ function isVersionHigher(v1, v2) {
 }
 
 /**
- * Gets the version config (version, source)
+ * Returns platform-specific search paths for product.json.
+ */
+function getProductJsonPaths() {
+    const os = platform();
+    const paths = [];
+
+    if (os === 'darwin') {
+        paths.push('/Applications/Antigravity.app/Contents/Resources/app/product.json');
+    } else if (os === 'win32') {
+        const localAppData = process.env.LOCALAPPDATA;
+        const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+        if (localAppData) {
+            paths.push(join(localAppData, 'Programs', 'Antigravity', 'resources', 'app', 'product.json'));
+        }
+        paths.push(join(programFiles, 'Antigravity', 'resources', 'app', 'product.json'));
+    } else {
+        paths.push('/usr/share/antigravity/resources/app/product.json');
+        paths.push('/opt/antigravity/resources/app/product.json');
+        paths.push('/opt/Antigravity/resources/app/product.json');
+        paths.push(join(homedir(), '.local', 'share', 'antigravity', 'resources', 'app', 'product.json'));
+        paths.push('/snap/antigravity/current/resources/app/product.json');
+    }
+
+    return paths;
+}
+
+/**
+ * Find and parse product.json from the local Antigravity installation.
+ * Caches the result after first attempt.
+ * @returns {Object|null} Parsed product.json or null
+ */
+function getProductJson() {
+    if (cachedProductJson !== undefined) return cachedProductJson;
+
+    for (const p of getProductJsonPaths()) {
+        try {
+            if (existsSync(p)) {
+                const content = JSON.parse(readFileSync(p, 'utf8'));
+                if (content && (content.version || content.ideVersion)) {
+                    cachedProductJson = content;
+                    return content;
+                }
+            }
+        } catch (e) {
+            // Continue to next path
+        }
+    }
+
+    cachedProductJson = null;
+    return null;
+}
+
+/**
+ * Get the X-Client-Version value for API requests.
+ * Priority: ANTIGRAVITY_CLIENT_VERSION env var > product.json "version" > hardcoded fallback
+ * @returns {string} Version string (e.g. "1.110.0")
+ */
+export function getClientVersion() {
+    if (cachedClientVersion) return cachedClientVersion;
+
+    if (process.env.ANTIGRAVITY_CLIENT_VERSION) {
+        cachedClientVersion = process.env.ANTIGRAVITY_CLIENT_VERSION;
+        return cachedClientVersion;
+    }
+
+    const product = getProductJson();
+    if (product?.version && isVersionHigher(product.version, FALLBACK_CLIENT_VERSION)) {
+        cachedClientVersion = product.version;
+        return cachedClientVersion;
+    }
+
+    cachedClientVersion = FALLBACK_CLIENT_VERSION;
+    return cachedClientVersion;
+}
+
+/**
+ * Get the User-Agent version string.
+ * Priority: FALLBACK_ANTIGRAVITY_VERSION env var > product.json "ideVersion" > OS detection > fallback
  * @returns {{ version: string, source: string }}
  */
-function getVersionConfig() {
+function getUserAgentVersionConfig() {
+    if (process.env.FALLBACK_ANTIGRAVITY_VERSION) {
+        return { version: process.env.FALLBACK_ANTIGRAVITY_VERSION, source: 'env' };
+    }
+
+    const product = getProductJson();
+    if (product?.ideVersion && isVersionHigher(product.ideVersion, FALLBACK_USER_AGENT_VERSION)) {
+        return { version: product.ideVersion, source: 'product.json' };
+    }
+
+    // OS-specific detection (legacy — reads app binary metadata directly)
     const os = platform();
     let detectedVersion = null;
-    let finalVersion = FALLBACK_ANTIGRAVITY_VERSION;
-    let source = 'fallback';
-
     try {
         if (os === 'darwin') {
             detectedVersion = getVersionMacos();
@@ -54,16 +149,11 @@ function getVersionConfig() {
         // Silently fail and use fallback
     }
 
-    // Only use detected version if it's higher than the fallback version
-    if (detectedVersion && isVersionHigher(detectedVersion, FALLBACK_ANTIGRAVITY_VERSION)) {
-        finalVersion = detectedVersion;
-        source = 'local';
+    if (detectedVersion && isVersionHigher(detectedVersion, FALLBACK_USER_AGENT_VERSION)) {
+        return { version: detectedVersion, source: 'local' };
     }
 
-    return {
-        version: finalVersion,
-        source
-    };
+    return { version: FALLBACK_USER_AGENT_VERSION, source: 'fallback' };
 }
 
 /**
@@ -74,11 +164,10 @@ function getVersionConfig() {
 export function generateSmartUserAgent() {
     if (cachedUserAgent) return cachedUserAgent;
 
-    const { version } = getVersionConfig();
+    const { version } = getUserAgentVersionConfig();
     const os = platform();
     const architecture = process.arch;
 
-    // Map Node.js platform names to binary-friendly names
     const osName = os === 'darwin' ? 'darwin' : (os === 'win32' ? 'win32' : 'linux');
 
     cachedUserAgent = `antigravity/${version} ${osName}/${architecture}`;
@@ -131,4 +220,3 @@ function getVersionWindows() {
     }
     return null;
 }
-
