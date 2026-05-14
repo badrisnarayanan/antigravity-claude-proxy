@@ -17,6 +17,7 @@ The proxy supports the following environment variables:
 | `DEBUG` | Enable debug logging (`true`/`false`) | `false` |
 | `DEV_MODE` | Enable developer mode (`true`/`false`) | `false` |
 | `FALLBACK` | Enable model fallback (`true`/`false`) | `false` |
+| `FALLBACK_ANTIGRAVITY_VERSION` | Override the Antigravity version string sent in requests (useful when Google APIs reject old versions) | `1.23.2` |
 | `CLAUDE_CONFIG_PATH` | Path to `.claude` directory for CLI settings (for systemd/service deployments) | `~/.claude` |
 
 ### Setting Environment Variables

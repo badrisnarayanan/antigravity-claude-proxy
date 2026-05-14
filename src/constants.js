@@ -311,11 +311,11 @@ export const DEFAULT_PRESETS = [
         config: {
             ANTHROPIC_AUTH_TOKEN: 'test',
             ANTHROPIC_BASE_URL: 'http://localhost:8080',
-            ANTHROPIC_MODEL: 'gemini-3.1-pro-high[1m]',
-            ANTHROPIC_DEFAULT_OPUS_MODEL: 'gemini-3.1-pro-high[1m]',
-            ANTHROPIC_DEFAULT_SONNET_MODEL: 'gemini-3.1-flash[1m]',
-            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-3.1-flash[1m]',
-            CLAUDE_CODE_SUBAGENT_MODEL: 'gemini-3.1-flash[1m]',
+            ANTHROPIC_MODEL: 'gemini-3.1-pro-high',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'gemini-3.1-pro-high',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'gemini-3.1-flash',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-3.1-flash',
+            CLAUDE_CODE_SUBAGENT_MODEL: 'gemini-3.1-flash',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
         }
     }
