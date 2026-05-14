@@ -1,6 +1,6 @@
 import sys
 import json
-import requests
+import asyncio
 import traceback
 
 import os
@@ -20,38 +20,88 @@ def get_proxy_config():
 PROXY_URL, API_KEY = get_proxy_config()
 
 
-def search(query: str) -> str:
-    """
-    Performs a Google Search using the Antigravity Proxy.
-    """
-    headers = {
-        "x-api-key": API_KEY,
-        "Content-Type": "application/json"
+def get_proxy_config():
+    """Read proxy URL and API key from Claude CLI settings."""
+    config_path = os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+            base_url = config.get("apiBaseUrl", "http://localhost:8080")
+            api_key = config.get("apiKey", "test")
+            return f"{base_url}/v1/messages", api_key
+    except Exception:
+        return "http://localhost:8080/v1/messages", "test"
+
+
+PROXY_URL, API_KEY = get_proxy_config()
+
+app = Server("antigravity-search")
+
+
+@app.list_tools()
+async def list_tools() -> list[types.Tool]:
+    """List available tools."""
+    return [
+        types.Tool(
+            name="search",
+            description="Performs a web search via Gemini's Google Search grounding through the Antigravity Proxy.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["query"]
+            }
+        )
+    ]
+
+
+def _call_proxy(query: str) -> str:
+    """Send a search query through the Antigravity Proxy using Google Search grounding."""
+    headers = {"x-api-key": API_KEY, "Content-Type": "application/json"}
+    payload = {
+        "model": "gemini-3-flash",
+        "system": "You are a concise search assistant. Return ONLY factual results in 2-3 sentences with source URLs. No code, no filler.",
+        "messages": [{"role": "user", "content": query}],
+        "max_tokens": 512,
+        "thinking": {"budget_tokens": 1},
+        "tools": [{"name": "google_search", "input_schema": {"type": "object"}}]
     }
 
-    payload = {
-        "model": "web-search",
-        "messages": [{"role": "user", "content": query}],
-        "max_tokens": 1024
-    }
+    response = requests.post(PROXY_URL, headers=headers, json=payload, timeout=60)
+
+    if response.status_code != 200:
+        return f"Error: Proxy returned status {response.status_code} - {response.text}"
+
+    data = response.json()
+    content_blocks = data.get("content", [])
+    text_parts = [block.get("text", "") for block in content_blocks if block.get("type") == "text"]
+    return "".join(text_parts) if text_parts else "No results found."
+
+
+@app.call_tool()
+async def call_tool(name: str, arguments: dict):
+    """Handle tool calls."""
+    if name != "search":
+        raise ValueError(f"Unknown tool: {name}")
+
+    query = arguments.get("query")
+    if not query:
+        raise ValueError("Missing required parameter 'query'")
+
+    if len(query) > 500:
+        raise ValueError("Query too long (max 500 characters)")
 
     try:
-        response = requests.post(PROXY_URL, headers=headers, json=payload)
-        if response.status_code != 200:
-            return f"Error: Proxy returned status {response.status_code} - {response.text}"
-
-        data = response.json()
-        content_blocks = data.get("content", [])
-        text_response = ""
-
-        for block in content_blocks:
-            if block.get("type") == "text":
-                text_response += block.get("text", "")
-
-        return text_response if text_response else "No results found."
-
+        result = await asyncio.to_thread(_call_proxy, query)
+        return [types.TextContent(type="text", text=result)]
     except Exception as e:
-        return f"Request failed: {str(e)}"
+        sys.stderr.write(f"Search error: {traceback.format_exc()}\n")
+        sys.stderr.flush()
+        return [types.TextContent(type="text", text=f"Search failed: {str(e)}")]
 
 
 def handle_request(request):
@@ -195,4 +245,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

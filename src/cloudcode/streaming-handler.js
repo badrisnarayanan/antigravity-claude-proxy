@@ -15,10 +15,11 @@ import {
     MAX_CONSECUTIVE_FAILURES,
     EXTENDED_COOLDOWN_MS,
     CAPACITY_BACKOFF_TIERS_MS,
-    MAX_CAPACITY_RETRIES
+    MAX_CAPACITY_RETRIES,
+    BACKOFF_BY_ERROR_TYPE
 } from '../constants.js';
-import { isRateLimitError, isAuthError, isEmptyResponseError } from '../errors.js';
-import { formatDuration, sleep, isNetworkError } from '../utils/helpers.js';
+import { isRateLimitError, isAuthError, isEmptyResponseError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
+import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
@@ -29,6 +30,9 @@ import {
     clearRateLimitState,
     isPermanentAuthFailure,
     isModelCapacityExhausted,
+    isValidationRequired,
+    extractVerificationUrl,
+    isAccountBanned,
     calculateSmartBackoff
 } from './rate-limit-state.js';
 import crypto from 'crypto';
@@ -62,6 +66,16 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
         // If no accounts available, check if we should wait or throw error
         if (availableAccounts.length === 0) {
+            // All accounts invalid? Fail immediately — they need user intervention (WebUI FIX button)
+            // Invalid accounts won't self-recover, so waiting would be an infinite loop
+            if (accountManager.isAllAccountsInvalid()) {
+                const invalidAccounts = accountManager.getInvalidAccounts();
+                const reasons = [...new Set(invalidAccounts.map(a => a.invalidReason).filter(Boolean))];
+                throw new Error(
+                    `All accounts are invalid: ${reasons.join('; ') || 'unknown reason'}. Visit the WebUI to fix them.`
+                );
+            }
+
             if (accountManager.isAllRateLimited(model)) {
                 const minWaitMs = accountManager.getMinWaitTimeMs(model);
                 const resetTime = new Date(Date.now() + minWaitMs).toISOString();
@@ -126,7 +140,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
             const project = await accountManager.getProjectForAccount(account, token);
-            const payload = buildCloudCodeRequest(anthropicRequest, project);
+            const payload = buildCloudCodeRequest(anthropicRequest, project, account.email);
 
             logger.debug(`[CloudCode] Starting stream for model: ${model}`);
 
@@ -140,9 +154,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                 try {
                     const url = `${endpoint}/v1internal:streamGenerateContent?alt=sse`;
 
-                    const response = await fetch(url, {
+                    const response = await throttledFetch(url, {
                         method: 'POST',
-                        headers: buildHeaders(token, model, 'text/event-stream'),
+                        headers: buildHeaders(token, model, 'text/event-stream', payload.request.sessionId),
                         body: JSON.stringify(payload)
                     });
 
@@ -267,6 +281,24 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             throw new Error(`invalid_request_error: ${errorText}`);
                         }
 
+                        // 403 with VALIDATION_REQUIRED or PERMISSION_DENIED is an account-level error
+                        // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help
+                        // Mark account as invalid (requires user intervention) and rotate (fixes #248)
+                        if (response.status === 403 && isValidationRequired(errorText)) {
+                            const verifyUrl = extractVerificationUrl(errorText);
+                            logger.warn(`[CloudCode] 403 VALIDATION_REQUIRED/PERMISSION_DENIED for ${account.email}, marking invalid and rotating account...`);
+                            accountManager.markInvalid(account.email, 'Account requires verification', verifyUrl);
+                            throw new AccountForbiddenError(errorText, account.email);
+                        }
+
+                        // 403 with permanent ToS ban — account is permanently disabled by Google
+                        // Unlike VALIDATION_REQUIRED, this cannot be resolved by verification
+                        if (response.status === 403 && isAccountBanned(errorText)) {
+                            logger.warn(`[CloudCode] 403 ToS BANNED for ${account.email}, marking invalid permanently...`);
+                            accountManager.markInvalid(account.email, 'Account banned — Gemini disabled for Terms of Service violation');
+                            throw new AccountForbiddenError(errorText, account.email);
+                        }
+
                         lastError = new Error(`API error ${response.status}: ${errorText}`);
 
                         // Try next endpoint for 403/404/5xx errors (matches opencode-antigravity-auth behavior)
@@ -311,9 +343,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             await sleep(backoffMs);
 
                             // Refetch the response
-                            currentResponse = await fetch(url, {
+                            currentResponse = await throttledFetch(url, {
                                 method: 'POST',
-                                headers: buildHeaders(token, model, 'text/event-stream'),
+                                headers: buildHeaders(token, model, 'text/event-stream', payload.request.sessionId),
                                 body: JSON.stringify(payload)
                             });
 
@@ -344,7 +376,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 if (currentResponse.status >= 500) {
                                     logger.warn(`[CloudCode] Retry got ${currentResponse.status}, will retry...`);
                                     await sleep(1000);
-                                    currentResponse = await fetch(url, {
+                                    currentResponse = await throttledFetch(url, {
                                         method: 'POST',
                                         headers: buildHeaders(token, model, 'text/event-stream'),
                                         body: JSON.stringify(payload)
@@ -364,6 +396,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         throw endpointError; // Re-throw to trigger account switch
                     }
                     if (isEmptyResponseError(endpointError)) {
+                        throw endpointError;
+                    }
+                    // 403 account-level errors - re-throw to trigger account rotation
+                    if (isAccountForbiddenError(endpointError)) {
                         throw endpointError;
                     }
                     // 400 errors are client errors - re-throw immediately, don't retry
@@ -404,6 +440,13 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             if (isAuthError(error)) {
                 // Auth invalid - already marked, continue to next account
                 logger.warn(`[CloudCode] Account ${account.email} has invalid credentials, trying next...`);
+                continue;
+            }
+            if (isAccountForbiddenError(error)) {
+                // 403 VALIDATION_REQUIRED / PERMISSION_DENIED - account-level error
+                // Already marked with cooldown, notify strategy and rotate to next account
+                accountManager.notifyFailure(account, model);
+                logger.warn(`[CloudCode] Account ${account.email} forbidden (403 VALIDATION_REQUIRED), trying next...`);
                 continue;
             }
             // Handle 5xx errors

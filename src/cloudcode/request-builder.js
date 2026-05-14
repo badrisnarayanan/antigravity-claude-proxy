@@ -19,14 +19,15 @@ import { deriveSessionId } from './session-manager.js';
  *
  * @param {Object} anthropicRequest - The Anthropic-format request
  * @param {string} projectId - The project ID to use
+ * @param {string} accountEmail - The account email for session ID derivation
  * @returns {Object} The Cloud Code API request payload
  */
-export function buildCloudCodeRequest(anthropicRequest, projectId) {
+export function buildCloudCodeRequest(anthropicRequest, projectId, accountEmail) {
     const model = anthropicRequest.model;
     const googleRequest = convertAnthropicToGoogle(anthropicRequest);
 
     // Use stable session ID derived from first user message for cache continuity
-    googleRequest.sessionId = deriveSessionId(anthropicRequest);
+    googleRequest.sessionId = deriveSessionId(anthropicRequest, accountEmail);
 
     // Build system instruction parts array with [ignore] tags to prevent model from
     // identifying as "Antigravity" (fixes GitHub issue #76)
@@ -65,7 +66,7 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
 
     const payload = {
         project: projectId,
-        model: targetModel,
+        model: model,
         request: googleRequest,
         userAgent: 'antigravity',
         requestType: 'agent',  // CLIProxyAPI v6.6.89 compatibility
@@ -87,14 +88,20 @@ export function buildCloudCodeRequest(anthropicRequest, projectId) {
  * @param {string} token - OAuth access token
  * @param {string} model - Model name
  * @param {string} accept - Accept header value (default: 'application/json')
+ * @param {string} [sessionId] - Optional session ID for X-Machine-Session-Id header
  * @returns {Object} Headers object
  */
-export function buildHeaders(token, model, accept = 'application/json') {
+export function buildHeaders(token, model, accept = 'application/json', sessionId) {
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         ...ANTIGRAVITY_HEADERS
     };
+
+    // Add session ID header if provided (matches Antigravity binary behavior)
+    if (sessionId) {
+        headers['X-Machine-Session-Id'] = sessionId;
+    }
 
     const modelFamily = getModelFamily(model);
 

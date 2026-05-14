@@ -3,6 +3,10 @@
  *
  * Handles reading and writing to the global Claude CLI settings file.
  * Location: ~/.claude/settings.json (Windows: %USERPROFILE%\.claude\settings.json)
+ *
+ * When running as a system service (e.g. systemd), os.homedir() resolves to the
+ * service user's home directory, not the actual user's. Set CLAUDE_CONFIG_PATH to
+ * the real user's ~/.claude directory to fix this.
  */
 
 import fs from 'fs/promises';
@@ -12,10 +16,19 @@ import { logger } from './logger.js';
 import { DEFAULT_PRESETS } from '../constants.js';
 
 /**
- * Get the path to the global Claude CLI settings file
+ * Get the path to the global Claude CLI settings file.
+ *
+ * Resolution order:
+ * 1. CLAUDE_CONFIG_PATH env var (path to .claude directory, e.g. /home/user/.claude)
+ * 2. Default: os.homedir()/.claude/settings.json
+ *
  * @returns {string} Absolute path to settings.json
  */
 export function getClaudeConfigPath() {
+    const configDir = process.env.CLAUDE_CONFIG_PATH;
+    if (configDir) {
+        return path.join(configDir, 'settings.json');
+    }
     return path.join(os.homedir(), '.claude', 'settings.json');
 }
 

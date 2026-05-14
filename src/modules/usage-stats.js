@@ -17,7 +17,7 @@ let isDirty = false;
 
 /**
  * Extract model family from model ID
- * @param {string} modelId - The model identifier (e.g., "claude-opus-4-5-thinking")
+ * @param {string} modelId - The model identifier (e.g., "claude-opus-4-6-thinking")
  * @returns {string} The family name (claude, gemini, or other)
  */
 function getFamily(modelId) {
@@ -35,7 +35,7 @@ function getFamily(modelId) {
  */
 function getShortName(modelId, family) {
     if (family === 'other') return modelId;
-    // Remove family prefix (e.g., "claude-opus-4-5" -> "opus-4-5")
+    // Remove family prefix (e.g., "claude-opus-4-6" -> "opus-4-6")
     return modelId.replace(new RegExp(`^${family}-`, 'i'), '');
 }
 

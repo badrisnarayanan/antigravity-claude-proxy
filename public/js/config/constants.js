@@ -96,6 +96,10 @@ window.AppConstants.VALIDATION = {
     GLOBAL_QUOTA_THRESHOLD_MIN: 0,
     GLOBAL_QUOTA_THRESHOLD_MAX: 99,
 
+    // Request delay (100 - 5000ms)
+    REQUEST_DELAY_MIN: 100,
+    REQUEST_DELAY_MAX: 5000,
+
     // Switch account delay (1s - 60s)
     SWITCH_ACCOUNT_DELAY_MIN: 1000,
     SWITCH_ACCOUNT_DELAY_MAX: 60000,

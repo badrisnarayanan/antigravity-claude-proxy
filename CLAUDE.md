@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-5-thinking`, `claude-opus-4-5-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3-pro-low`, `gemini-3-pro-high`) with Claude Code CLI.
+Antigravity Claude Proxy is a Node.js proxy server that exposes an Anthropic-compatible API backed by Antigravity's Cloud Code service. It enables using Claude models (`claude-sonnet-4-6-thinking`, `claude-opus-4-6-thinking`) and Gemini models (`gemini-3-flash`, `gemini-3.1-pro-low`, `gemini-3.1-pro-high`) with Claude Code CLI.
 
 The proxy translates requests from Anthropic Messages API format → Google Generative AI format → Antigravity Cloud Code API, then converts responses back to Anthropic format with full thinking/streaming support.
 
@@ -59,10 +59,43 @@ npm run test:caching       # Prompt caching
 npm run test:crossmodel    # Cross-model thinking signatures
 npm run test:oauth         # OAuth no-browser mode
 npm run test:cache-control # Cache control field stripping
+npm run test:websearch     # Web search MCP (Google Search grounding)
 
 # Run strategy unit tests (no server required)
 node tests/test-strategies.cjs
 ```
+
+## Web Search MCP Server
+
+An MCP server that provides Google Search grounding via Gemini through the proxy.
+
+**Setup:** Add to your Claude Code project config (`~/.claude.json` under `projects.<path>.mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "antigravity-search": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["./scripts/web_search_mcp.py"]
+    }
+  }
+}
+```
+
+**Dependencies:** Install Python dependencies before first use:
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+**How it works:** Sends queries to `gemini-3-flash` through the proxy with a `google_search` tool that activates Google Search grounding, plus a minimal thinking budget (`budget_tokens: 1`) for fast responses. Returns live search results, not training data.
+
+**Google Search Grounding (Proxy-level):**
+- Any Anthropic-format request can enable grounding by including a tool named `google_search` or `googleSearchRetrieval`
+- The proxy converts these to native Gemini `{ google_search: {} }` entries, separate from `functionDeclarations`
+- Grounding cannot be mixed with function declarations in the same request (Cloud Code API limitation)
+- Grounding is only supported on Gemini models
 
 ## Architecture
 
@@ -133,6 +166,7 @@ src/
 │   └── signature-cache.js      # Signature cache (tool_use + thinking signatures)
 │
 └── utils/                      # Utilities
+    ├── claude-config.js        # Claude CLI settings file I/O (supports CLAUDE_CONFIG_PATH env var)
     ├── helpers.js              # formatDuration, sleep, isNetworkError
     ├── logger.js               # Structured logging
     └── native-module-helper.js # Auto-rebuild for native modules
@@ -265,7 +299,7 @@ Each account object in `accounts.json` contains:
 **Model Fallback (--fallback flag):**
 - When all accounts are exhausted for a model, automatically falls back to an alternate model
 - Fallback mappings defined in `MODEL_FALLBACK_MAP` in `src/constants.js`
-- Thinking models fall back to thinking models (e.g., `claude-sonnet-4-5-thinking` → `gemini-3-flash`)
+- Thinking models fall back to thinking models (e.g., `claude-sonnet-4-6-thinking` → `gemini-3-flash`)
 - Fallback is disabled on recursive calls to prevent infinite chains
 - Enable with `npm start -- --fallback` or `FALLBACK=true` environment variable
 
@@ -285,6 +319,12 @@ Each account object in `accounts.json` contains:
 - Called at the START of `convertAnthropicToGoogle()` before any other processing
 - Additional sanitizers (`sanitizeTextBlock`, `sanitizeToolUseBlock`) provide defense-in-depth
 - Pattern inspired by Antigravity-Manager's `clean_cache_control_from_messages()`
+
+**Claude CLI Config Path (systemd fix):**
+- `getClaudeConfigPath()` in `src/utils/claude-config.js` resolves the path to `~/.claude/settings.json`
+- When running as a systemd service, `os.homedir()` returns the service user's home (e.g. `/root`), not the real user's
+- Set `CLAUDE_CONFIG_PATH` env var to the real user's `.claude` directory (e.g. `/home/user/.claude`)
+- The env var is checked first; falls back to `os.homedir()/.claude` if unset
 
 **Native Module Auto-Rebuild:**
 - When Node.js is updated, native modules like `better-sqlite3` may become incompatible

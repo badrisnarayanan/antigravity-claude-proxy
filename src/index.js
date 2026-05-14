@@ -105,11 +105,15 @@ const server = app.listen(PORT, HOST, () => {
     if (isFallbackEnabled) {
         statusSection += '║    ✓ Model fallback enabled                                  ║\n';
     }
+    if (process.env.CLAUDE_CONFIG_PATH) {
+        statusSection += `${border}    ${align4(`✓ Claude config: ${process.env.CLAUDE_CONFIG_PATH}`)}${border}\n`;
+    }
 
     const environmentSection = `║  Environment Variables:                                      ║
 ║    PORT                Server port (default: 8080)           ║
 ║    HOST                Bind address (default: 0.0.0.0)       ║
 ║    HTTP_PROXY          Route requests through a proxy        ║
+║    CLAUDE_CONFIG_PATH  Path to .claude dir (for systemd)     ║
 ║    See README.md for detailed configuration examples         ║`
 
     logger.log(`

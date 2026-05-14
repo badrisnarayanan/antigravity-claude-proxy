@@ -167,6 +167,37 @@ export class CapacityExhaustedError extends AntigravityError {
 }
 
 /**
+ * Account forbidden error (403 VALIDATION_REQUIRED / PERMISSION_DENIED)
+ * These are account-level errors where the account needs validation or has been
+ * disabled. Trying different endpoints won't help - need to rotate to another account.
+ */
+export class AccountForbiddenError extends AntigravityError {
+    /**
+     * @param {string} message - Error message
+     * @param {string} accountEmail - Email of the forbidden account
+     */
+    constructor(message, accountEmail = null) {
+        super(message, 'ACCOUNT_FORBIDDEN', false, { accountEmail });
+        this.name = 'AccountForbiddenError';
+        this.accountEmail = accountEmail;
+    }
+}
+
+/**
+ * Check if an error is an account forbidden error (403 VALIDATION_REQUIRED / PERMISSION_DENIED)
+ * These errors indicate the account itself is blocked and need account rotation, not endpoint rotation.
+ * @param {Error} error - Error to check
+ * @returns {boolean}
+ */
+export function isAccountForbiddenError(error) {
+    if (error instanceof AccountForbiddenError) return true;
+    // Fallback string check only for errors that couldn't use the typed class
+    // (e.g., errors crossing module boundaries). Only match our own prefixed format.
+    const msg = (error.message || '');
+    return msg.startsWith('ACCOUNT_FORBIDDEN:');
+}
+
+/**
  * Check if an error is a rate limit error
  * Works with both custom error classes and legacy string-based errors
  * @param {Error} error - Error to check
@@ -225,6 +256,7 @@ export default {
     AntigravityError,
     RateLimitError,
     AuthError,
+    AccountForbiddenError,
     NoAccountsError,
     MaxRetriesError,
     ApiError,
@@ -233,6 +265,7 @@ export default {
     CapacityExhaustedError,
     isRateLimitError,
     isAuthError,
+    isAccountForbiddenError,
     isEmptyResponseError,
     isCapacityExhaustedError
 };

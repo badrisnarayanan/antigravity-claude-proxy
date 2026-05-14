@@ -43,6 +43,8 @@ const DEFAULT_CONFIG = {
     maxWaitBeforeErrorMs: 120000, // 2 minutes
     maxAccounts: 10, // Maximum number of accounts allowed
     globalQuotaThreshold: 0, // 0 = disabled, 0.01-0.99 = minimum quota fraction before switching accounts
+    requestThrottlingEnabled: false, // Opt-in: enable delay before Google API requests
+    requestDelayMs: 200, // Delay in ms when throttling enabled (100-5000ms)
     // Rate limit handling (matches opencode-antigravity-auth)
     rateLimitDedupWindowMs: 2000,  // 2 seconds - prevents concurrent retry storms
     maxConsecutiveFailures: 3,     // Before applying extended cooldown

@@ -19,7 +19,8 @@ import {
     hasUnsignedThinkingBlocks,
     needsThinkingRecovery,
     closeToolLoopForThinking,
-    cleanCacheControl
+    cleanCacheControl,
+    clampGeminiThinkingBudget
 } from './thinking-utils.js';
 import { logger } from '../utils/logger.js';
 
@@ -165,31 +166,32 @@ export function convertAnthropicToGoogle(anthropicRequest) {
                 include_thoughts: true
             };
 
-            // Only set thinking_budget if explicitly provided
-            const thinkingBudget = thinking?.budget_tokens;
-            if (thinkingBudget) {
-                thinkingConfig.thinking_budget = thinkingBudget;
-                logger.debug(`[RequestConverter] Claude thinking enabled with budget: ${thinkingBudget}`);
+            // Cloud Code API requires thinking_budget to actually produce thinking blocks.
+            // Without it, include_thoughts alone is ignored and Claude falls back to
+            // <thinking> XML tags in text. Default to 32000 when not provided (e.g. adaptive mode).
+            const thinkingBudget = thinking?.budget_tokens || 32000;
+            thinkingConfig.thinking_budget = thinkingBudget;
+            logger.debug(`[RequestConverter] Claude thinking enabled with budget: ${thinkingBudget}${!thinking?.budget_tokens ? ' (default)' : ''}`);
 
-                // Validate max_tokens > thinking_budget as required by the API
-                const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens;
-                if (currentMaxTokens && currentMaxTokens <= thinkingBudget) {
-                    // Bump max_tokens to allow for some response content
-                    // Default to budget + 8192 (standard output buffer)
-                    const adjustedMaxTokens = thinkingBudget + 8192;
+            // Validate max_tokens > thinking_budget as required by the API
+            const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens;
+            if (currentMaxTokens && currentMaxTokens <= thinkingBudget) {
+                const adjustedMaxTokens = thinkingBudget + 8192;
+                if (thinking?.budget_tokens) {
                     logger.warn(`[RequestConverter] max_tokens (${currentMaxTokens}) <= thinking_budget (${thinkingBudget}). Adjusting to ${adjustedMaxTokens} to satisfy API requirements`);
-                    googleRequest.generationConfig.maxOutputTokens = adjustedMaxTokens;
+                } else {
+                    logger.debug(`[RequestConverter] Adjusting max_tokens to ${adjustedMaxTokens} for default thinking budget`);
                 }
-            } else {
-                logger.debug('[RequestConverter] Claude thinking enabled (no budget specified)');
+                googleRequest.generationConfig.maxOutputTokens = adjustedMaxTokens;
             }
 
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {
             // Gemini thinking config (uses camelCase)
+            // Clamp budget to model-specific max (e.g., Gemini 2.5 Flash max is 24,576)
             const thinkingConfig = {
                 includeThoughts: true,
-                thinkingBudget: thinking?.budget_tokens || 16000
+                thinkingBudget: clampGeminiThinkingBudget(modelName, thinking?.budget_tokens)
             };
             logger.debug(`[RequestConverter] Gemini thinking enabled with budget: ${thinkingConfig.thinkingBudget}`);
 
@@ -200,43 +202,72 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
     // Convert tools to Google format
     if (tools && tools.length > 0) {
-        const functionDeclarations = tools.map((tool, idx) => {
-            // Extract name from various possible locations
-            const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
+        // Separate Google Search grounding tools from regular function declarations.
+        // Clients signal grounding by including a tool named "google_search" or
+        // "googleSearchRetrieval" in the Anthropic tools array. These are converted
+        // to native Gemini grounding entries instead of functionDeclarations.
+        const GROUNDING_TOOL_NAMES = new Set(['google_search', 'googleSearchRetrieval']);
+        const regularTools = [];
+        const groundingEntries = [];
 
-            // Extract description from various possible locations
-            const description = tool.description || tool.function?.description || tool.custom?.description || '';
+        for (const tool of tools) {
+            const name = tool.name || tool.function?.name || tool.custom?.name || '';
+            if (GROUNDING_TOOL_NAMES.has(name)) {
+                groundingEntries.push({ google_search: {} });
+                logger.debug('[RequestConverter] Google Search grounding enabled');
+            } else {
+                regularTools.push(tool);
+            }
+        }
 
-            // Extract schema from various possible locations
-            const schema = tool.input_schema
-                || tool.function?.input_schema
-                || tool.function?.parameters
-                || tool.custom?.input_schema
-                || tool.parameters
-                || { type: 'object' };
+        const googleTools = [];
 
-            // Sanitize schema for general compatibility
-            let parameters = sanitizeSchema(schema);
+        if (regularTools.length > 0) {
+            const functionDeclarations = regularTools.map((tool, idx) => {
+                // Extract name from various possible locations
+                const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
 
-            // Apply Google-format cleaning for ALL models since they all go through
-            // Cloud Code API which validates schemas using Google's protobuf format.
-            // This fixes issue #82: /compact command fails with schema transformation error
-            // "Proto field is not repeating, cannot start list" for Claude models.
-            parameters = cleanSchema(parameters);
+                // Extract description from various possible locations
+                const description = tool.description || tool.function?.description || tool.custom?.description || '';
 
-            return {
-                name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
-                description: description,
-                parameters
-            };
-        });
+                // Extract schema from various possible locations
+                const schema = tool.input_schema
+                    || tool.function?.input_schema
+                    || tool.function?.parameters
+                    || tool.custom?.input_schema
+                    || tool.parameters
+                    || { type: 'object' };
 
-        googleRequest.tools = [{ functionDeclarations }];
-        logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+                // Sanitize schema for general compatibility
+                let parameters = sanitizeSchema(schema);
+
+                // Apply Google-format cleaning for ALL models since they all go through
+                // Cloud Code API which validates schemas using Google's protobuf format.
+                // This fixes issue #82: /compact command fails with schema transformation error
+                // "Proto field is not repeating, cannot start list" for Claude models.
+                parameters = cleanSchema(parameters);
+
+                return {
+                    name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+                    description: description,
+                    parameters
+                };
+            });
+
+            googleTools.push({ functionDeclarations });
+        }
+
+        // Append grounding tools as separate entries in the tools array
+        googleTools.push(...groundingEntries);
+
+        if (googleTools.length > 0) {
+            googleRequest.tools = googleTools;
+            logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+        }
 
         // For Claude models, set functionCallingConfig.mode = "VALIDATED"
         // This ensures strict parameter validation (matches opencode-antigravity-auth)
-        if (isClaudeModel) {
+        if (isClaudeModel && regularTools.length > 0) {
             googleRequest.toolConfig = {
                 functionCallingConfig: {
                     mode: 'VALIDATED'

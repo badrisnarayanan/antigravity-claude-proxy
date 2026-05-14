@@ -8,6 +8,56 @@ import { getCachedSignatureFamily } from './signature-cache.js';
 import { logger } from '../utils/logger.js';
 
 // ============================================================================
+// Gemini Thinking Budget Limits (Issue #289)
+// ============================================================================
+
+// Max thinking budget per Gemini model version
+// Gemini 2.5 Flash: max 24,576 (API error: "supported values are integers from 1 to 24576")
+const GEMINI_THINKING_BUDGET_LIMITS = {
+    '2.5': 24576,
+};
+const GEMINI_DEFAULT_THINKING_BUDGET = 16000;
+const GEMINI_DEFAULT_THINKING_BUDGET_LIMIT = 128000;
+
+/**
+ * Clamp thinking budget to the maximum supported by a Gemini model.
+ * Different Gemini versions have different limits (e.g., 2.5 Flash max is 24,576).
+ *
+ * @param {string} modelName - The Gemini model name
+ * @param {number|undefined} budget - Requested thinking budget from the client
+ * @returns {number} Clamped thinking budget
+ */
+export function clampGeminiThinkingBudget(modelName, budget) {
+    const requestedBudget = budget || GEMINI_DEFAULT_THINKING_BUDGET;
+    const lower = (modelName || '').toLowerCase();
+
+    // Extract version like "2.5" or "3" from "gemini-2.5-flash-thinking"
+    const versionMatch = lower.match(/gemini-(\d+(?:\.\d+)?)/);
+    let maxBudget = GEMINI_DEFAULT_THINKING_BUDGET_LIMIT;
+
+    if (versionMatch) {
+        const version = versionMatch[1];
+        // Check exact version (e.g., "2.5")
+        if (GEMINI_THINKING_BUDGET_LIMITS[version]) {
+            maxBudget = GEMINI_THINKING_BUDGET_LIMITS[version];
+        } else {
+            // Check major version (e.g., "2" for "2.5")
+            const major = version.split('.')[0];
+            if (GEMINI_THINKING_BUDGET_LIMITS[major]) {
+                maxBudget = GEMINI_THINKING_BUDGET_LIMITS[major];
+            }
+        }
+    }
+
+    if (requestedBudget > maxBudget) {
+        logger.debug(`[ThinkingUtils] Clamping Gemini thinking budget from ${requestedBudget} to ${maxBudget} for ${modelName}`);
+        return maxBudget;
+    }
+
+    return requestedBudget;
+}
+
+// ============================================================================
 // Cache Control Cleaning (Issue #189)
 // ============================================================================
 

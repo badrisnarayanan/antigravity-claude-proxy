@@ -8,22 +8,20 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 
 ![Antigravity Claude Proxy Banner](images/banner.png)
 
+> **⚠️ WARNING:** Google has been issuing ToS violation bans on accounts connected to this proxy. Use at your own risk.
+
 <details>
 <summary><strong>⚠️ Terms of Service Warning — Read Before Installing</strong></summary>
 
 > [!CAUTION]
 > Using this proxy may violate Google's Terms of Service. A small number of users have reported their Google accounts being **banned** or **shadow-banned** (restricted access without explicit notification).
 >
-> **High-risk scenarios:**
-> - 🚨 **Fresh Google accounts** have a very high chance of getting banned
-> - 🚨 **New accounts with Pro/Ultra subscriptions** are frequently flagged and banned
->
 > **By using this proxy, you acknowledge:**
 > - This is an unofficial tool not endorsed by Google
 > - Your account may be suspended or permanently banned
 > - You assume all risks associated with using this proxy
 >
-> **Recommendation:** Use an established Google account that you don't rely on for critical services. Avoid creating new accounts specifically for this proxy.
+> **Recommendation:** Do not use your main account. Use a burner account instead, and optionally add it to your main account's family plan if needed.
 
 </details>
 
@@ -81,8 +79,9 @@ npm start
 ### 1. Start the Proxy Server
 
 ```bash
-# If installed via npm
-antigravity-claude-proxy start
+# If installed globally
+acc start
+# or: antigravity-claude-proxy start
 
 # If using npx
 npx antigravity-claude-proxy@latest start
@@ -91,7 +90,16 @@ npx antigravity-claude-proxy@latest start
 npm start
 ```
 
-The server runs on `http://localhost:8080` by default.
+The server launches as a **background process** on `http://localhost:8080` by default and survives terminal closure.
+
+| Command | Description |
+| :--- | :--- |
+| `acc start` | Launch proxy in the background |
+| `acc stop` | Shut down the proxy |
+| `acc restart` | Restart the proxy |
+| `acc status` | Check proxy health and PID |
+| `acc ui` | Open the web dashboard |
+| `acc start --log` | Run in foreground with visible logs |
 
 ### 2. Link Account(s)
 
@@ -139,12 +147,6 @@ curl http://localhost:8080/health
 curl "http://localhost:8080/account-limits?format=table"
 ```
 
-### 4. Connect Google Search (optional)
-
-You can connect the search MCP to replace Claude's built-in search, as it requires API access to Anthropic servers. Instead, you can use Gemini Flash 2.5 to perform a search using the web-search tool, reverse-engineered from gemini-cli. Make sure you have the `requests` Python package installed (`pip install requests`), then run:
-```bash
-claude mcp add antigravity-search python3 ./scripts/web_search_mcp.py
-```
 ---
 
 ## Using with Claude Code CLI
@@ -179,11 +181,11 @@ Add this configuration:
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "test",
     "ANTHROPIC_BASE_URL": "http://localhost:8080",
-    "ANTHROPIC_MODEL": "claude-opus-4-5-thinking",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-5-thinking",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-thinking",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-5",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-5-thinking",
+    "ANTHROPIC_MODEL": "claude-opus-4-6-thinking",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6-thinking",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6-thinking",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-6",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6-thinking",
     "ENABLE_EXPERIMENTAL_MCP_CLI": "true"
   }
 }
@@ -196,8 +198,8 @@ Or to use Gemini models:
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "test",
     "ANTHROPIC_BASE_URL": "http://localhost:8080",
-    "ANTHROPIC_MODEL": "gemini-3-pro-high[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gemini-3-pro-high[1m]",
+    "ANTHROPIC_MODEL": "gemini-3.1-pro-high[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gemini-3.1-pro-high[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gemini-3-flash[1m]",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-3-flash[1m]",
     "CLAUDE_CODE_SUBAGENT_MODEL": "gemini-3-flash[1m]",
@@ -285,6 +287,19 @@ function claude-antigravity {
 ```
 
 Then run `claude` for official API or `claude-antigravity` for this proxy.
+
+### Running as a System Service (systemd)
+
+When running as a systemd service, the proxy runs under a different user (e.g. `root`), so it can't find your Claude CLI settings at `~/.claude/settings.json`. Set `CLAUDE_CONFIG_PATH` to point to the real user's `.claude` directory:
+
+```ini
+# /etc/systemd/system/antigravity-proxy.service
+[Service]
+Environment=CLAUDE_CONFIG_PATH=/home/youruser/.claude
+ExecStart=/usr/bin/node /path/to/antigravity-claude-proxy/src/index.js
+```
+
+Without this, the WebUI's Claude CLI tab won't be able to read or write your Claude Code configuration.
 
 ---
 
