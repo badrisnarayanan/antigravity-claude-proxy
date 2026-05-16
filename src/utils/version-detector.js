@@ -22,7 +22,8 @@ import { existsSync, readFileSync } from 'fs';
 const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '1.23.2';
 
 // Fallback for X-Client-Version (top-level "version" in product.json)
-const FALLBACK_CLIENT_VERSION = '1.110.0';
+// Can be overridden via ANTIGRAVITY_CLIENT_VERSION_FALLBACK env var
+const FALLBACK_CLIENT_VERSION = process.env.ANTIGRAVITY_CLIENT_VERSION_FALLBACK || '1.110.0';
 
 let cachedUserAgent = null;
 let cachedClientVersion = null;
@@ -109,7 +110,7 @@ function logVersionInfo(version, source) {
 
     import('./logger.js').then(({ logger }) => {
         if (source === 'fallback') {
-            logger.warn(`X-Client-Version: using hardcoded fallback ${version} — product.json not found. Set ANTIGRAVITY_CLIENT_VERSION env var to override.`);
+            logger.warn(`X-Client-Version: using hardcoded fallback ${version} — product.json not found. Set ANTIGRAVITY_CLIENT_VERSION (exact version) or ANTIGRAVITY_CLIENT_VERSION_FALLBACK (fallback value) env var to override.`);
         } else {
             logger.debug(`X-Client-Version: ${version} (source: ${source})`);
         }

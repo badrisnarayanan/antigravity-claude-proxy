@@ -19,6 +19,7 @@ The proxy supports the following environment variables:
 | `FALLBACK` | Enable model fallback (`true`/`false`) | `false` |
 | `FALLBACK_ANTIGRAVITY_VERSION` | Override the User-Agent version string (useful when Google APIs reject old versions) | `1.23.2` |
 | `ANTIGRAVITY_CLIENT_VERSION` | Override the X-Client-Version header sent to the API (prevents "no longer supported" errors) | Auto-detected from product.json |
+| `ANTIGRAVITY_CLIENT_VERSION_FALLBACK` | Override the fallback X-Client-Version (used when product.json is not found) | `1.110.0` |
 | `CLAUDE_CONFIG_PATH` | Path to `.claude` directory for CLI settings (for systemd/service deployments) | `~/.claude` |
 
 ### Setting Environment Variables
