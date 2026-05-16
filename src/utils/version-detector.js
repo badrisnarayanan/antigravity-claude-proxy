@@ -27,6 +27,7 @@ const FALLBACK_CLIENT_VERSION = '1.110.0';
 let cachedUserAgent = null;
 let cachedClientVersion = null;
 let cachedProductJson = undefined; // undefined = not yet attempted
+let loggedVersionInfo = false;
 
 /**
  * Compares two semver-ish version strings (X.Y.Z).
@@ -54,6 +55,7 @@ function getProductJsonPaths() {
 
     if (os === 'darwin') {
         paths.push('/Applications/Antigravity.app/Contents/Resources/app/product.json');
+        paths.push(join(homedir(), 'Applications', 'Antigravity.app', 'Contents', 'Resources', 'app', 'product.json'));
     } else if (os === 'win32') {
         const localAppData = process.env.LOCALAPPDATA;
         const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
@@ -99,6 +101,22 @@ function getProductJson() {
 }
 
 /**
+ * Log version detection results once at startup (lazy import to avoid circular deps).
+ */
+function logVersionInfo(version, source) {
+    if (loggedVersionInfo) return;
+    loggedVersionInfo = true;
+
+    import('./logger.js').then(({ logger }) => {
+        if (source === 'fallback') {
+            logger.warn(`X-Client-Version: using hardcoded fallback ${version} — product.json not found. Set ANTIGRAVITY_CLIENT_VERSION env var to override.`);
+        } else {
+            logger.debug(`X-Client-Version: ${version} (source: ${source})`);
+        }
+    }).catch(() => {});
+}
+
+/**
  * Get the X-Client-Version value for API requests.
  * Priority: ANTIGRAVITY_CLIENT_VERSION env var > product.json "version" > hardcoded fallback
  * @returns {string} Version string (e.g. "1.110.0")
@@ -108,16 +126,19 @@ export function getClientVersion() {
 
     if (process.env.ANTIGRAVITY_CLIENT_VERSION) {
         cachedClientVersion = process.env.ANTIGRAVITY_CLIENT_VERSION;
+        logVersionInfo(cachedClientVersion, 'env');
         return cachedClientVersion;
     }
 
     const product = getProductJson();
-    if (product?.version && isVersionHigher(product.version, FALLBACK_CLIENT_VERSION)) {
+    if (product?.version) {
         cachedClientVersion = product.version;
+        logVersionInfo(cachedClientVersion, 'product.json');
         return cachedClientVersion;
     }
 
     cachedClientVersion = FALLBACK_CLIENT_VERSION;
+    logVersionInfo(cachedClientVersion, 'fallback');
     return cachedClientVersion;
 }
 
