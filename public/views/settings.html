@@ -918,6 +918,13 @@
 
                 <!-- Models List -->
                 <div class="view-card !p-0">
+                    <!-- Datalist for mapping autocomplete -->
+                    <datalist id="mapping-models-list">
+                        <template x-for="mId in $store.data.models" :key="mId">
+                            <option :value="mId"></option>
+                        </template>
+                    </datalist>
+
                     <table class="standard-table">
                         <thead>
                             <tr>
@@ -962,16 +969,11 @@
                                             </svg>
                                         </div>
                                         <div x-show="isEditing(modelId)" class="flex items-center gap-1">
-                                            <select x-model="newMapping" :x-ref="'input-' + modelId"
-                                                class="select select-sm bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs !h-8 min-h-0"
+                                            <input type="text" list="mapping-models-list" x-model="newMapping" :x-ref="'input-' + modelId"
+                                                class="input input-sm input-bordered bg-space-800 border-space-border text-white focus:outline-none focus:border-neon-cyan flex-1 font-mono text-xs !h-8 min-h-0 w-full"
+                                                :placeholder="$store.global.t('none')"
                                                 @keydown.enter="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
                                                 @keydown.escape="newMapping = config.mapping || ''; stopEditing()">
-                                                <option value="" x-text="$store.global.t('none')">None</option>
-                                                <template x-for="mId in $store.data.models" :key="mId">
-                                                    <option :value="mId" x-text="mId" :selected="mId === newMapping">
-                                                    </option>
-                                                </template>
-                                            </select>
                                             <button class="btn-action-success"
                                                 @click="await updateModelConfig(modelId, { mapping: newMapping }); stopEditing()"
                                                 :title="$store.global.t('saveChanges')">
