@@ -59,10 +59,43 @@ npm run test:caching       # Prompt caching
 npm run test:crossmodel    # Cross-model thinking signatures
 npm run test:oauth         # OAuth no-browser mode
 npm run test:cache-control # Cache control field stripping
+npm run test:websearch     # Web search MCP (Google Search grounding)
 
 # Run strategy unit tests (no server required)
 node tests/test-strategies.cjs
 ```
+
+## Web Search MCP Server
+
+An MCP server that provides Google Search grounding via Gemini through the proxy.
+
+**Setup:** Add to your Claude Code project config (`~/.claude.json` under `projects.<path>.mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "antigravity-search": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["./scripts/web_search_mcp.py"]
+    }
+  }
+}
+```
+
+**Dependencies:** Install Python dependencies before first use:
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+**How it works:** Sends queries to `gemini-3-flash` through the proxy with a `google_search` tool that activates Google Search grounding, plus a minimal thinking budget (`budget_tokens: 1`) for fast responses. Returns live search results, not training data.
+
+**Google Search Grounding (Proxy-level):**
+- Any Anthropic-format request can enable grounding by including a tool named `google_search` or `googleSearchRetrieval`
+- The proxy converts these to native Gemini `{ google_search: {} }` entries, separate from `functionDeclarations`
+- Grounding cannot be mixed with function declarations in the same request (Cloud Code API limitation)
+- Grounding is only supported on Gemini models
 
 ## Architecture
 

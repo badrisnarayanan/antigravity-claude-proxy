@@ -37,7 +37,8 @@
     "test:emptyretry": "node tests/test-empty-response-retry.cjs",
     "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
     "test:strategies": "node tests/test-strategies.cjs",
-    "test:cache-control": "node tests/test-cache-control.cjs"
+    "test:cache-control": "node tests/test-cache-control.cjs",
+    "test:websearch": "node tests/test-web-search.cjs"
   },
   "keywords": [
     "claude",

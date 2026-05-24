@@ -46,6 +46,24 @@ export function buildCloudCodeRequest(anthropicRequest, projectId, accountEmail)
         }
     }
 
+    // Handle web-search model
+    let targetModel = model;
+    if (model === 'web-search') {
+        targetModel = 'gemini-2.5-flash';
+
+        // Add googleSearch tool if not present
+        if (!googleRequest.tools) {
+            googleRequest.tools = [{ googleSearch: {} }];
+        } else {
+            // Check if googleSearch already exists somewhere in tools
+            const hasGoogleSearch = googleRequest.tools.some(t => t.googleSearch);
+            if (!hasGoogleSearch) {
+                // Prepend to tools array
+                googleRequest.tools.unshift({ googleSearch: {} });
+            }
+        }
+    }
+
     const payload = {
         project: projectId,
         model: model,
