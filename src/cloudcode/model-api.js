@@ -30,7 +30,7 @@ const modelCache = {
  */
 function isSupportedModel(modelId) {
     const family = getModelFamily(modelId);
-    return family === 'claude' || family === 'gemini';
+    return family === 'claude' || family === 'gemini' || family === 'gpt-oss';
 }
 
 /**

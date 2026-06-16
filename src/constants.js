@@ -224,6 +224,7 @@ export function getModelFamily(modelName) {
     const lower = (modelName || '').toLowerCase();
     if (lower.includes('claude')) return 'claude';
     if (lower.includes('gemini')) return 'gemini';
+    if (lower.includes('gpt-oss')) return 'gpt-oss';
     return 'unknown';
 }
 

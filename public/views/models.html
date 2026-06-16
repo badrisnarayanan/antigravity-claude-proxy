@@ -86,6 +86,13 @@
                     @click="$store.data.filters.family = 'gemini'; $store.data.computeQuotaRows()"
                     x-text="$store.global.t('geminiCaps')">GEMINI</button>
             </div>
+              <button
+                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-all font-medium text-[10px] tracking-wide"
+                    :class="$store.data.filters.family === 'gpt-oss'
+                        ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/60 shadow-lg shadow-neon-cyan/10'
+                        : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
+                    @click="$store.data.filters.family = 'gpt-oss'; $store.data.computeQuotaRows()"
+                    >GPT</button>
 
             <!-- Show Hidden Toggle -->
             <button

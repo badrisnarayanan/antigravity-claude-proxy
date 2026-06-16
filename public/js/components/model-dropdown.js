@@ -44,6 +44,7 @@ window.Components.modelDropdown = (field, labelKey, accentColor) => ({
         const groups = [
             { family: 'claude', label: this.$store.global.t('familyClaude'), items: [] },
             { family: 'gemini', label: this.$store.global.t('familyGemini'), items: [] },
+            { family: 'gpt-oss', label: 'GPT-OSS', items: [] },
             { family: 'other', label: this.$store.global.t('familyOther'), items: [] }
         ];
         for (const modelId of this.filteredModels) {
