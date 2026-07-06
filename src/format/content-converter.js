@@ -89,7 +89,8 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                 args: block.input || {}
             };
 
-            if (isClaudeModel && block.id) {
+            // Include id for all models except Gemini (Gemini uses thoughtSignature instead)
+            if (!isGeminiModel && block.id) {
                 functionCall.id = block.id;
             }
 
@@ -146,8 +147,8 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                 response: responseContent
             };
 
-            // For Claude models, the id field must match the tool_use_id
-            if (isClaudeModel && block.tool_use_id) {
+            // Include id for all models except Gemini (Gemini uses thoughtSignature instead)
+            if (!isGeminiModel && block.tool_use_id) {
                 functionResponse.id = block.tool_use_id;
             }
 
