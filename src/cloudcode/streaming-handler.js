@@ -80,6 +80,17 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                 const minWaitMs = accountManager.getMinWaitTimeMs(model);
                 const resetTime = new Date(Date.now() + minWaitMs).toISOString();
 
+                // Trigger fallback model immediately if fallback is enabled and wait is >= 1s
+                if (fallbackEnabled && minWaitMs >= 1000) {
+                    const fallbackModel = getFallbackModel(model);
+                    if (fallbackModel) {
+                        logger.warn(`[CloudCode] All accounts exhausted for ${model} (${formatDuration(minWaitMs)} wait). Attempting fallback to ${fallbackModel} (streaming)`);
+                        const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
+                        yield* sendMessageStream(fallbackRequest, accountManager, false);
+                        return;
+                    }
+                }
+
                 // If wait time is too long (> 2 minutes), try fallback first, then throw error
                 if (minWaitMs > MAX_WAIT_BEFORE_ERROR_MS) {
                     // Check if fallback is enabled and available
