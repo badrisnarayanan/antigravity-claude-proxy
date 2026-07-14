@@ -130,8 +130,31 @@ app.use((req, res, next) => {
     next();
 });
 
+// ── /anthropic prefix alias ──────────────────────────────────────────
+// Third-party tools (e.g. Hermes Agent) auto-detect Anthropic-compatible
+// endpoints by checking if the base_url ends with "/anthropic". The Anthropic
+// SDK then sends requests to "<base_url>/v1/messages", which becomes
+// "/anthropic/v1/messages". Rewrite those back to the canonical "/v1/..." paths
+// so the rest of the server doesn't need to know about the prefix.
+app.use((req, res, next) => {
+    if (req.url.startsWith('/anthropic/')) {
+        req.url = req.url.slice('/anthropic'.length);
+    } else if (req.url === '/anthropic') {
+        req.url = '/';
+    }
+    next();
+});
+
+// Parse --no-webui flag (disable WebUI to save RAM on headless servers)
+const DISABLE_WEBUI = args.includes('--no-webui') || process.env.DISABLE_WEBUI === 'true' || process.env.NO_WEBUI === 'true';
+
 // Mount WebUI (optional web interface for account management)
-mountWebUI(app, __dirname, accountManager);
+// Skipped when --no-webui is passed or DISABLE_WEBUI env is set
+if (!DISABLE_WEBUI) {
+    mountWebUI(app, __dirname, accountManager);
+} else {
+    logger.info('[Server] WebUI disabled (--no-webui) — API-only mode');
+}
 
 /**
  * Parse error message to extract error type, status code, and user-friendly message

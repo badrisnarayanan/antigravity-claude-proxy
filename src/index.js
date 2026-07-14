@@ -21,6 +21,7 @@ const packageVersion = getPackageVersion();
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || args.includes('--dev-mode') || process.env.DEBUG === 'true' || process.env.DEV_MODE === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
+const isWebuiDisabled = args.includes('--no-webui') || process.env.DISABLE_WEBUI === 'true' || process.env.NO_WEBUI === 'true';
 
 // Parse --strategy flag (format: --strategy=sticky or --strategy sticky)
 let strategyOverride = null;
@@ -90,6 +91,7 @@ const server = app.listen(PORT, HOST, () => {
     if (!isFallbackEnabled) {
         controlSection += '║    --fallback         Enable model fallback on quota exhaust ║\n';
     }
+    controlSection += '║    --no-webui          Disable WebUI (API-only, saves RAM)    ║';
     controlSection += '║    Ctrl+C             Stop server                            ║';
 
     // Get the strategy label (accountManager will be initialized by now)
@@ -121,7 +123,7 @@ const server = app.listen(PORT, HOST, () => {
 ║            Antigravity Claude Proxy Server v${packageVersion}            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-${border}  ${align(`Server and WebUI running at: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`)}${border}
+${border}  ${align(`Server running at: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}${isWebuiDisabled ? ' (API-only, no WebUI)' : ''}`)}${border}
 ${border}  ${align(`Bound to: ${boundHost}:${boundPort}`)}${border}
 ${statusSection}║                                                              ║
 ${controlSection}

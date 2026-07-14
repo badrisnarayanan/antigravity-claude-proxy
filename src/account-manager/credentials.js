@@ -14,6 +14,7 @@ import {
 } from '../constants.js';
 import { refreshAccessToken, parseRefreshParts, formatRefreshParts } from '../auth/oauth.js';
 import { getAuthStatus } from '../auth/database.js';
+import { readAgyToken, isAgyAccessTokenFresh, writeAgyToken } from '../auth/agy-token.js';
 import { logger } from '../utils/logger.js';
 import { isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { onboardUser, getDefaultTierId } from './onboarding.js';
@@ -98,6 +99,43 @@ export async function getTokenForAccount(account, tokenCache, onInvalid, onSave)
             // Mark account as invalid (credentials need re-auth)
             if (onInvalid) onInvalid(account.email, error.message);
             throw new Error(`AUTH_INVALID: ${account.email}: ${error.message}`);
+        }
+    } else if (account.source === 'agy') {
+        // Reuse the Antigravity CLI (agy) token at ~/.gemini/antigravity-cli/
+        // antigravity-oauth-token. agy uses the same OAuth client_id/secret as
+        // this proxy, so we can refresh its refresh_token directly.
+        const agyData = readAgyToken(account.agyTokenPath);
+        if (!agyData) {
+            throw new Error(`AUTH_INVALID: ${account.email}: agy token file not found`);
+        }
+
+        // If the cached access token is still fresh, use it
+        if (isAgyAccessTokenFresh(agyData.expiryMs) && agyData.accessToken) {
+            token = agyData.accessToken;
+            logger.debug(`[AccountManager] Using cached agy access token for ${account.email}`);
+        } else if (agyData.refreshToken) {
+            // Refresh via the shared OAuth client (same client_id/secret)
+            try {
+                const tokens = await refreshAccessToken(agyData.refreshToken);
+                token = tokens.accessToken;
+                // Optionally write back so a running agy CLI also sees the fresh token
+                writeAgyToken(account.agyTokenPath, tokens.accessToken, tokens.expiresIn);
+                if (account.isInvalid) {
+                    account.isInvalid = false;
+                    account.invalidReason = null;
+                    if (onSave) await onSave();
+                }
+                logger.success(`[AccountManager] Refreshed agy token for: ${account.email}`);
+            } catch (error) {
+                if (isNetworkError(error)) {
+                    throw new Error(`AUTH_NETWORK_ERROR: ${error.message}`);
+                }
+                logger.error(`[AccountManager] Failed to refresh agy token for ${account.email}:`, error.message);
+                if (onInvalid) onInvalid(account.email, error.message);
+                throw new Error(`AUTH_INVALID: ${account.email}: ${error.message}`);
+            }
+        } else {
+            throw new Error(`AUTH_INVALID: ${account.email}: agy token has no refresh_token`);
         }
     } else if (account.source === 'manual' && account.apiKey) {
         token = account.apiKey;

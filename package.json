@@ -25,6 +25,7 @@
     "accounts:list": "node src/cli/accounts.js list",
     "accounts:remove": "node src/cli/accounts.js remove",
     "accounts:verify": "node src/cli/accounts.js verify",
+    "accounts:import-agy": "node src/cli/accounts.js import-agy",
     "test": "node tests/run-all.cjs",
     "test:signatures": "node tests/test-thinking-signatures.cjs",
     "test:multiturn": "node tests/test-multiturn-thinking-tools.cjs",

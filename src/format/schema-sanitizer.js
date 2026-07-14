@@ -518,12 +518,26 @@ export function sanitizeSchema(schema) {
     for (const [key, value] of Object.entries(schema)) {
         // Convert "const" to "enum" for compatibility
         if (key === 'const') {
-            sanitized.enum = [value];
+            // Google's API rejects non-string enum values (TYPE_STRING).
+            // Convert booleans/numbers to strings, or skip if the value is
+            // not a simple scalar.
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                sanitized.enum = [String(value)];
+            } else {
+                // For complex const values, add as description hint instead
+                sanitized = appendDescriptionHint(sanitized, `Must be: ${JSON.stringify(value)}`);
+            }
             continue;
         }
 
         // Skip fields not in allowlist
         if (!ALLOWED_FIELDS.has(key)) {
+            continue;
+        }
+
+        // Sanitize enum values: Google requires TYPE_STRING for enum entries
+        if (key === 'enum' && Array.isArray(value)) {
+            sanitized.enum = value.map(v => (typeof v === 'string') ? v : String(v));
             continue;
         }
 

@@ -28,6 +28,7 @@ import {
     getUserEmail,
     extractCodeFromInput
 } from '../auth/oauth.js';
+import { readAgyToken, getAgyTokenPath } from '../auth/agy-token.js';
 
 const SERVER_PORT = process.env.PORT || DEFAULT_PORT;
 
@@ -138,8 +139,10 @@ function saveAccounts(accounts, settings = {}) {
         const config = {
             accounts: accounts.map(acc => ({
                 email: acc.email,
-                source: 'oauth',
-                refreshToken: acc.refreshToken,
+                source: acc.source || 'oauth',
+                refreshToken: acc.source === 'agy' ? undefined : acc.refreshToken,
+                agyTokenPath: acc.source === 'agy' ? (acc.agyTokenPath || undefined) : undefined,
+                apiKey: acc.source === 'manual' ? acc.apiKey : undefined,
                 projectId: acc.projectId,
                 addedAt: acc.addedAt || new Date().toISOString(),
                 lastUsed: acc.lastUsed || null,
@@ -452,6 +455,72 @@ async function verifyAccounts() {
 }
 
 /**
+ * Import account from the Antigravity CLI (agy) token file.
+ * Reads ~/.gemini/antigravity-cli/antigravity-oauth-token, resolves the
+ * Google account email, and saves it as a source='agy' account so the proxy
+ * can reuse (and refresh) the token without a separate OAuth flow or a full
+ * Antigravity IDE install.
+ *
+ * Usage: npm run accounts:import-agy [-- --agy-path /custom/path]
+ */
+async function importAgyAccount(existingAccounts, rl) {
+    console.log('\n=== Import from Antigravity CLI (agy) ===\n');
+
+    const customPath = process.env.AGY_TOKEN_PATH;
+    const tokenPath = getAgyTokenPath(customPath);
+    console.log(`Looking for agy token at: ${tokenPath}`);
+
+    const agyData = readAgyToken(customPath);
+    if (!agyData) {
+        console.error(`\n✗ No agy token file found at ${tokenPath}`);
+        console.error('  Make sure you have run `agy` and completed the Google sign-in.');
+        console.error('  Or set AGY_TOKEN_PATH to the location of your antigravity-oauth-token file.');
+        return null;
+    }
+
+    if (!agyData.refreshToken) {
+        console.error('\n✗ agy token file has no refresh_token. Re-authenticate with `agy` first.');
+        return null;
+    }
+
+    console.log('✓ Found agy OAuth token');
+
+    // Resolve the Google account email by refreshing the access token
+    let email;
+    try {
+        const tokens = await refreshAccessToken(agyData.refreshToken);
+        email = await getUserEmail(tokens.accessToken);
+        console.log(`✓ Authenticated as: ${email}`);
+    } catch (error) {
+        console.error(`\n✗ Failed to refresh agy token: ${error.message}`);
+        console.error('  The agy session may have expired. Run `agy` to re-authenticate, then retry.');
+        return null;
+    }
+
+    // Check for duplicate
+    const existing = existingAccounts.find(a => a.email === email);
+    if (existing) {
+        console.log(`\n⚠ Account ${email} already exists. Updating to agy source.`);
+        existing.source = 'agy';
+        existing.agyTokenPath = customPath || undefined;
+        existing.refreshToken = undefined; // agy source reads from file, not stored refreshToken
+        existing.apiKey = undefined;
+        existing.isInvalid = false;
+        existing.invalidReason = null;
+        existing.addedAt = existing.addedAt || new Date().toISOString();
+        return null; // Updated in-place
+    }
+
+    return {
+        email,
+        source: 'agy',
+        agyTokenPath: customPath || undefined,
+        addedAt: new Date().toISOString(),
+        modelRateLimits: {}
+    };
+}
+
+/**
  * Main CLI
  */
 async function main() {
@@ -472,6 +541,23 @@ async function main() {
                 await ensureServerStopped();
                 await interactiveAdd(rl, noBrowser);
                 break;
+            case 'import-agy':
+                await ensureServerStopped();
+                {
+                    const accounts = loadAccounts();
+                    const newAccount = await importAgyAccount(accounts, rl);
+                    if (newAccount) {
+                        accounts.push(newAccount);
+                        saveAccounts(accounts);
+                    } else if (accounts.length > 0) {
+                        // In-place update of an existing account
+                        saveAccounts(accounts);
+                    }
+                    if (accounts.length > 0) {
+                        displayAccounts(accounts);
+                    }
+                }
+                break;
             case 'list':
                 await listAccounts();
                 break;
@@ -484,13 +570,15 @@ async function main() {
                 break;
             case 'help':
                 console.log('\nUsage:');
-                console.log('  node src/cli/accounts.js add     Add new account(s)');
-                console.log('  node src/cli/accounts.js list    List all accounts');
-                console.log('  node src/cli/accounts.js verify  Verify account tokens');
-                console.log('  node src/cli/accounts.js clear   Remove all accounts');
-                console.log('  node src/cli/accounts.js help    Show this help');
+                console.log('  node src/cli/accounts.js add          Add new account(s) via OAuth');
+                console.log('  node src/cli/accounts.js import-agy   Import from Antigravity CLI (agy) token');
+                console.log('  node src/cli/accounts.js list         List all accounts');
+                console.log('  node src/cli/accounts.js verify        Verify account tokens');
+                console.log('  node src/cli/accounts.js clear         Remove all accounts');
+                console.log('  node src/cli/accounts.js help          Show this help');
                 console.log('\nOptions:');
                 console.log('  --no-browser    Manual authorization code input (for headless servers)');
+                console.log('  --agy-path       Custom path to agy token file (or set AGY_TOKEN_PATH env)');
                 break;
             case 'remove':
                 await ensureServerStopped();

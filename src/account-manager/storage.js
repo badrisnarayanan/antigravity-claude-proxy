@@ -35,6 +35,7 @@ export async function loadAccounts(configPath = ACCOUNT_CONFIG_PATH) {
             isInvalid: acc.verifyUrl ? (acc.isInvalid || false) : false,
             invalidReason: acc.verifyUrl ? (acc.invalidReason || null) : null,
             verifyUrl: acc.verifyUrl || null,
+            agyTokenPath: acc.agyTokenPath || undefined,
             modelRateLimits: acc.modelRateLimits || {},
             // New fields for subscription and quota tracking
             subscription: acc.subscription || { tier: 'unknown', projectId: null, detectedAt: null },
@@ -132,6 +133,7 @@ export async function saveAccounts(configPath, accounts, settings, activeIndex) 
                 dbPath: acc.dbPath || null,
                 refreshToken: acc.source === 'oauth' ? acc.refreshToken : undefined,
                 apiKey: acc.source === 'manual' ? acc.apiKey : undefined,
+                agyTokenPath: acc.source === 'agy' ? (acc.agyTokenPath || undefined) : undefined,
                 projectId: acc.projectId || undefined,
                 addedAt: acc.addedAt || undefined,
                 isInvalid: acc.isInvalid || false,
