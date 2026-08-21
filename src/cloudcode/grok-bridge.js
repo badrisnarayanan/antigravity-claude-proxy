@@ -1,7 +1,7 @@
 /**
  * Anthropic-compatible bridge to the Grok CLI.
  */
-import { spawn as nodeSpawn } from 'child_process';
+import { spawn as nodeSpawn, spawnSync as nodeSpawnSync } from 'child_process';
 import crypto from 'crypto';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
@@ -57,7 +57,11 @@ export function buildGrokLaunch(commandSpec, args, {
     const options = { shell: false, windowsHide: platform === 'win32' };
     if (platform === 'win32' && commandSpec.kind === 'cmd') {
         const commandLine = [commandSpec.command, ...args].map(quoteCmdToken).join(' ');
-        return { command: comSpec, args: ['/d', '/s', '/c', commandLine], options };
+        return {
+            command: comSpec,
+            args: ['/d', '/s', '/c', commandLine],
+            options: { ...options, windowsVerbatimArguments: true }
+        };
     }
     return { command: commandSpec.command, args, options };
 }
@@ -92,6 +96,24 @@ export function spawnGrokProcess(args, {
         stdio,
         env: buildEnv(homeDir, baseEnv)
     });
+}
+
+export function terminateGrokProcess(child, {
+    platform = process.platform,
+    spawnSyncImpl = nodeSpawnSync,
+    systemRoot = process.env.SystemRoot || 'C:\\Windows'
+} = {}) {
+    if (platform === 'win32' && Number.isInteger(child.pid)) {
+        const taskkill = join(systemRoot, 'System32', 'taskkill.exe');
+        const result = spawnSyncImpl(taskkill, ['/pid', String(child.pid), '/t', '/f'], {
+            stdio: 'ignore',
+            shell: false,
+            windowsHide: true
+        });
+        if (!result.error && result.status === 0) return true;
+    }
+    try { child.kill(); } catch { /* process already exited */ }
+    return false;
 }
 
 function buildGrokPrompt(anthropicRequest) {
@@ -176,6 +198,7 @@ export function createGrokBridge({
     grokCommand = resolveGrokCommand({ platform }),
     comSpec = process.env.ComSpec || 'cmd.exe',
     baseEnv = process.env,
+    terminateProcess = child => terminateGrokProcess(child, { platform }),
     healthTimeoutMs = DEFAULT_HEALTH_TIMEOUT_MS,
     requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
 } = {}) {
@@ -195,10 +218,13 @@ export function createGrokBridge({
             let stdout = '';
             let stderr = '';
             let settled = false;
+            let terminationError = null;
+            let terminationGraceTimer = null;
             const finish = (callback, value) => {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
+                clearTimeout(terminationGraceTimer);
                 signal?.removeEventListener('abort', onAbort);
                 child.stdout?.destroy();
                 child.stderr?.destroy();
@@ -206,8 +232,13 @@ export function createGrokBridge({
                 callback(value);
             };
             const terminate = error => {
-                try { child.kill(); } catch { /* process already exited */ }
-                finish(reject, error);
+                terminationError = error;
+                const treeTerminated = terminateProcess(child);
+                if (treeTerminated) {
+                    finish(reject, error);
+                    return;
+                }
+                terminationGraceTimer = setTimeout(() => finish(reject, error), 2_000);
             };
             const onAbort = () => terminate(createAbortError());
             const timer = setTimeout(() => terminate(createTimeoutError(timeoutMs)), timeoutMs);
@@ -215,7 +246,13 @@ export function createGrokBridge({
             child.stdout?.on('data', data => { stdout += data.toString(); });
             child.stderr?.on('data', data => { stderr += data.toString(); });
             child.on('error', error => finish(reject, new Error(`Grok CLI unavailable: ${error.message}`)));
-            child.on('close', (code, childSignal) => finish(resolve, { code, signal: childSignal, stdout, stderr }));
+            child.on('close', (code, childSignal) => {
+                if (terminationError) {
+                    finish(reject, terminationError);
+                    return;
+                }
+                finish(resolve, { code, signal: childSignal, stdout, stderr });
+            });
             signal?.addEventListener('abort', onAbort, { once: true });
         });
     }

@@ -182,4 +182,27 @@ test('grok.cmd fallback uses hidden cmd.exe with shell disabled and quoted argum
     assert.match(launch.args[3], /"C:\\Temp Folder\\prompt\.txt"/);
     assert.equal(launch.options.windowsHide, true);
     assert.equal(launch.options.shell, false);
+    assert.equal(launch.options.windowsVerbatimArguments, true);
+});
+
+test('Windows cancellation terminates the entire subprocess tree without a shell', async () => {
+    const { terminateGrokProcess } = await loadBridge();
+    const child = createChild();
+    child.pid = 4321;
+    let call;
+    const confirmed = terminateGrokProcess(child, {
+        platform: 'win32',
+        systemRoot: 'C:\\Windows',
+        spawnSyncImpl: (command, args, options) => {
+            call = { command, args, options };
+            return { status: 0 };
+        },
+    });
+
+    assert.equal(confirmed, true);
+    assert.equal(call.command, 'C:\\Windows\\System32\\taskkill.exe');
+    assert.deepEqual(call.args, ['/pid', '4321', '/t', '/f']);
+    assert.equal(call.options.windowsHide, true);
+    assert.equal(call.options.shell, false);
+    assert.equal(child.killed, false);
 });

@@ -956,6 +956,10 @@ app.post('/v1/messages', async (req, res) => {
         }
 
     } catch (error) {
+        if (req.aborted || res.destroyed || res.writableEnded || error.name === 'AbortError') {
+            logger.debug('[API] Request aborted by client; response channel is closed');
+            return;
+        }
         logger.error('[API] Error:', error);
 
         let { errorType, statusCode, errorMessage } = parseError(error);
