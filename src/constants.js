@@ -225,6 +225,7 @@ export function getModelFamily(modelName) {
     if (lower.includes('claude')) return 'claude';
     if (lower.includes('gemini')) return 'gemini';
     if (lower.includes('gpt-oss')) return 'gpt-oss';
+    if (lower.startsWith('grok-')) return 'grok';
     return 'unknown';
 }
 

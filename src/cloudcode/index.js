@@ -12,16 +12,27 @@
 // Re-export public API
 export { sendMessage } from './message-handler.js';
 export { sendMessageStream } from './streaming-handler.js';
+export {
+    sendGrokMessage,
+    sendGrokMessageStream,
+    checkGrokAvailable,
+    spawnGrokProcess,
+    accountManager as grokAccountManager
+} from './grok-bridge.js';
 export { listModels, fetchAvailableModels, getModelQuotas, getSubscriptionTier, isValidModel } from './model-api.js';
 
 // Default export for backwards compatibility
 import { sendMessage } from './message-handler.js';
 import { sendMessageStream } from './streaming-handler.js';
+import { sendGrokMessage, sendGrokMessageStream, checkGrokAvailable } from './grok-bridge.js';
 import { listModels, fetchAvailableModels, getModelQuotas, getSubscriptionTier, isValidModel } from './model-api.js';
 
 export default {
     sendMessage,
     sendMessageStream,
+    sendGrokMessage,
+    sendGrokMessageStream,
+    checkGrokAvailable,
     listModels,
     fetchAvailableModels,
     getModelQuotas,

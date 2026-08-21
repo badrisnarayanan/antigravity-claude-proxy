@@ -7,8 +7,22 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import os from 'os';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
+import {
+    sendMessage,
+    sendMessageStream,
+    sendGrokMessage,
+    sendGrokMessageStream,
+    checkGrokAvailable,
+    spawnGrokProcess,
+    grokAccountManager,
+    listModels,
+    getModelQuotas,
+    getSubscriptionTier,
+    isValidModel
+} from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -37,6 +51,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const app = express();
+const GROK_MODELS = ['grok-4.5', 'grok-4.5-build-free'];
 
 // Disable x-powered-by header for security
 app.disable('x-powered-by');
@@ -442,6 +457,11 @@ app.get('/account-limits', async (req, res) => {
 
         const sortedModels = Array.from(allModelIds).sort();
 
+        for (const model of GROK_MODELS) {
+            if (!sortedModels.includes(model)) sortedModels.push(model);
+        }
+        sortedModels.sort();
+
         // Return ASCII table format
         if (format === 'table') {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -595,6 +615,13 @@ app.get('/account-limits', async (req, res) => {
                     // Quota limits
                     limits: Object.fromEntries(
                         sortedModels.map(modelId => {
+                            if (GROK_MODELS.includes(modelId)) {
+                                return [modelId, {
+                                    remaining: '100%',
+                                    remainingFraction: 1,
+                                    resetTime: null
+                                }];
+                            }
                             const quota = acc.models?.[modelId];
                             if (!quota) {
                                 return [modelId, null];
@@ -668,6 +695,20 @@ app.get('/v1/models', async (req, res) => {
         }
         const token = await accountManager.getTokenForAccount(account);
         const models = await listModels(token);
+        if (models?.data) {
+            const existingIds = new Set(models.data.map(model => model.id));
+            for (const model of GROK_MODELS) {
+                if (!existingIds.has(model)) {
+                    models.data.push({
+                        id: model,
+                        object: 'model',
+                        created: Math.floor(Date.now() / 1000),
+                        owned_by: 'xai',
+                        description: `xAI Grok ${model.replace('grok-', '')}`
+                    });
+                }
+            }
+        }
         res.json(models);
     } catch (error) {
         logger.error('[API] Error listing models:', error);
@@ -733,22 +774,25 @@ app.post('/v1/messages', async (req, res) => {
         }
 
         const modelId = requestedModel;
+        const isGrokModel = modelId.toLowerCase().startsWith('grok-');
 
-        // Validate model ID before processing
-        const { account: validationAccount } = accountManager.selectAccount();
-        if (validationAccount) {
-            const token = await accountManager.getTokenForAccount(validationAccount);
-            const projectId = validationAccount.subscription?.projectId || null;
-            const valid = await isValidModel(modelId, token, projectId);
+        // Grok models are provided by the local CLI bridge, not Cloud Code.
+        if (!isGrokModel) {
+            const { account: validationAccount } = accountManager.selectAccount();
+            if (validationAccount) {
+                const token = await accountManager.getTokenForAccount(validationAccount);
+                const projectId = validationAccount.subscription?.projectId || null;
+                const valid = await isValidModel(modelId, token, projectId);
 
-            if (!valid) {
-                throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
+                if (!valid) {
+                    throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
+                }
             }
         }
 
         // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them to force a fresh check.
         // If we have some available accounts, we try them first.
-        if (accountManager.isAllRateLimited(modelId)) {
+        if (!isGrokModel && accountManager.isAllRateLimited(modelId)) {
             logger.warn(`[Server] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
             accountManager.resetAllRateLimits();
         }
@@ -785,6 +829,51 @@ app.post('/v1/messages', async (req, res) => {
         };
 
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
+
+        if (isGrokModel) {
+            const abortController = new AbortController();
+            const abortRequest = () => abortController.abort();
+            const abortOnResponseClose = () => {
+                if (!res.writableEnded) abortRequest();
+            };
+            req.once('aborted', abortRequest);
+            res.once('close', abortOnResponseClose);
+
+            try {
+                const grokAvailable = await checkGrokAvailable({ signal: abortController.signal });
+                if (!grokAvailable) {
+                    throw new Error('Grok CLI is not available or no authenticated Grok account is enabled');
+                }
+
+                if (stream) {
+                    const generator = sendGrokMessageStream(request, { signal: abortController.signal });
+                    const firstResult = await generator.next();
+                    res.status(200);
+                    res.setHeader('Content-Type', 'text/event-stream');
+                    res.setHeader('Cache-Control', 'no-cache');
+                    res.setHeader('Connection', 'keep-alive');
+                    res.flushHeaders();
+
+                    if (!firstResult.done) {
+                        res.write(`event: ${firstResult.value.type}\ndata: ${JSON.stringify(firstResult.value)}\n\n`);
+                        if (res.flush) res.flush();
+                    }
+                    for await (const event of generator) {
+                        res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+                        if (res.flush) res.flush();
+                    }
+                    res.end();
+                    return;
+                }
+
+                const response = await sendGrokMessage(request, { signal: abortController.signal });
+                res.json(response);
+                return;
+            } finally {
+                req.off('aborted', abortRequest);
+                res.off('close', abortOnResponseClose);
+            }
+        }
 
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
         if (logger.isDebugEnabled) {
@@ -903,6 +992,134 @@ app.post('/v1/messages', async (req, res) => {
                 }
             });
         }
+    }
+});
+
+// ==========================================
+// Grok account management
+// ==========================================
+
+app.get('/api/grok/accounts', (req, res) => {
+    try {
+        res.json({ status: 'ok', ...grokAccountManager.getStatus() });
+    } catch (error) {
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+app.post('/api/grok/accounts', async (req, res) => {
+    try {
+        const { alias, email } = req.body;
+        if (!alias || !email) {
+            return res.status(400).json({ status: 'error', error: 'alias and email are required' });
+        }
+        const account = await grokAccountManager.addAccount(alias, email);
+        res.json({ status: 'ok', account });
+    } catch (error) {
+        res.status(400).json({ status: 'error', error: error.message });
+    }
+});
+
+app.post('/api/grok/accounts/:alias/login', async (req, res) => {
+    try {
+        const { alias } = req.params;
+        const account = grokAccountManager.getAccount(alias);
+        if (!account) {
+            return res.status(404).json({ status: 'error', error: `Account '${alias}' not found` });
+        }
+
+        const child = spawnGrokProcess(['login', '--device-auth', '--debug'], {
+            homeDir: account.homeDir,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        const deviceInfo = await new Promise((resolve, reject) => {
+            let output = '';
+            let settled = false;
+            const finish = (callback, value) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                callback(value);
+            };
+            const inspectOutput = () => {
+                const urlMatch = output.match(/https:\/\/accounts\.x\.ai\/oauth2\/device\?user_code=([A-Z0-9-]+)/);
+                const codeMatch = output.match(/Confirm this code in your browser:\s*\n?\s*([A-Z0-9-]+)/);
+                if (urlMatch && codeMatch) {
+                    finish(resolve, { url: urlMatch[0], userCode: codeMatch[1] });
+                }
+            };
+            const appendOutput = data => {
+                output += data.toString();
+                inspectOutput();
+            };
+            const timeout = setTimeout(() => {
+                try { child.kill(); } catch { /* process already exited */ }
+                finish(reject, new Error('Device code login timed out'));
+            }, 15_000);
+
+            child.stdout.on('data', appendOutput);
+            child.stderr.on('data', appendOutput);
+            child.on('close', code => finish(resolve, {
+                url: null,
+                userCode: null,
+                exitCode: code,
+                output
+            }));
+            child.on('error', error => finish(reject, error));
+        });
+
+        if (deviceInfo.url && deviceInfo.userCode) {
+            res.json({
+                status: 'ok',
+                deviceUrl: deviceInfo.url,
+                userCode: deviceInfo.userCode,
+                message: 'Open the URL in your browser and confirm the code. The CLI is waiting in background.'
+            });
+        } else {
+            res.status(500).json({
+                status: 'error',
+                error: 'Failed to get a device code',
+                exitCode: deviceInfo.exitCode
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+app.post('/api/grok/accounts/:alias/login-check', (req, res) => {
+    try {
+        const { alias } = req.params;
+        const account = grokAccountManager.getAccount(alias);
+        if (!account) {
+            return res.status(404).json({ status: 'error', error: `Account '${alias}' not found` });
+        }
+        const hasAuth = [
+            path.join(account.homeDir, '.grok', 'auth.json'),
+            path.join(account.homeDir, 'auth.json')
+        ].some(candidate => existsSync(candidate));
+        res.json({ status: 'ok', alias, hasAuth });
+    } catch (error) {
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+app.delete('/api/grok/accounts/:alias', async (req, res) => {
+    try {
+        await grokAccountManager.removeAccount(req.params.alias);
+        res.json({ status: 'ok', message: `Grok account '${req.params.alias}' removed` });
+    } catch (error) {
+        res.status(400).json({ status: 'error', error: error.message });
+    }
+});
+
+app.post('/api/grok/accounts/:alias/toggle', async (req, res) => {
+    try {
+        const enabled = await grokAccountManager.toggleAccount(req.params.alias);
+        res.json({ status: 'ok', alias: req.params.alias, enabled });
+    } catch (error) {
+        res.status(400).json({ status: 'error', error: error.message });
     }
 });
 
