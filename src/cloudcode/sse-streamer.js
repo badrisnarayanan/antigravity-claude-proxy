@@ -279,10 +279,20 @@ export async function* streamSSEResponse(response, originalModel) {
     }
 
     // Emit message_delta and message_stop
+    //
+    // Usage reporting: Google streams usageMetadata progressively; the
+    // early chunks carry an interim promptTokenCount and no
+    // cachedContentTokenCount yet. message_start therefore latches an
+    // inflated input_tokens (the nearly-full prompt minus zero cache) whenever
+    // the request is served mostly from cache. The final usageMetadata is
+    // authoritative, so correct input_tokens here: clients that take the last
+    // non-zero value (or read message_delta.usage.input_tokens) then see the
+    // true uncached input instead of a phantom near-100%-of-prompt figure.
     yield {
         type: 'message_delta',
         delta: { stop_reason: stopReason || 'end_turn', stop_sequence: null },
         usage: {
+            input_tokens: Math.max(0, inputTokens - cacheReadTokens),
             output_tokens: outputTokens,
             cache_read_input_tokens: cacheReadTokens,
             cache_creation_input_tokens: 0
