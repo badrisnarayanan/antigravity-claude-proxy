@@ -112,7 +112,8 @@ export function convertGoogleToAnthropic(googleResponse, model) {
         stop_sequence: null,
         usage: {
             input_tokens: promptTokens - cachedTokens,
-            output_tokens: usageMetadata.candidatesTokenCount || 0,
+            // Thinking tokens are generated (and billed) output — include them.
+            output_tokens: (usageMetadata.candidatesTokenCount || 0) + (usageMetadata.thoughtsTokenCount || 0),
             cache_read_input_tokens: cachedTokens,
             cache_creation_input_tokens: 0
         }

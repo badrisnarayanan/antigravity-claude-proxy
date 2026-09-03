@@ -55,7 +55,11 @@ export async function* streamSSEResponse(response, originalModel) {
                 const usage = innerResponse.usageMetadata;
                 if (usage) {
                     inputTokens = usage.promptTokenCount || inputTokens;
-                    outputTokens = usage.candidatesTokenCount || outputTokens;
+                    // Anthropic semantics: output_tokens covers ALL generated
+                    // tokens, thinking included (thoughtsTokenCount is billed as
+                    // output by the backend). candidatesTokenCount alone silently
+                    // undercounts thinking-heavy responses.
+                    outputTokens = ((usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0)) || outputTokens;
                     cacheReadTokens = usage.cachedContentTokenCount || cacheReadTokens;
                 }
 
