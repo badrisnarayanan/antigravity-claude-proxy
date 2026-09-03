@@ -10,6 +10,7 @@ const path = require('path');
 
 const tests = [
     { name: 'Account Selection Strategies', file: 'test-strategies.cjs' },
+    { name: 'Session Manager', file: 'test-session-manager.cjs' },
     { name: 'Cache Control Stripping', file: 'test-cache-control.cjs' },
     { name: 'Thinking Signatures', file: 'test-thinking-signatures.cjs' },
     { name: 'Multi-turn Tools (Non-Streaming)', file: 'test-multiturn-thinking-tools.cjs' },
