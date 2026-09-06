@@ -669,5 +669,42 @@ export function cleanSchema(schema) {
         result.type = toGoogleType(result.type);
     }
 
+    // Phase 6: Google's protobuf-based schema requires every ARRAY type to
+    // declare a single object `items` schema. Plain JSON Schema allows this
+    // to be omitted (`{ type: 'array' }` = "array of anything"), boolean
+    // (`items: true` = "any"), or tuple-form (`items: [...]`) - none of
+    // which the Cloud Code API accepts; it rejects the first two with
+    // "items: missing field". This runs after the items/properties
+    // recursion above (and after Phase 5's type conversion), so it applies
+    // at every nesting depth - fixing issue #368 (nested array schemas like
+    // `where.items.items` losing their innermost `items`).
+    if (result.type === 'ARRAY') {
+        if (!result.items || typeof result.items !== 'object') {
+            // Missing entirely, or a boolean schema like `items: true`.
+            result.items = { type: 'STRING' };
+        } else if (Array.isArray(result.items)) {
+            // Tuple-form `items: [...]` - Google only supports one items
+            // schema, so collapse to the most informative entry.
+            let best = null;
+            let bestScore = -1;
+            for (const option of result.items) {
+                const score = scoreSchemaOption(option);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = option;
+                }
+            }
+            result.items = best || { type: 'STRING' };
+        }
+    }
+
+    // Phase 7: Google rejects `properties`/`required` on a non-OBJECT schema.
+    // These can survive on the current node after anyOf/oneOf flattening
+    // picked a non-object option while the parent still carried them.
+    if (result.type !== 'OBJECT') {
+        delete result.properties;
+        delete result.required;
+    }
+
     return result;
 }

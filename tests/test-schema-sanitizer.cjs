@@ -254,6 +254,110 @@ async function runTests() {
         assertEqual(result.properties.todoList.items.properties.status.type, 'STRING');
     });
 
+    // Structural invariant: every schema node produced by cleanSchema must be
+    // valid for Google's protobuf-based Schema format - specifically, every
+    // ARRAY must carry exactly one object `items` schema, every type must be
+    // one of Google's uppercase names, and only OBJECT nodes may carry
+    // `properties`/`required`. Used by the tests below instead of asserting
+    // one invented shape, so it catches any cause that produces the same
+    // class of invalid payload (not just the literal repro schema).
+    function assertGoogleSchemaValid(node, path = '$') {
+        if (!node || typeof node !== 'object') return;
+        if (node.type === 'ARRAY' && (!node.items || typeof node.items !== 'object' || Array.isArray(node.items))) {
+            throw new Error(`${path}: ARRAY without a single object items (got ${JSON.stringify(node.items)})`);
+        }
+        if (node.type && !['STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT'].includes(node.type)) {
+            throw new Error(`${path}: non-Google type ${node.type}`);
+        }
+        if (node.type !== 'OBJECT' && (node.properties || node.required)) {
+            throw new Error(`${path}: non-OBJECT node carries properties/required`);
+        }
+        if (node.items) assertGoogleSchemaValid(node.items, `${path}.items`);
+        for (const [k, v] of Object.entries(node.properties || {})) {
+            assertGoogleSchemaValid(v, `${path}.properties[${k}]`);
+        }
+    }
+
+    // Test 11: Array missing `items` gets a fallback (issue #368)
+    test('Bare array type without items gets a fallback items schema', () => {
+        const schema = { type: 'array' };
+        const result = cleanSchema(sanitizeSchema(schema));
+
+        assertEqual(result.type, 'ARRAY', 'Type should be ARRAY');
+        assertEqual(result.items, { type: 'STRING' }, 'Missing items should fall back to STRING');
+    });
+
+    // Test 12: Nested array-of-array where the innermost items is omitted (issue #368)
+    // Reproduces "properties[where].items.items: missing field" from the Google API.
+    test('Nested array-of-array with missing innermost items (issue #368)', () => {
+        const schema = {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'object',
+                    properties: {
+                        where: {
+                            type: 'array',
+                            items: { type: 'array' } // innermost items intentionally omitted
+                        }
+                    }
+                }
+            }
+        };
+        const result = cleanSchema(sanitizeSchema(schema));
+
+        const where = result.properties.query.properties.where;
+        assertEqual(where.type, 'ARRAY', 'where should be ARRAY');
+        assertEqual(where.items.type, 'ARRAY', 'where.items should be ARRAY');
+        assertEqual(where.items.items, { type: 'STRING' }, 'where.items.items should fall back to STRING, not be missing');
+        assertGoogleSchemaValid(result);
+    });
+
+    // Test 13: `items: true` (boolean/"any" schema) is normalized to an object (issue #368)
+    test('Boolean items schema is normalized to an object', () => {
+        const schema = { type: 'array', items: true };
+        const result = cleanSchema(schema); // bypass sanitizeSchema's allowlist to hit cleanSchema directly
+        assertEqual(result.type, 'ARRAY');
+        assertEqual(typeof result.items, 'object', 'items should be normalized to an object, not left as boolean');
+        assertGoogleSchemaValid(result);
+    });
+
+    // Test 14: Tuple-form `items: [...]` is collapsed to a single schema (issue #368)
+    test('Tuple-form items array is collapsed to one representative schema', () => {
+        const schema = {
+            type: 'array',
+            items: [{ type: 'string' }, { type: 'object', properties: { x: { type: 'string' } } }]
+        };
+        const result = cleanSchema(schema);
+        assertEqual(result.type, 'ARRAY');
+        assertEqual(Array.isArray(result.items), false, 'items should be collapsed to a single schema, not an array');
+        assertGoogleSchemaValid(result);
+    });
+
+    // Test 15: Full suite of prior schemas still satisfies the structural invariant
+    test('All prior real-world schemas satisfy the Google schema invariant', () => {
+        const schema = {
+            type: 'object',
+            properties: {
+                operation: { type: 'string', enum: ['write', 'read'] },
+                todoList: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            id: { type: 'number' },
+                            title: { type: 'string' },
+                            status: { type: 'string', enum: ['not-started', 'in-progress', 'completed'] }
+                        },
+                        required: ['id', 'title', 'status']
+                    }
+                }
+            },
+            required: ['operation']
+        };
+        assertGoogleSchemaValid(cleanSchema(sanitizeSchema(schema)));
+    });
+
     // Summary
     console.log('\n' + '═'.repeat(60));
     console.log(`Tests completed: ${passed} passed, ${failed} failed`);
