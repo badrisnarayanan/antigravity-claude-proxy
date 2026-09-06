@@ -209,7 +209,8 @@ export function isRateLimitError(error) {
     return msg.includes('429') ||
         msg.includes('resource_exhausted') ||
         msg.includes('quota_exhausted') ||
-        msg.includes('rate limit');
+        msg.includes('rate limit') ||
+        msg.includes('individual quota reached');
 }
 
 /**
