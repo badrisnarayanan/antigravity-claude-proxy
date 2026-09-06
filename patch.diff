@@ -1,0 +1,19 @@
+--- public/views/models.html
++++ public/views/models.html
+@@ -113,13 +113,13 @@
+             </button>
+ 
+             <!-- Add Custom Model UI -->
+-            <div class="flex items-center gap-2 mt-4 lg:mt-0 w-full lg:w-auto ml-auto">
++            <div class="flex items-center gap-2 ml-0 md:ml-2">
+                 <input type="text"
+                        placeholder="Add custom Model ID"
+-                       class="input-search-sm w-full md:w-48 bg-space-800 border border-space-border/50 text-gray-300 placeholder-gray-500 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple rounded-lg px-3 py-1.5 text-xs transition-all h-9"
++                       class="w-48 bg-space-800 border border-space-border/50 text-gray-300 placeholder-gray-500 focus:border-neon-purple focus:outline-none focus:ring-1 focus:ring-neon-purple rounded-lg px-3 text-xs transition-all h-9"
+                        x-model="newModelId"
+                        @keydown.enter="addCustomModel()">
+-                <button class="btn btn-xs h-9 px-4 bg-neon-purple/20 text-neon-purple border border-neon-purple/50 hover:bg-neon-purple/30 transition-colors whitespace-nowrap min-h-0"
++                <button class="btn h-9 px-4 bg-neon-purple/20 text-neon-purple border border-neon-purple/50 hover:bg-neon-purple/30 transition-colors whitespace-nowrap min-h-0 text-[10px] font-medium uppercase tracking-wide"
+                         @click="addCustomModel()"
+                         :disabled="!newModelId.trim()">
+                     Add

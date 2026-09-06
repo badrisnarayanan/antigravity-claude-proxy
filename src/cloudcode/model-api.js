@@ -13,6 +13,7 @@ import {
     getModelFamily,
     MODEL_VALIDATION_CACHE_TTL_MS
 } from '../constants.js';
+import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { throttledFetch } from '../utils/helpers.js';
 
@@ -29,6 +30,8 @@ const modelCache = {
  * @returns {boolean} True if model is supported
  */
 function isSupportedModel(modelId) {
+    // Explicitly support custom models
+    if (config.customModels?.includes(modelId)) return true;
     const family = getModelFamily(modelId);
     return family === 'claude' || family === 'gemini';
 }
@@ -323,6 +326,9 @@ async function populateModelCache(token, projectId = null) {
  */
 export async function isValidModel(modelId, token, projectId = null) {
     try {
+        // Explicitly valid if in custom models list
+        if (config.customModels?.includes(modelId)) return true;
+
         // Populate cache if needed
         await populateModelCache(token, projectId);
 
