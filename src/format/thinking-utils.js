@@ -651,7 +651,23 @@ function stripInvalidThinkingBlocks(messages, targetFamily = null) {
  * @returns {Array<Object>} Modified messages with synthetic messages injected
  */
 export function closeToolLoopForThinking(messages, targetFamily = null) {
+    // Escape hatch (Gemini only): skip the synthetic-message injection.
+    // Google's backend accepts raw mid-tool-loop and interrupted-tool
+    // histories natively (verified 2026-09-03: identical answers with and
+    // without injection), so for Gemini targets the fabricated messages are
+    // pure downside — a fake "[Continue]" becomes the model's latest user
+    // instruction and the count-bearing text is unstable across requests.
+    // Claude targets keep the recovery: the Anthropic API hard-rejects
+    // unclosed tool_use ids, so the interrupted-tool synthesis stays needed.
+    // Set ANTIGRAVITY_DISABLE_THINKING_RECOVERY=1 to activate.
+    if (
+        process.env.ANTIGRAVITY_DISABLE_THINKING_RECOVERY === '1' &&
+        targetFamily === 'gemini'
+    ) {
+        return messages;
+    }
     const state = analyzeConversationState(messages);
+
 
     // Handle neither tool loop nor interrupted tool
     if (!state.inToolLoop && !state.interruptedTool) return messages;

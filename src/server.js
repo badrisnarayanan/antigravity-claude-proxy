@@ -8,7 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
+import { sendMessage, sendMessageStream, listModels, getModelQuotas, getUserQuotaSummary, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -17,7 +17,12 @@ const __dirname = path.dirname(__filename);
 import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
-import { clearThinkingSignatureCache } from './format/signature-cache.js';
+import { clearAllSignatureCaches } from './format/signature-cache.js';
+import {
+    convertOpenAIToAnthropic,
+    convertAnthropicToOpenAI,
+    streamAnthropicToOpenAI
+} from './format/index.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
@@ -217,13 +222,13 @@ app.post('/', (req, res) => {
 });
 
 /**
- * Test endpoint - Clear thinking signature cache
+ * Test endpoint - Clear all signature caches (in-memory + persisted store)
  * Used for testing cold cache scenarios in cross-model tests
  */
 app.post('/test/clear-signature-cache', (req, res) => {
-    clearThinkingSignatureCache();
-    logger.debug('[Test] Cleared thinking signature cache');
-    res.json({ success: true, message: 'Thinking signature cache cleared' });
+    clearAllSignatureCaches();
+    logger.debug('[Test] Cleared all signature caches and removed persisted store');
+    res.json({ success: true, message: 'All signature caches cleared' });
 });
 
 /**
@@ -272,7 +277,10 @@ app.get('/health', async (req, res) => {
                 try {
                     const token = await accountManager.getTokenForAccount(account);
                     const projectId = account.subscription?.projectId || null;
-                    const quotas = await getModelQuotas(token, projectId);
+                    const [quotas, quotaSummary] = await Promise.all([
+                        getModelQuotas(token, projectId),
+                        getUserQuotaSummary(token, projectId).catch(() => null)
+                    ]);
 
                     // Format quotas for readability
                     const formattedQuotas = {};
@@ -287,7 +295,8 @@ app.get('/health', async (req, res) => {
                     return {
                         ...baseInfo,
                         status: isRateLimited ? 'rate-limited' : 'ok',
-                        models: formattedQuotas
+                        models: formattedQuotas,
+                        quotaSummary: quotaSummary
                     };
                 } catch (error) {
                     return {
@@ -370,8 +379,11 @@ app.get('/account-limits', async (req, res) => {
                     // Fetch subscription tier first to get project ID
                     const subscription = await getSubscriptionTier(token);
 
-                    // Then fetch quotas with project ID for accurate quota info
-                    const quotas = await getModelQuotas(token, subscription.projectId);
+                    // Then fetch quotas and quota summary with project ID for accurate quota info
+                    const [quotas, quotaSummary] = await Promise.all([
+                        getModelQuotas(token, subscription.projectId),
+                        getUserQuotaSummary(token, subscription.projectId).catch(() => null)
+                    ]);
 
                     // Update account object with fresh data
                     account.subscription = {
@@ -381,6 +393,7 @@ app.get('/account-limits', async (req, res) => {
                     };
                     account.quota = {
                         models: quotas,
+                        summary: quotaSummary,
                         lastChecked: Date.now()
                     };
 
@@ -393,7 +406,8 @@ app.get('/account-limits', async (req, res) => {
                         email: account.email,
                         status: 'ok',
                         subscription: account.subscription,
-                        models: quotas
+                        models: quotas,
+                        quotaSummary: quotaSummary
                     };
                 } catch (error) {
                     // Detect ToS ban from quota/subscription fetch and mark account invalid
@@ -515,6 +529,46 @@ app.get('/account-limits', async (req, res) => {
             const modelColWidth = Math.max(28, ...sortedModels.map(m => m.length)) + 2;
             const accountColWidth = 30;
 
+            // Group Quota Summary (Weekly & 5-Hour Limits)
+            const hasAnySummary = accountLimits.some(a => a.quotaSummary?.groups?.length > 0);
+            if (hasAnySummary) {
+                lines.push('Group Quotas (Weekly & 5-Hour Limits)');
+                let summaryHeader = 'Group / Window'.padEnd(modelColWidth);
+                for (const acc of accountLimits) {
+                    const shortEmail = acc.email.split('@')[0].slice(0, 26);
+                    summaryHeader += shortEmail.padEnd(accountColWidth);
+                }
+                lines.push(summaryHeader);
+                lines.push('─'.repeat(modelColWidth + accountLimits.length * accountColWidth));
+
+                const summaryRowDefs = [
+                    { label: 'Gemini (Weekly)', groupMatch: /gemini/i, window: 'weekly' },
+                    { label: 'Gemini (5-Hour)', groupMatch: /gemini/i, window: '5h' },
+                    { label: 'Claude & GPT (Weekly)', groupMatch: /claude|3p|gpt/i, window: 'weekly' },
+                    { label: 'Claude & GPT (5-Hour)', groupMatch: /claude|3p|gpt/i, window: '5h' }
+                ];
+
+                for (const def of summaryRowDefs) {
+                    let sRow = def.label.padEnd(modelColWidth);
+                    for (const acc of accountLimits) {
+                        const grp = acc.quotaSummary?.groups?.find(g => def.groupMatch.test(g.displayName || g.name || ''));
+                        const bkt = grp?.buckets?.find(b => b.window === def.window || b.bucketId?.includes(def.window));
+                        let cell = '-';
+                        if (bkt && bkt.remainingFraction !== undefined && bkt.remainingFraction !== null) {
+                            const pct = Math.round(bkt.remainingFraction * 100);
+                            cell = `${pct}%`;
+                            if (bkt.resetTime) {
+                                const resetMs = new Date(bkt.resetTime).getTime() - Date.now();
+                                if (resetMs > 0) cell += ` (${formatDuration(resetMs)})`;
+                            }
+                        }
+                        sRow += cell.padEnd(accountColWidth);
+                    }
+                    lines.push(sRow);
+                }
+                lines.push('');
+            }
+
             // Header row
             let header = 'Model'.padEnd(modelColWidth);
             for (const acc of accountLimits) {
@@ -592,6 +646,8 @@ app.get('/account-limits', async (req, res) => {
                     modelQuotaThresholds: metadata.modelQuotaThresholds || {},
                     // Subscription data (new)
                     subscription: acc.subscription || metadata.subscription || { tier: 'unknown', projectId: null },
+                    // Quota summary (weekly and 5h limits by model group)
+                    quotaSummary: acc.quotaSummary || metadata.quota?.summary || null,
                     // Quota limits
                     limits: Object.fromEntries(
                         sortedModels.map(modelId => {
@@ -653,13 +709,12 @@ app.post('/refresh-token', async (req, res) => {
 /**
  * List models endpoint (OpenAI-compatible format)
  */
-app.get('/v1/models', async (req, res) => {
+const handleListModels = async (req, res) => {
     try {
         await ensureInitialized();
         const { account } = accountManager.selectAccount();
         if (!account) {
             return res.status(503).json({
-                type: 'error',
                 error: {
                     type: 'api_error',
                     message: 'No accounts available'
@@ -672,14 +727,247 @@ app.get('/v1/models', async (req, res) => {
     } catch (error) {
         logger.error('[API] Error listing models:', error);
         res.status(500).json({
-            type: 'error',
             error: {
                 type: 'api_error',
                 message: error.message
             }
         });
     }
-});
+};
+
+app.get('/v1/models', handleListModels);
+app.get('/models', handleListModels);
+
+/**
+ * Retrieve single model endpoint (OpenAI-compatible format)
+ */
+const handleGetModel = async (req, res) => {
+    try {
+        await ensureInitialized();
+        const modelId = req.params.model;
+        const { account } = accountManager.selectAccount();
+        if (!account) {
+            return res.status(503).json({
+                error: {
+                    type: 'api_error',
+                    message: 'No accounts available'
+                }
+            });
+        }
+        const token = await accountManager.getTokenForAccount(account);
+        const models = await listModels(token);
+        const modelData = models.data?.find(m => m.id === modelId);
+
+        if (!modelData) {
+            return res.status(404).json({
+                error: {
+                    message: `The model '${modelId}' does not exist`,
+                    type: 'invalid_request_error',
+                    param: 'model',
+                    code: 'model_not_found'
+                }
+            });
+        }
+
+        res.json(modelData);
+    } catch (error) {
+        logger.error('[API] Error retrieving model:', error);
+        res.status(500).json({
+            error: {
+                type: 'api_error',
+                message: error.message
+            }
+        });
+    }
+};
+
+app.get('/v1/models/:model', handleGetModel);
+app.get('/models/:model', handleGetModel);
+
+/**
+ * OpenAI-compatible Chat Completions API
+ * POST /v1/chat/completions and POST /chat/completions
+ */
+const handleChatCompletions = async (req, res) => {
+    try {
+        await ensureInitialized();
+
+        const {
+            model,
+            messages,
+            stream
+        } = req.body;
+
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({
+                error: {
+                    message: 'messages is required and must be an array',
+                    type: 'invalid_request_error',
+                    param: 'messages',
+                    code: 'missing_required_parameter'
+                }
+            });
+        }
+
+        // Resolve model mapping if configured
+        let requestedModel = model || 'gemini-3.8-flash-tiered';
+        const modelMapping = config.modelMapping || {};
+        if (modelMapping[requestedModel] && modelMapping[requestedModel].mapping) {
+            const targetModel = modelMapping[requestedModel].mapping;
+            logger.info(`[OpenAI API] Mapping model ${requestedModel} -> ${targetModel}`);
+            requestedModel = targetModel;
+        }
+
+        const modelId = requestedModel;
+
+        // Validate model ID before processing (same as /v1/messages)
+        const { account: validationAccount } = accountManager.selectAccount();
+        if (validationAccount) {
+            const token = await accountManager.getTokenForAccount(validationAccount);
+            const projectId = validationAccount.subscription?.projectId || null;
+            const valid = await isValidModel(modelId, token, projectId);
+
+            if (!valid) {
+                return res.status(400).json({
+                    error: {
+                        message: `The model '${modelId}' does not exist. Use /v1/models to see available models.`,
+                        type: 'invalid_request_error',
+                        param: 'model',
+                        code: 'model_not_found'
+                    }
+                });
+            }
+        }
+
+        // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them
+        if (accountManager.isAllRateLimited(modelId)) {
+            logger.warn(`[OpenAI API] All accounts rate-limited for ${modelId}. Resetting state for optimistic retry.`);
+            accountManager.resetAllRateLimits();
+        }
+
+        // Convert OpenAI request format to internal Anthropic/CloudCode format
+        const anthropicRequest = convertOpenAIToAnthropic({
+            ...req.body,
+            model: modelId
+        });
+
+        logger.info(`[OpenAI API] Request for model: ${anthropicRequest.model}, stream: ${!!stream}`);
+
+        if (stream) {
+            try {
+                // Initialize the streaming generator
+                const generator = sendMessageStream(anthropicRequest, accountManager, FALLBACK_ENABLED);
+
+                // Wait for the first result before sending headers (buffering strategy)
+                const firstResult = await generator.next();
+
+                res.status(200);
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.flushHeaders();
+
+                async function* replayGenerator() {
+                    if (!firstResult.done && firstResult.value) {
+                        yield firstResult.value;
+                    }
+                    for await (const event of generator) {
+                        yield event;
+                    }
+                }
+
+                const openAIStream = streamAnthropicToOpenAI(replayGenerator(), requestedModel);
+                for await (const sseChunk of openAIStream) {
+                    res.write(sseChunk);
+                    if (res.flush) res.flush();
+                }
+
+                res.end();
+            } catch (error) {
+                if (!res.headersSent) {
+                    logger.error('[OpenAI API] Initial stream error:', error);
+                    const { errorType, statusCode, errorMessage } = parseError(error);
+                    return res.status(statusCode).json({
+                        error: {
+                            message: errorMessage,
+                            type: errorType,
+                            param: null,
+                            code: null
+                        }
+                    });
+                }
+
+                logger.error('[OpenAI API] Mid-stream error:', error);
+                const { errorType, errorMessage } = parseError(error);
+                res.write(`data: ${JSON.stringify({
+                    error: {
+                        message: errorMessage,
+                        type: errorType
+                    }
+                })}\n\n`);
+                res.end();
+            }
+        } else {
+            // Handle non-streaming response
+            const anthropicResponse = await sendMessage(anthropicRequest, accountManager, FALLBACK_ENABLED);
+            const openAIResponse = convertAnthropicToOpenAI(anthropicResponse, requestedModel);
+            res.json(openAIResponse);
+        }
+    } catch (error) {
+        logger.error('[OpenAI API] Error:', error);
+        let { errorType, statusCode, errorMessage } = parseError(error);
+
+        // For auth errors, try to refresh token
+        if (errorType === 'authentication_error') {
+            logger.warn('[OpenAI API] Token might be expired, attempting refresh...');
+            try {
+                accountManager.clearProjectCache();
+                accountManager.clearTokenCache();
+                await forceRefresh();
+                errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
+            } catch (refreshError) {
+                errorMessage = 'Could not refresh token. Make sure Antigravity is running.';
+            }
+        }
+
+        if (res.headersSent) {
+            res.write(`data: ${JSON.stringify({
+                error: {
+                    message: errorMessage,
+                    type: errorType
+                }
+            })}\n\n`);
+            res.end();
+        } else {
+            res.status(statusCode).json({
+                error: {
+                    message: errorMessage,
+                    type: errorType,
+                    param: null,
+                    code: null
+                }
+            });
+        }
+    }
+};
+
+app.post('/v1/chat/completions', handleChatCompletions);
+app.post('/chat/completions', handleChatCompletions);
+
+/**
+ * OpenAI-compatible Completions API (legacy)
+ * Maps prompt to chat completions
+ */
+const handleLegacyCompletions = async (req, res) => {
+    if (req.body.prompt !== undefined && !req.body.messages) {
+        req.body.messages = [{ role: 'user', content: String(req.body.prompt) }];
+    }
+    return handleChatCompletions(req, res);
+};
+
+app.post('/v1/completions', handleLegacyCompletions);
+app.post('/completions', handleLegacyCompletions);
 
 /**
  * Count tokens endpoint - Anthropic Messages API compatible
