@@ -3,6 +3,9 @@
  * Entry point - starts the proxy server
  */
 
+// Load environment variables before any other imports
+import './utils/env.js';
+
 // Initialize proxy support BEFORE any other imports that may use fetch
 import './utils/proxy.js';
 
