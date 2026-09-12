@@ -167,6 +167,55 @@ export async function getModelQuotas(token, projectId = null) {
 }
 
 /**
+ * Get user quota summary for an account
+ * Fetches quota summary groups (Gemini and Claude/GPT models with weekly and 5h limits)
+ * from the Cloud Code retrieveUserQuotaSummary API.
+ *
+ * @param {string} token - OAuth access token
+ * @param {string} [projectId] - Optional project ID
+ * @returns {Promise<Object|null>} Quota summary containing groups and buckets, or null if unavailable
+ */
+export async function getUserQuotaSummary(token, projectId = null) {
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...ANTIGRAVITY_HEADERS
+    };
+
+    const body = projectId ? { project: projectId } : {};
+
+    for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
+        try {
+            const url = `${endpoint}/v1internal:retrieveUserQuotaSummary`;
+            const response = await throttledFetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                logger.warn(`[CloudCode] retrieveUserQuotaSummary error at ${endpoint}: ${response.status}`);
+                if (response.status === 403) {
+                    const lower = (errorText || '').toLowerCase();
+                    if (lower.includes('has been disabled') && lower.includes('violation of terms of service')) {
+                        throw new Error(`ACCOUNT_BANNED: ${errorText}`);
+                    }
+                }
+                continue;
+            }
+
+            return await response.json();
+        } catch (error) {
+            if (error.message?.startsWith('ACCOUNT_BANNED:')) throw error;
+            logger.warn(`[CloudCode] retrieveUserQuotaSummary failed at ${endpoint}:`, error.message);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Parse tier ID string to determine subscription level
  * @param {string} tierId - The tier ID from the API
  * @returns {'free' | 'pro' | 'ultra' | 'unknown'} The subscription tier

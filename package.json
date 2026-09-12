@@ -37,7 +37,9 @@
     "test:emptyretry": "node tests/test-empty-response-retry.cjs",
     "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
     "test:strategies": "node tests/test-strategies.cjs",
-    "test:cache-control": "node tests/test-cache-control.cjs"
+    "test:cache-control": "node tests/test-cache-control.cjs",
+    "test:openai": "node tests/test-openai-converter.cjs && node tests/test-openai-endpoints.cjs",
+    "test:quota": "node tests/test-quota-summary.cjs"
   },
   "keywords": [
     "claude",
