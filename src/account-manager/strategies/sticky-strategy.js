@@ -9,6 +9,7 @@ import { BaseStrategy } from './base-strategy.js';
 import { logger } from '../../utils/logger.js';
 import { formatDuration } from '../../utils/helpers.js';
 import { MAX_WAIT_BEFORE_ERROR_MS } from '../../constants.js';
+import { supportsModel } from '../rate-limits.js';
 
 export class StickyStrategy extends BaseStrategy {
     /**
@@ -113,7 +114,7 @@ export class StickyStrategy extends BaseStrategy {
      * @private
      */
     #shouldWaitForAccount(account, modelId) {
-        if (!account || account.isInvalid || account.enabled === false) {
+        if (!account || account.isInvalid || account.enabled === false || !supportsModel(account, modelId)) {
             return { shouldWait: false, waitMs: 0 };
         }
 

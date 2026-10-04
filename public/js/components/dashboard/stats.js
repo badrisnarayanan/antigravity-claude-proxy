@@ -43,7 +43,8 @@ window.DashboardStats.updateStats = function(component) {
 
     enabledAccounts.forEach(acc => {
         if (acc.status === 'ok') {
-            const limits = Object.entries(acc.limits || {});
+            // Missing entries belong to another account's model rollout, not exhausted quota.
+            const limits = Object.entries(acc.limits || {}).filter(([, limit]) => limit);
 
             if (limits.length === 0) {
                 // No limit data available, consider limited to be safe
@@ -55,7 +56,7 @@ window.DashboardStats.updateStats = function(component) {
             // We consider all models in the limits object as "tracked"
             const hasRateLimitedModel = limits.some(([_, l]) => {
                 // Treat null/undefined fraction as 0 (limited)
-                if (!l || l.remainingFraction === null || l.remainingFraction === undefined) return true;
+                if (l.remainingFraction === null || l.remainingFraction === undefined) return true;
                 return l.remainingFraction <= 0.05;
             });
 
@@ -80,10 +81,11 @@ window.DashboardStats.updateStats = function(component) {
     let totalTrackedModels = 0;
 
     enabledAccounts.forEach(acc => {
-         const limits = Object.entries(acc.limits || {});
-         limits.forEach(([id, l]) => {
-             totalTrackedModels++;
-             if (!l || l.remainingFraction == null || l.remainingFraction <= 0.05) {
+          const limits = Object.entries(acc.limits || {});
+          limits.forEach(([id, l]) => {
+              if (!l) return;
+              totalTrackedModels++;
+              if (l.remainingFraction == null || l.remainingFraction <= 0.05) {
                  totalLimitedModels++;
              }
          });

@@ -45,7 +45,7 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 
 ## Prerequisites
 
-- **Node.js** 18 or later
+- **Node.js** 22.19 or later
 - **Antigravity** installed (for single-account mode) OR Google account(s) for multi-account mode
 
 ---
@@ -66,7 +66,7 @@ antigravity-claude-proxy start
 ### Option 2: Clone Repository
 
 ```bash
-git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
+git clone https://github.com/badrisnarayanan/antigravity-claude-proxy.git
 cd antigravity-claude-proxy
 npm install
 npm start

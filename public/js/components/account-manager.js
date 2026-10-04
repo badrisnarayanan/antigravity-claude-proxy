@@ -13,6 +13,8 @@ window.Components.accountManager = () => ({
     reloading: false,
     selectedAccountEmail: '',
     selectedAccountLimits: {},
+    selectedAccountQuotaSummary: null,
+    showPerModelBreakdown: false,
 
     // Health Inspector (Developer Mode)
     healthData: {},
@@ -198,6 +200,8 @@ window.Components.accountManager = () => ({
     openQuotaModal(account) {
         this.selectedAccountEmail = account.email;
         this.selectedAccountLimits = account.limits || {};
+        this.selectedAccountQuotaSummary = account.quotaSummary || null;
+        this.showPerModelBreakdown = false;
         document.getElementById('quota_modal').showModal();
     },
 
@@ -322,6 +326,127 @@ window.Components.accountManager = () => ({
             return Math.round(globalThreshold * 100) + '% (global)';
         }
         return 'Global';
+    },
+
+    /**
+     * Get two-group quotas for an account: Gemini and Claude/GPT
+     * Extracts weekly and 5-hour quota percentages and reset times.
+     *
+     * @param {Object} account - Account object
+     * @returns {Object} { gemini: { percent, weeklyPercent, fiveHourPercent, resetTime, weeklyResetTime }, claude: { ... } }
+     */
+    getAccountGroupQuotas(account) {
+        const groups = this.getQuotaGroups(account);
+        const geminiGrp = groups.find(g => /gemini/i.test(g.displayName || g.id || '')) || null;
+        const claudeGrp = groups.find(g => /claude|3p|gpt/i.test(g.displayName || g.id || '')) || null;
+
+        const extractBucket = (grp, window) => {
+            if (!grp || !grp.buckets) return null;
+            return grp.buckets.find(b => b.window === window || (b.bucketId && b.bucketId.includes(window))) || null;
+        };
+
+        const buildGroupData = (grp) => {
+            if (!grp) return { percent: null, weeklyPercent: null, fiveHourPercent: null, resetTime: null, weeklyResetTime: null };
+            const weeklyBkt = extractBucket(grp, 'weekly');
+            const fiveHourBkt = extractBucket(grp, '5h');
+
+            const weeklyPct = weeklyBkt && weeklyBkt.remainingFraction !== null && weeklyBkt.remainingFraction !== undefined
+                ? Math.round(weeklyBkt.remainingFraction * 100)
+                : null;
+            const fiveHourPct = fiveHourBkt && fiveHourBkt.remainingFraction !== null && fiveHourBkt.remainingFraction !== undefined
+                ? Math.round(fiveHourBkt.remainingFraction * 100)
+                : null;
+
+            // Prioritize 5h limit as the primary bar, or weekly if 5h is not present
+            const percent = fiveHourPct !== null ? fiveHourPct : weeklyPct;
+
+            return {
+                percent,
+                weeklyPercent: weeklyPct,
+                fiveHourPercent: fiveHourPct,
+                resetTime: fiveHourBkt?.resetTime || null,
+                weeklyResetTime: weeklyBkt?.resetTime || null,
+                weeklyDesc: weeklyBkt?.description || null
+            };
+        };
+
+        return {
+            gemini: buildGroupData(geminiGrp),
+            claude: buildGroupData(claudeGrp)
+        };
+    },
+
+    /**
+     * Get normalized quota groups for the account (from quotaSummary or synthesized from limits)
+     *
+     * @param {Object} [account] - Account object (defaults to currently selected account or param)
+     * @returns {Array<Object>} Array of group objects with displayName, description, and buckets
+     */
+    getQuotaGroups(account = null) {
+        const acc = account || { limits: this.selectedAccountLimits, quotaSummary: this.selectedAccountQuotaSummary };
+        const summary = acc.quotaSummary || (this.selectedAccountEmail === acc.email ? this.selectedAccountQuotaSummary : null);
+
+        if (summary && Array.isArray(summary.groups) && summary.groups.length > 0) {
+            return summary.groups.map(grp => ({
+                id: grp.displayName?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'group',
+                displayName: grp.displayName || 'Model Group',
+                description: grp.description || '',
+                buckets: (grp.buckets || []).map(b => ({
+                    bucketId: b.bucketId || '',
+                    displayName: b.displayName || (b.window === 'weekly' ? 'Weekly Limit Remaining' : 'Five Hour Limit Remaining'),
+                    window: b.window || (b.bucketId?.includes('weekly') ? 'weekly' : '5h'),
+                    remainingFraction: b.remainingFraction !== undefined ? b.remainingFraction : null,
+                    percent: b.remainingFraction !== null && b.remainingFraction !== undefined ? Math.round(b.remainingFraction * 100) : null,
+                    resetTime: b.resetTime || null,
+                    description: b.description || ''
+                }))
+            }));
+        }
+
+        // Synthesize groups from limits if quotaSummary not available
+        const limits = acc.limits || this.selectedAccountLimits || {};
+        const geminiModels = Object.entries(limits).filter(([id]) => id.toLowerCase().includes('gemini'));
+        const claudeGptModels = Object.entries(limits).filter(([id]) => !id.toLowerCase().includes('gemini'));
+
+        const getGroupBucket = (models, prefix) => {
+            const valid = models.find(([_, l]) => l && l.remainingFraction !== null && l.remainingFraction !== undefined);
+            const modelLimit = valid ? valid[1] : (models[0] ? models[0][1] : null);
+            const frac = modelLimit ? modelLimit.remainingFraction : null;
+            return {
+                bucketId: `${prefix}-5h`,
+                displayName: 'Five Hour Limit Remaining',
+                window: '5h',
+                remainingFraction: frac,
+                percent: frac !== null && frac !== undefined ? Math.round(frac * 100) : null,
+                resetTime: modelLimit?.resetTime || null,
+                description: 'Shared 5-hour limit for models in this group'
+            };
+        };
+
+        const groups = [];
+        if (geminiModels.length > 0 || Object.keys(limits).length === 0) {
+            groups.push({
+                id: 'gemini-group',
+                displayName: 'Gemini Models',
+                description: 'Models within this group: Gemini Flash, Gemini Pro',
+                buckets: [
+                    getGroupBucket(geminiModels, 'gemini')
+                ]
+            });
+        }
+
+        if (claudeGptModels.length > 0) {
+            groups.push({
+                id: '3p-group',
+                displayName: 'Claude and GPT models',
+                description: 'Models within this group: Claude Opus, Claude Sonnet, GPT-OSS',
+                buckets: [
+                    getGroupBucket(claudeGptModels, '3p')
+                ]
+            });
+        }
+
+        return groups;
     },
 
     /**

@@ -9,6 +9,11 @@ import { DEFAULT_COOLDOWN_MS } from '../constants.js';
 import { formatDuration } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 
+/** Unknown catalogs remain eligible until discovery succeeds. */
+export function supportsModel(account, modelId) {
+    return !modelId || !account.availableModels || account.availableModels.has(modelId);
+}
+
 /**
  * Check if all accounts are rate-limited for a specific model
  *
@@ -17,15 +22,14 @@ import { logger } from '../utils/logger.js';
  * @returns {boolean} True if all accounts are rate-limited
  */
 export function isAllRateLimited(accounts, modelId) {
-    if (accounts.length === 0) return true;
     if (!modelId) return false; // No model specified = not rate limited
 
-    return accounts.every(acc => {
-        if (acc.isInvalid) return true; // Invalid accounts count as unavailable
-        if (acc.enabled === false) return true; // Disabled accounts count as unavailable
+    const eligible = accounts.filter(acc => !acc.isInvalid && acc.enabled !== false && supportsModel(acc, modelId));
+    // Missing model entitlement is not a temporary rate limit to wait out.
+    return eligible.length > 0 && eligible.every(acc => {
         const modelLimits = acc.modelRateLimits || {};
         const limit = modelLimits[modelId];
-        return limit && limit.isRateLimited && limit.resetTime > Date.now();
+        return !!(limit && limit.isRateLimited && limit.resetTime > Date.now());
     });
 }
 
@@ -42,6 +46,7 @@ export function getAvailableAccounts(accounts, modelId = null) {
 
         // WebUI: Skip disabled accounts
         if (acc.enabled === false) return false;
+        if (!supportsModel(acc, modelId)) return false;
 
         if (modelId && acc.modelRateLimits && acc.modelRateLimits[modelId]) {
             const limit = acc.modelRateLimits[modelId];
@@ -220,6 +225,7 @@ export function getMinWaitTimeMs(accounts, modelId) {
     let soonestAccount = null;
 
     for (const account of accounts) {
+        if (account.isInvalid || account.enabled === false || !supportsModel(account, modelId)) continue;
         if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {
             const limit = account.modelRateLimits[modelId];
             if (limit.isRateLimited && limit.resetTime) {

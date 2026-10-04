@@ -234,8 +234,8 @@ export function getModelFamily(modelName) {
  */
 export function isThinkingModel(modelName) {
     const lower = (modelName || '').toLowerCase();
-    // Claude thinking models have "thinking" in the name
-    if (lower.includes('claude') && lower.includes('thinking')) return true;
+    // Newer Claude variants encode reasoning effort instead of "thinking".
+    if (lower.includes('claude') && (lower.includes('thinking') || /-(low|medium|high)$/.test(lower))) return true;
     // Gemini thinking models: explicit "thinking" in name, OR gemini version 3+
     if (lower.includes('gemini')) {
         if (lower.includes('thinking')) return true;

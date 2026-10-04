@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import '../src/utils/env.js';
+
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'fs';

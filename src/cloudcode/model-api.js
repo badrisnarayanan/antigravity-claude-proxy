@@ -16,12 +16,8 @@ import {
 import { logger } from '../utils/logger.js';
 import { throttledFetch } from '../utils/helpers.js';
 
-// Model validation cache
-const modelCache = {
-    validModels: new Set(),
-    lastFetched: 0,
-    fetchPromise: null  // Prevents concurrent fetches
-};
+// Catalogs are account-specific: rollouts can expose different model IDs.
+const modelCache = new WeakMap();
 
 /**
  * Check if a model is supported (Claude or Gemini)
@@ -54,32 +50,23 @@ function isOldGemini(modelId) {
  * List available models in Anthropic API format
  * Fetches models dynamically from the Cloud Code API
  *
- * @param {string} token - OAuth access token
+ * @param {import('../account-manager/index.js').AccountManager} accountManager
  * @returns {Promise<{object: string, data: Array<{id: string, object: string, created: number, owned_by: string, description: string}>}>} List of available models
  */
-export async function listModels(token) {
-    const data = await fetchAvailableModels(token);
-    if (!data || !data.models) {
-        return { object: 'list', data: [] };
+export async function listModels(accountManager) {
+    const { models, incomplete } = await populateModelCache(accountManager);
+    if (incomplete && Object.keys(models).length === 0) {
+        throw new Error('Failed to fetch available models from all accounts');
     }
 
-    const supportedEntries = Object.entries(data.models).filter(([modelId]) => isSupportedModel(modelId));
-
-    // Warm the model validation cache with every supported id, unfiltered -
-    // isValidModel() (the actual request-time gate) must keep accepting an
-    // id a client already has configured even if it's hidden from the
-    // listing below.
-    modelCache.validModels = new Set(supportedEntries.map(([modelId]) => modelId));
-    modelCache.lastFetched = Date.now();
-
-    const modelList = supportedEntries
+    const modelList = Object.entries(models)
         .filter(([modelId]) => !isOldGemini(modelId))
         .map(([modelId, modelData]) => ({
             id: modelId,
             object: 'model',
             created: Math.floor(Date.now() / 1000),
-            owned_by: 'anthropic',
-            description: modelData.displayName || modelId
+            owned_by: getModelFamily(modelId) === 'claude' ? 'anthropic' : 'google',
+            description: modelData?.displayName || modelId
         }));
 
     return {
@@ -164,6 +151,55 @@ export async function getModelQuotas(token, projectId = null) {
     }
 
     return quotas;
+}
+
+/**
+ * Get user quota summary for an account
+ * Fetches quota summary groups (Gemini and Claude/GPT models with weekly and 5h limits)
+ * from the Cloud Code retrieveUserQuotaSummary API.
+ *
+ * @param {string} token - OAuth access token
+ * @param {string} [projectId] - Optional project ID
+ * @returns {Promise<Object|null>} Quota summary containing groups and buckets, or null if unavailable
+ */
+export async function getUserQuotaSummary(token, projectId = null) {
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...ANTIGRAVITY_HEADERS
+    };
+
+    const body = projectId ? { project: projectId } : {};
+
+    for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
+        try {
+            const url = `${endpoint}/v1internal:retrieveUserQuotaSummary`;
+            const response = await throttledFetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                logger.warn(`[CloudCode] retrieveUserQuotaSummary error at ${endpoint}: ${response.status}`);
+                if (response.status === 403) {
+                    const lower = (errorText || '').toLowerCase();
+                    if (lower.includes('has been disabled') && lower.includes('violation of terms of service')) {
+                        throw new Error(`ACCOUNT_BANNED: ${errorText}`);
+                    }
+                }
+                continue;
+            }
+
+            return await response.json();
+        } catch (error) {
+            if (error.message?.startsWith('ACCOUNT_BANNED:')) throw error;
+            logger.warn(`[CloudCode] retrieveUserQuotaSummary failed at ${endpoint}:`, error.message);
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -295,66 +331,71 @@ export async function getSubscriptionTier(token) {
 }
 
 /**
- * Populate the model validation cache
- * @param {string} token - OAuth access token
- * @param {string} [projectId] - Optional project ID
- * @returns {Promise<void>}
+ * Refresh each enabled account's catalog and merge the supported model IDs.
+ * Failed discovery remains unknown so validation can still fail open.
+ * @param {import('../account-manager/index.js').AccountManager} accountManager
+ * @returns {Promise<{models: Object, incomplete: boolean}>}
  */
-async function populateModelCache(token, projectId = null) {
-    const now = Date.now();
-
-    // Check if cache is fresh
-    if (modelCache.validModels.size > 0 && (now - modelCache.lastFetched) < MODEL_VALIDATION_CACHE_TTL_MS) {
-        return;
-    }
-
-    // If already fetching, wait for it
-    if (modelCache.fetchPromise) {
-        await modelCache.fetchPromise;
-        return;
-    }
-
-    // Start fetch
-    modelCache.fetchPromise = (async () => {
-        try {
-            const data = await fetchAvailableModels(token, projectId);
-            if (data && data.models) {
-                const validIds = Object.keys(data.models).filter(modelId => isSupportedModel(modelId));
-                modelCache.validModels = new Set(validIds);
-                modelCache.lastFetched = Date.now();
-                logger.debug(`[CloudCode] Model cache populated with ${validIds.length} models`);
-            }
-        } catch (error) {
-            logger.warn(`[CloudCode] Failed to populate model cache: ${error.message}`);
-            // Don't throw - validation should degrade gracefully
-        } finally {
-            modelCache.fetchPromise = null;
+async function populateModelCache(accountManager) {
+    const accounts = accountManager.getAllAccounts().filter(account => account.enabled !== false && !account.isInvalid);
+    let incomplete = false;
+    const catalogs = await Promise.all(accounts.map(async account => {
+        let cache = modelCache.get(account);
+        if (!cache) {
+            cache = { models: null, lastChecked: 0, failed: false, fetchPromise: null };
+            modelCache.set(account, cache);
         }
-    })();
 
-    await modelCache.fetchPromise;
+        // Back off failed discovery without hiding previously discovered models.
+        const cacheTtl = cache.failed ? 30000 : MODEL_VALIDATION_CACHE_TTL_MS;
+        if (!cache.lastChecked || Date.now() - cache.lastChecked >= cacheTtl) {
+            if (!cache.fetchPromise) {
+                cache.fetchPromise = (async () => {
+                    try {
+                        const token = await accountManager.getTokenForAccount(account);
+                        const projectId = await accountManager.getProjectForAccount(account, token);
+                        const data = await fetchAvailableModels(token, projectId);
+                        if (!data?.models || typeof data.models !== 'object' || Array.isArray(data.models)) {
+                            throw new Error('Missing model catalog in discovery response');
+                        }
+                        cache.models = Object.fromEntries(Object.entries(data.models).filter(([modelId]) => isSupportedModel(modelId)));
+                        account.availableModels = new Set(Object.keys(cache.models));
+                        cache.failed = false;
+                    } catch (error) {
+                        logger.warn(`[CloudCode] Failed to populate model cache for ${account.email}: ${error.message}`);
+                        // Do not exclude an account using a catalog that failed to refresh.
+                        cache.failed = true;
+                        delete account.availableModels;
+                    } finally {
+                        cache.lastChecked = Date.now();
+                    }
+                })().finally(() => { cache.fetchPromise = null; });
+            }
+            await cache.fetchPromise;
+        }
+        if (account.enabled === false || account.isInvalid) return {};
+        if (cache.failed || cache.models === null) incomplete = true;
+        return cache.models;
+    }));
+
+    return {
+        models: Object.assign({}, ...catalogs.filter(Boolean)),
+        incomplete
+    };
 }
 
 /**
  * Check if a model ID is valid (exists in the available models list)
  * Uses a cached model list with TTL-based refresh
  * @param {string} modelId - Model ID to validate
- * @param {string} token - OAuth access token for cache population
- * @param {string} [projectId] - Optional project ID
+ * @param {import('../account-manager/index.js').AccountManager} accountManager
  * @returns {Promise<boolean>} True if model is valid
  */
-export async function isValidModel(modelId, token, projectId = null) {
+export async function isValidModel(modelId, accountManager) {
     try {
-        // Populate cache if needed
-        await populateModelCache(token, projectId);
-
-        // If cache is populated, validate against it
-        if (modelCache.validModels.size > 0) {
-            return modelCache.validModels.has(modelId);
-        }
-
-        // Cache empty (fetch failed) - fail open, let API validate
-        return true;
+        const { models, incomplete } = await populateModelCache(accountManager);
+        // Empty/partial discovery must not reject a model another account may have.
+        return Object.hasOwn(models, modelId) || incomplete || accountManager.getAllAccounts().length === 0;
     } catch (error) {
         logger.debug(`[CloudCode] Model validation error: ${error.message}`);
         // Fail open - let the API validate
