@@ -49,6 +49,70 @@ window.Components.models = () => ({
         this.expandedModels = new Set(this.expandedModels);
     },
 
+    newModelId: '',
+
+    async addCustomModel() {
+        const modelId = this.newModelId.trim();
+        if (!modelId) return;
+
+        const store = Alpine.store('global');
+        const dataStore = Alpine.store('data');
+
+        try {
+            const { response, newPassword } = await window.utils.request(
+                '/api/models',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modelId })
+                },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(`Custom model added: ${modelId}`, 'success');
+                this.newModelId = '';
+                // Refresh data to show the new model
+                await dataStore.fetchData();
+            } else {
+                throw new Error(data.error || 'Failed to add model');
+            }
+        } catch (e) {
+            store.showToast('Error adding model: ' + e.message, 'error');
+        }
+    },
+
+    async deleteCustomModel(modelId) {
+        if (!confirm(`Are you sure you want to remove the custom model "${modelId}"?`)) return;
+
+        const store = Alpine.store('global');
+        const dataStore = Alpine.store('data');
+
+        try {
+            const { response, newPassword } = await window.utils.request(
+                `/api/models/${encodeURIComponent(modelId)}`,
+                {
+                    method: 'DELETE'
+                },
+                store.webuiPassword
+            );
+            if (newPassword) store.webuiPassword = newPassword;
+
+            const data = await response.json();
+            if (data.status === 'ok') {
+                store.showToast(`Custom model removed: ${modelId}`, 'success');
+                // Refresh data
+                await dataStore.fetchData();
+            } else {
+                throw new Error(data.error || 'Failed to remove model');
+            }
+        } catch (e) {
+            store.showToast('Error removing model: ' + e.message, 'error');
+        }
+    },
+
     /**
      * Get visible account rows for a model's breakdown, respecting the cap
      */
