@@ -24,6 +24,17 @@ import {
 } from './thinking-utils.js';
 import { logger } from '../utils/logger.js';
 
+// Claude Code injects a billing pseudo-header as a system prompt block, e.g.
+// "x-anthropic-billing-header: cc_version=2.1.274.834; cc_entrypoint=sdk-cli;".
+// Cloud Code API answers any request containing it with a 429 RESOURCE_EXHAUSTED
+// even when quota remains (Issue #375).
+const BILLING_HEADER_LINE = /^x-anthropic-billing-header:[^\n]*\n?/gim;
+
+function stripBillingHeader(text) {
+    if (typeof text !== 'string' || !/x-anthropic-billing-header:/i.test(text)) return text;
+    return text.replace(BILLING_HEADER_LINE, '').trim();
+}
+
 /**
  * Convert Anthropic Messages API request to the format expected by Cloud Code
  *
@@ -56,14 +67,17 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     if (system) {
         let systemParts = [];
         if (typeof system === 'string') {
-            systemParts = [{ text: system }];
+            systemParts = [{ text: stripBillingHeader(system) }];
         } else if (Array.isArray(system)) {
             // Filter for text blocks as system prompts are usually text
             // Anthropic supports text blocks in system prompts
             systemParts = system
                 .filter(block => block.type === 'text')
-                .map(block => ({ text: block.text }));
+                .map(block => ({ text: stripBillingHeader(block.text) }));
         }
+
+        // Drop parts left empty once the billing header is stripped
+        systemParts = systemParts.filter(part => part.text);
 
         if (systemParts.length > 0) {
             googleRequest.systemInstruction = {

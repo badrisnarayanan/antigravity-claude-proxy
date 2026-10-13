@@ -96,6 +96,8 @@ antigravity-claude-proxy accounts
 
 With multiple accounts, the proxy automatically switches to the next available account. With a single account, you'll need to wait for the rate limit to reset.
 
+If Claude Code reports `RESOURCE_EXHAUSTED` on every account while the dashboard still shows quota, update the proxy. Recent Claude Code versions add an `x-anthropic-billing-header` line to the system prompt, which Cloud Code rejects with a 429; the proxy now strips it (see [#375](https://github.com/badrisnarayanan/antigravity-claude-proxy/issues/375)).
+
 ## Account Shows as "Invalid"
 
 Re-authenticate the account:
