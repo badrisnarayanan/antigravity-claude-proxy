@@ -187,6 +187,83 @@ async function runTests() {
         assertEqual(groupQuotas.claude.percent, 50);
     });
 
+    test('Partial Claude/GPT summary retains Gemini quota from model limits', () => {
+        const account = {
+            quotaSummary: {
+                groups: [{
+                    displayName: 'Claude and GPT models',
+                    buckets: [
+                        { window: 'weekly', remainingFraction: 0.7 },
+                        { window: '5h', remainingFraction: 0.4 }
+                    ]
+                }]
+            },
+            limits: {
+                'gemini-3.8-flash-tiered': { remainingFraction: 0.79, resetTime: '2026-10-16T15:39:33Z' },
+                'claude-sonnet-4-6': { remainingFraction: 1 }
+            }
+        };
+        const original = JSON.stringify(account);
+        const groups = accountManagerComp.getQuotaGroups(account);
+        assertEqual(groups.length, 2);
+        const quotas = accountManagerComp.getAccountGroupQuotas(account);
+        assertEqual(quotas.gemini.percent, 79);
+        assertEqual(quotas.gemini.resetTime, '2026-10-16T15:39:33Z');
+        assertEqual(quotas.gemini.weeklyPercent, null);
+        assertEqual(quotas.claude.weeklyPercent, 70);
+        assertEqual(quotas.claude.percent, 40);
+        assertEqual(JSON.stringify(account), original, 'Source data must not be mutated');
+
+        account.limits['gemini-3.8-flash-tiered'].remainingFraction = 0;
+        assertEqual(accountManagerComp.getAccountGroupQuotas(account).gemini.percent, 0);
+        account.limits['gemini-3.8-flash-tiered'].remainingFraction = null;
+        assertEqual(accountManagerComp.getAccountGroupQuotas(account).gemini.percent, null);
+        accountManagerComp.selectedAccountLimits = account.limits;
+        accountManagerComp.selectedAccountQuotaSummary = account.quotaSummary;
+        assertEqual(accountManagerComp.getQuotaGroups().length, 2, 'Modal must use the same fallback');
+        accountManagerComp.selectedAccountLimits = {};
+        accountManagerComp.selectedAccountQuotaSummary = null;
+    });
+
+    test('Gemini-only summaries retain raw Claude quota without duplicating Gemini', () => {
+        const quotas = accountManagerComp.getAccountGroupQuotas({
+            quotaSummary: { groups: [{ displayName: 'Gemini Models', buckets: [{ window: '5h', remainingFraction: 0.6 }] }] },
+            limits: {
+                'gemini-3.8-flash-tiered': { remainingFraction: 1 },
+                'claude-sonnet-4-6': { remainingFraction: 0.3 }
+            }
+        });
+        assertEqual(quotas.gemini.percent, 60);
+        assertEqual(quotas.claude.percent, 30);
+    });
+
+    test('Missing Gemini limits remain unknown, not zero or another account quota', () => {
+        accountManagerComp.selectedAccountLimits = { 'gemini-3.8-flash-tiered': { remainingFraction: 0.9 } };
+        const quotas = accountManagerComp.getAccountGroupQuotas({ email: 'other@example.com', quotaSummary: {
+            groups: [{ displayName: 'Claude and GPT models', buckets: [{ window: '5h', remainingFraction: 1 }] }]
+        } });
+        assertEqual(quotas.gemini.percent, null);
+        accountManagerComp.selectedAccountLimits = {};
+    });
+
+    test('Account bars recompute when polled account data changes', () => {
+        const view = fs.readFileSync(path.resolve(__dirname, '../public/views/accounts.html'), 'utf8');
+        assertTrue(view.includes('x-effect="qg = getAccountGroupQuotas(acc)"'));
+    });
+
+    test('Fallback uses the lowest known quota instead of the first Gemini model', () => {
+        const limits = {
+            'gemini-3.5-flash-low': { remainingFraction: 1, resetTime: '2026-10-16T17:00:00Z' },
+            'gemini-3.8-flash-tiered': { remainingFraction: 0, resetTime: '2026-10-16T16:00:00Z' },
+            'gemini-unknown': { remainingFraction: null }
+        };
+        const quotas = accountManagerComp.getAccountGroupQuotas({ limits });
+        assertEqual(quotas.gemini.percent, 0);
+        assertEqual(quotas.gemini.resetTime, '2026-10-16T16:00:00Z');
+        const reversed = Object.fromEntries(Object.entries(limits).reverse());
+        assertEqual(accountManagerComp.getAccountGroupQuotas({ limits: reversed }).gemini.percent, 0);
+    });
+
     console.log('\n' + '='.repeat(60));
     console.log(`Results: ${passed} passed, ${failed} failed`);
     if (failed > 0) process.exit(1);

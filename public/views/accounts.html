@@ -161,7 +161,7 @@
                             </span>
                         </td>
                         <td class="py-4 cursor-pointer" @click="openQuotaModal(acc)">
-                            <div x-data="{ qg: getAccountGroupQuotas(acc) }" class="space-y-1.5 min-w-[130px]">
+                            <div x-data="{ qg: getAccountGroupQuotas(acc) }" x-effect="qg = getAccountGroupQuotas(acc)" class="space-y-1.5 min-w-[130px]">
                                 <!-- Gemini Bar -->
                                 <div>
                                     <div class="flex justify-between items-center text-[10px] font-mono mb-0.5">

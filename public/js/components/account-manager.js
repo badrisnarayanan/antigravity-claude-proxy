@@ -386,8 +386,8 @@ window.Components.accountManager = () => ({
         const acc = account || { limits: this.selectedAccountLimits, quotaSummary: this.selectedAccountQuotaSummary };
         const summary = acc.quotaSummary || (this.selectedAccountEmail === acc.email ? this.selectedAccountQuotaSummary : null);
 
-        if (summary && Array.isArray(summary.groups) && summary.groups.length > 0) {
-            return summary.groups.map(grp => ({
+        const groups = summary && Array.isArray(summary.groups)
+            ? summary.groups.map(grp => ({
                 id: grp.displayName?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'group',
                 displayName: grp.displayName || 'Model Group',
                 description: grp.description || '',
@@ -400,17 +400,19 @@ window.Components.accountManager = () => ({
                     resetTime: b.resetTime || null,
                     description: b.description || ''
                 }))
-            }));
-        }
+            }))
+            : [];
 
-        // Synthesize groups from limits if quotaSummary not available
-        const limits = acc.limits || this.selectedAccountLimits || {};
+        // Upstream can omit Gemini from an otherwise valid quota summary.
+        const limits = acc.limits || (!account ? this.selectedAccountLimits : null) || {};
         const geminiModels = Object.entries(limits).filter(([id]) => id.toLowerCase().includes('gemini'));
         const claudeGptModels = Object.entries(limits).filter(([id]) => !id.toLowerCase().includes('gemini'));
 
         const getGroupBucket = (models, prefix) => {
-            const valid = models.find(([_, l]) => l && l.remainingFraction !== null && l.remainingFraction !== undefined);
-            const modelLimit = valid ? valid[1] : (models[0] ? models[0][1] : null);
+            const modelLimit = models.reduce((lowest, [, limit]) => {
+                if (limit?.remainingFraction === null || limit?.remainingFraction === undefined) return lowest;
+                return !lowest || limit.remainingFraction < lowest.remainingFraction ? limit : lowest;
+            }, null);
             const frac = modelLimit ? modelLimit.remainingFraction : null;
             return {
                 bucketId: `${prefix}-5h`,
@@ -423,8 +425,8 @@ window.Components.accountManager = () => ({
             };
         };
 
-        const groups = [];
-        if (geminiModels.length > 0 || Object.keys(limits).length === 0) {
+        if (!groups.some(g => /gemini/i.test(g.displayName || g.id || '')) &&
+            (geminiModels.length > 0 || (groups.length === 0 && Object.keys(limits).length === 0))) {
             groups.push({
                 id: 'gemini-group',
                 displayName: 'Gemini Models',
@@ -435,7 +437,7 @@ window.Components.accountManager = () => ({
             });
         }
 
-        if (claudeGptModels.length > 0) {
+        if (!groups.some(g => /claude|3p|gpt/i.test(g.displayName || g.id || '')) && claudeGptModels.length > 0) {
             groups.push({
                 id: '3p-group',
                 displayName: 'Claude and GPT models',
