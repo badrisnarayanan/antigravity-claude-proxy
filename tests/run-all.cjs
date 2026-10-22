@@ -25,6 +25,7 @@ const tests = [
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
     { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },
+    { name: 'Model Registry & Routing', file: 'test-model-registry.cjs' },
     { name: 'Version Detection', file: 'test-version-detection.js' }
 ];
 

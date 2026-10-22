@@ -7,6 +7,7 @@ import { homedir, platform, arch } from 'os';
 import { join } from 'path';
 import { config } from './config.js';
 import { generateSmartUserAgent, getClientVersion } from './utils/version-detector.js';
+import { getRegisteredModel } from './cloudcode/model-registry.js';
 
 /**
  * Get the Antigravity database path based on the current platform.
@@ -29,7 +30,7 @@ function getAntigravityDbPath() {
 
 /**
  * Generate platform-specific User-Agent string.
- * @returns {string} User-Agent in format "antigravity/version os/arch"
+ * @returns {string} User-Agent in format "antigravity/hub/version os/arch"
  */
 export function getPlatformUserAgent() {
     return generateSmartUserAgent();
@@ -217,6 +218,7 @@ export const MODEL_VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Get the model family from model name (dynamic detection, no hardcoded list).
+ * Ids without a family in their name resolve via backend metadata (model-registry.js).
  * @param {string} modelName - The model name from the request
  * @returns {'claude' | 'gemini' | 'unknown'} The model family
  */
@@ -224,7 +226,8 @@ export function getModelFamily(modelName) {
     const lower = (modelName || '').toLowerCase();
     if (lower.includes('claude')) return 'claude';
     if (lower.includes('gemini')) return 'gemini';
-    return 'unknown';
+    // Fall back to the provider reported by the backend (codename model ids)
+    return getRegisteredModel(modelName)?.family || 'unknown';
 }
 
 /**
@@ -242,8 +245,11 @@ export function isThinkingModel(modelName) {
         // Check for gemini-3 or higher (e.g., gemini-3, gemini-3.5, gemini-4, etc.)
         const versionMatch = lower.match(/gemini-(\d+)/);
         if (versionMatch && parseInt(versionMatch[1], 10) >= 3) return true;
+        return false;
     }
-    return false;
+    if (lower.includes('claude')) return false;
+    // Codename ids: trust the backend's supportsThinking flag
+    return getRegisteredModel(modelName)?.supportsThinking === true;
 }
 
 // Google OAuth configuration (from opencode-antigravity-auth)
