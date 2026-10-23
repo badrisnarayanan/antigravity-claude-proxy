@@ -209,7 +209,8 @@ export function parseRateLimitReason(errorText, status) {
         lower.includes('quotaresettimestamp') ||
         lower.includes('resource_exhausted') ||
         lower.includes('daily limit') ||
-        lower.includes('quota exceeded')) {
+        lower.includes('quota exceeded') ||
+        lower.includes('individual quota reached')) {
         return 'QUOTA_EXHAUSTED';
     }
 
