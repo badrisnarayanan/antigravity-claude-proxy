@@ -220,6 +220,9 @@ export function getMinWaitTimeMs(accounts, modelId) {
     let soonestAccount = null;
 
     for (const account of accounts) {
+        if (!account || account.isInvalid) continue;
+        if (account.enabled === false) continue;
+
         if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {
             const limit = account.modelRateLimits[modelId];
             if (limit.isRateLimited && limit.resetTime) {

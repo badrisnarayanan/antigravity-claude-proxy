@@ -31,6 +31,10 @@ async function runTests() {
         STRATEGY_NAMES,
         DEFAULT_STRATEGY
     } = await import('../src/account-manager/strategies/index.js');
+    const {
+        isAllRateLimited,
+        getMinWaitTimeMs
+    } = await import('../src/account-manager/rate-limits.js');
 
     let passed = 0;
     let failed = 0;
@@ -1038,6 +1042,77 @@ async function runTests() {
         // model-b should still use account1
         const resultB = strategy.selectAccount(accounts, 'model-b', { currentIndex: 0 });
         assertEqual(resultB.account.email, 'account1@example.com');
+    });
+
+    // ==========================================================================
+    // RATE LIMIT HELPERS TESTS
+    // ==========================================================================
+    console.log('\n─── Rate Limit Helpers Tests ───');
+
+    test('getMinWaitTimeMs: ignores disabled accounts when calculating shortest wait', () => {
+        const now = Date.now();
+        const accounts = [
+            {
+                email: 'disabled@example.com',
+                enabled: false,
+                modelRateLimits: {
+                    'model-a': { isRateLimited: true, resetTime: now + 5000 } // 5s wait on disabled account
+                }
+            },
+            {
+                email: 'enabled@example.com',
+                enabled: true,
+                modelRateLimits: {
+                    'model-a': { isRateLimited: true, resetTime: now + 45000 } // 45s wait on enabled account
+                }
+            }
+        ];
+
+        const waitMs = getMinWaitTimeMs(accounts, 'model-a');
+        assertTrue(waitMs >= 40000 && waitMs <= 46000, `Expected ~45s from enabled account, got ${waitMs}`);
+    });
+
+    test('getMinWaitTimeMs: ignores invalid accounts when calculating shortest wait', () => {
+        const now = Date.now();
+        const accounts = [
+            {
+                email: 'invalid@example.com',
+                enabled: true,
+                isInvalid: true,
+                modelRateLimits: {
+                    'model-a': { isRateLimited: true, resetTime: now + 5000 }
+                }
+            },
+            {
+                email: 'enabled@example.com',
+                enabled: true,
+                modelRateLimits: {
+                    'model-a': { isRateLimited: true, resetTime: now + 60000 }
+                }
+            }
+        ];
+
+        const waitMs = getMinWaitTimeMs(accounts, 'model-a');
+        assertTrue(waitMs >= 55000 && waitMs <= 61000, `Expected ~60s from valid account, got ${waitMs}`);
+    });
+
+    test('getMinWaitTimeMs: returns 0 when not all accounts are rate-limited', () => {
+        const accounts = [
+            { email: 'ready@example.com', enabled: true },
+            { email: 'limited@example.com', enabled: true, modelRateLimits: { 'model-a': { isRateLimited: true, resetTime: Date.now() + 30000 } } }
+        ];
+
+        assertEqual(getMinWaitTimeMs(accounts, 'model-a'), 0);
+    });
+
+    test('isAllRateLimited: correctly treats disabled and invalid accounts as unavailable', () => {
+        const accounts = [
+            { email: 'disabled@example.com', enabled: false },
+            { email: 'invalid@example.com', enabled: true, isInvalid: true },
+            { email: 'limited@example.com', enabled: true, modelRateLimits: { 'model-a': { isRateLimited: true, resetTime: Date.now() + 30000 } } }
+        ];
+
+        assertTrue(isAllRateLimited(accounts, 'model-a'), 'All usable accounts are rate-limited');
     });
 
     // Summary
