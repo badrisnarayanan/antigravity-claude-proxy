@@ -52,6 +52,17 @@ function isOldGemini(modelId) {
 }
 
 /**
+ * Whether a model id is a backend placeholder for a model the account can't
+ * use (e.g. 'gemini-4-argon-disabled' on free-tier accounts), hidden from the
+ * /v1/models listing since requests to it can't succeed.
+ * @param {string} modelId
+ * @returns {boolean}
+ */
+function isDisabledPlaceholder(modelId) {
+    return modelId.endsWith('-disabled');
+}
+
+/**
  * List available models in Anthropic API format
  * Fetches models dynamically from the Cloud Code API
  *
@@ -75,7 +86,7 @@ export async function listModels(token) {
     modelCache.lastFetched = Date.now();
 
     const modelList = supportedEntries
-        .filter(([modelId]) => !isOldGemini(modelId))
+        .filter(([modelId]) => !isOldGemini(modelId) && !isDisabledPlaceholder(modelId))
         .map(([modelId, modelData]) => ({
             id: modelId,
             object: 'model',
