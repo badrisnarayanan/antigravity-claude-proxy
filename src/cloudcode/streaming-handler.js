@@ -318,7 +318,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
                     for (let emptyRetries = 0; emptyRetries <= MAX_EMPTY_RESPONSE_RETRIES; emptyRetries++) {
                         try {
-                            yield* streamSSEResponse(currentResponse, anthropicRequest.model);
+                            yield* streamSSEResponse(currentResponse, anthropicRequest.model, {
+                                messages: anthropicRequest.messages || [],
+                                system: anthropicRequest.system
+                            });
                             logger.debug('[CloudCode] Stream completed');
                             // Clear rate limit state on success
                             clearRateLimitState(account.email, model);

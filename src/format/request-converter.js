@@ -23,6 +23,7 @@ import {
     clampGeminiThinkingBudget
 } from './thinking-utils.js';
 import { logger } from '../utils/logger.js';
+import { restoreTrailingTextSignatures } from './signature-cache.js';
 
 // Claude Code injects a billing pseudo-header as a system prompt block, e.g.
 // "x-anthropic-billing-header: cc_version=2.1.274.834; cc_entrypoint=sdk-cli;".
@@ -49,7 +50,8 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // Claude Code CLI sends cache_control on various content blocks, but Cloud Code API
     // rejects them with "Extra inputs are not permitted". Clean them proactively here
     // before any other processing, following the pattern from Antigravity-Manager.
-    const messages = cleanCacheControl(anthropicRequest.messages || []);
+    const requestMessages = anthropicRequest.messages || [];
+    const messages = cleanCacheControl(requestMessages);
 
     const { system, max_tokens, temperature, top_p, top_k, stop_sequences, tools, tool_choice, thinking } = anthropicRequest;
     const modelName = anthropicRequest.model || '';
@@ -103,11 +105,14 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
     // Apply thinking recovery for Gemini thinking models when needed
     // Gemini needs recovery for tool loops/interrupted tools (stripped thinking)
-    let processedMessages = messages;
+    const restoredMessages = isGeminiModel
+        ? restoreTrailingTextSignatures(messages, modelName, system, requestMessages)
+        : messages;
+    let processedMessages = restoredMessages;
 
-    if (isGeminiModel && isThinking && needsThinkingRecovery(messages)) {
+    if (isGeminiModel && isThinking && needsThinkingRecovery(restoredMessages)) {
         logger.debug('[RequestConverter] Applying thinking recovery for Gemini');
-        processedMessages = closeToolLoopForThinking(messages, 'gemini');
+        processedMessages = closeToolLoopForThinking(restoredMessages, 'gemini');
     }
 
     // For Claude: apply recovery for cross-model (Gemini→Claude) or unsigned thinking blocks
