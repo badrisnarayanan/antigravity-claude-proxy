@@ -46,24 +46,10 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                     signature: signature
                 });
             } else {
-                // Gemini 4 Argon attaches thoughtSignature to the text part (or a trailing empty text part)
-                const signature = part.thoughtSignature || '';
-                if (signature && signature.length >= MIN_SIGNATURE_LENGTH) {
-                    const modelFamily = getModelFamily(model);
-                    cacheThinkingSignature(signature, modelFamily);
-                    for (let i = anthropicContent.length - 1; i >= 0; i--) {
-                        if (anthropicContent[i].type === 'thinking' && !anthropicContent[i].signature) {
-                            anthropicContent[i].signature = signature;
-                            break;
-                        }
-                    }
-                }
-                if (part.text !== '') {
-                    anthropicContent.push({
-                        type: 'text',
-                        text: part.text
-                    });
-                }
+                anthropicContent.push({
+                    type: 'text',
+                    text: part.text
+                });
             }
         } else if (part.functionCall) {
             // Convert functionCall to tool_use

@@ -123,14 +123,6 @@ export async function* streamSSEResponse(response, originalModel) {
                         };
 
                     } else if (part.text !== undefined) {
-                        // Gemini 4 Argon emits thoughtSignature on the text part or a trailing empty-text part
-                        const textPartSignature = part.thoughtSignature || '';
-                        if (textPartSignature && textPartSignature.length >= MIN_SIGNATURE_LENGTH) {
-                            currentThinkingSignature = textPartSignature;
-                            const modelFamily = getModelFamily(originalModel);
-                            cacheThinkingSignature(textPartSignature, modelFamily);
-                        }
-
                         // Skip empty text parts (but preserve whitespace-only chunks for proper spacing)
                         if (part.text === '') {
                             continue;
