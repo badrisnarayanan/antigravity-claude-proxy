@@ -53,6 +53,11 @@ const DEFAULT_CONFIG = {
     switchAccountDelayMs: 5000,    // Delay before switching accounts on rate limit
     capacityBackoffTiersMs: [5000, 10000, 20000, 30000, 60000], // Progressive backoff tiers for capacity exhaustion
     modelMapping: {},
+    // Antigravity client version sent to Cloud Code (X-Client-Version / User-Agent).
+    // Empty = auto-detect from local Antigravity install, then hardcoded fallback.
+    // The backend hides newer models from outdated client versions.
+    antigravityClientVersion: '',
+    antigravityIdeVersion: '',
     // Account selection strategy configuration
     accountSelection: {
         strategy: 'hybrid',           // 'sticky' | 'round-robin' | 'hybrid'

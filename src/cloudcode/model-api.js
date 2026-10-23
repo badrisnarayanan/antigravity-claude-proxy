@@ -15,6 +15,7 @@ import {
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
 import { throttledFetch } from '../utils/helpers.js';
+import { recordModels } from './model-registry.js';
 
 // Model validation cache
 const modelCache = {
@@ -24,7 +25,7 @@ const modelCache = {
 };
 
 /**
- * Check if a model is supported (Claude or Gemini)
+ * Check if a model is supported (Claude or Gemini, by name or backend provider)
  * @param {string} modelId - Model ID to check
  * @returns {boolean} True if model is supported
  */
@@ -51,6 +52,17 @@ function isOldGemini(modelId) {
 }
 
 /**
+ * Whether a model id is a backend placeholder for a model the account can't
+ * use (e.g. 'gemini-4-argon-disabled' on free-tier accounts), hidden from the
+ * /v1/models listing since requests to it can't succeed.
+ * @param {string} modelId
+ * @returns {boolean}
+ */
+function isDisabledPlaceholder(modelId) {
+    return modelId.endsWith('-disabled');
+}
+
+/**
  * List available models in Anthropic API format
  * Fetches models dynamically from the Cloud Code API
  *
@@ -63,6 +75,7 @@ export async function listModels(token) {
         return { object: 'list', data: [] };
     }
 
+    recordModels(data);
     const supportedEntries = Object.entries(data.models).filter(([modelId]) => isSupportedModel(modelId));
 
     // Warm the model validation cache with every supported id, unfiltered -
@@ -73,7 +86,7 @@ export async function listModels(token) {
     modelCache.lastFetched = Date.now();
 
     const modelList = supportedEntries
-        .filter(([modelId]) => !isOldGemini(modelId))
+        .filter(([modelId]) => !isOldGemini(modelId) && !isDisabledPlaceholder(modelId))
         .map(([modelId, modelData]) => ({
             id: modelId,
             object: 'model',
@@ -148,6 +161,7 @@ export async function fetchAvailableModels(token, projectId = null) {
 export async function getModelQuotas(token, projectId = null) {
     const data = await fetchAvailableModels(token, projectId);
     if (!data || !data.models) return {};
+    recordModels(data);
 
     const quotas = {};
     for (const [modelId, modelData] of Object.entries(data.models)) {
@@ -319,6 +333,7 @@ async function populateModelCache(token, projectId = null) {
         try {
             const data = await fetchAvailableModels(token, projectId);
             if (data && data.models) {
+                recordModels(data);
                 const validIds = Object.keys(data.models).filter(modelId => isSupportedModel(modelId));
                 modelCache.validModels = new Set(validIds);
                 modelCache.lastFetched = Date.now();
