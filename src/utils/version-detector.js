@@ -19,11 +19,11 @@ import { existsSync, readFileSync } from 'fs';
  */
 
 // Fallback for User-Agent version (ideVersion in product.json)
-const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.0.3';
+const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.24.0';
 
 // Fallback for X-Client-Version (top-level "version" in product.json)
 // Can be overridden via ANTIGRAVITY_CLIENT_VERSION_FALLBACK env var
-const FALLBACK_CLIENT_VERSION = process.env.ANTIGRAVITY_CLIENT_VERSION_FALLBACK || '1.110.0';
+const FALLBACK_CLIENT_VERSION = process.env.ANTIGRAVITY_CLIENT_VERSION_FALLBACK || '2.24.0';
 
 let cachedUserAgent = null;
 let cachedClientVersion = null;
@@ -138,6 +138,18 @@ export function getClientVersion() {
         return cachedClientVersion;
     }
 
+    const os = platform();
+    try {
+        const detected = os === 'darwin' ? getVersionMacos() : (os === 'win32' ? getVersionWindows() : null);
+        if (detected) {
+            cachedClientVersion = detected;
+            logVersionInfo(cachedClientVersion, 'app-bundle');
+            return cachedClientVersion;
+        }
+    } catch (e) {
+        // Fall through to fallback
+    }
+
     cachedClientVersion = FALLBACK_CLIENT_VERSION;
     logVersionInfo(cachedClientVersion, 'fallback');
     return cachedClientVersion;
@@ -191,8 +203,9 @@ export function generateSmartUserAgent() {
     const architecture = process.arch;
 
     const osName = os === 'darwin' ? 'darwin' : (os === 'win32' ? 'win32' : 'linux');
+    const cl = process.env.ANTIGRAVITY_CL_VERSION || '1000335682';
 
-    cachedUserAgent = `antigravity/${version} ${osName}/${architecture}`;
+    cachedUserAgent = `antigravity/hub/${version} (aidev_client; os_type=${osName}; arch=${architecture}; cl=${cl})`;
     return cachedUserAgent;
 }
 

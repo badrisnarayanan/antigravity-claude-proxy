@@ -201,8 +201,8 @@ export const STRATEGY_LABELS = {
     'hybrid': 'Hybrid (Smart Distribution)'
 };
 
-// Gemini-specific limits
-export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
+// Gemini-specific limits (Gemini 3.8 / Gemini 4 Argon support up to 65536 output tokens)
+export const GEMINI_MAX_OUTPUT_TOKENS = 65536;
 
 // Gemini signature handling
 // Sentinel value to skip thought signature validation when Claude Code strips the field

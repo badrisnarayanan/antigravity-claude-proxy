@@ -202,13 +202,24 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {
             // Gemini thinking config (uses camelCase)
-            // Clamp budget to model-specific max (e.g., Gemini 2.5 Flash max is 24,576)
+            // For callers that did not explicitly request thinking and asked for small max_tokens,
+            // use minimal thinking budget (32) and reserve output headroom so thinking doesn't
+            // consume the entire maxOutputTokens budget and return empty text.
+            const requestedBudget = thinking?.budget_tokens
+                ? clampGeminiThinkingBudget(modelName, thinking.budget_tokens)
+                : (max_tokens && max_tokens <= 1024 ? 32 : clampGeminiThinkingBudget(modelName, undefined));
             const thinkingConfig = {
-                includeThoughts: true,
-                thinkingBudget: clampGeminiThinkingBudget(modelName, thinking?.budget_tokens)
+                includeThoughts: Boolean(thinking?.type === 'enabled' || thinking?.budget_tokens || !max_tokens || max_tokens > 256),
+                thinkingBudget: requestedBudget
             };
             logger.debug(`[RequestConverter] Gemini thinking enabled with budget: ${thinkingConfig.thinkingBudget}`);
 
+            const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens;
+            if (currentMaxTokens && currentMaxTokens <= thinkingConfig.thinkingBudget) {
+                const adjustedMaxTokens = Math.min(thinkingConfig.thinkingBudget + Math.max(currentMaxTokens, 8192), GEMINI_MAX_OUTPUT_TOKENS);
+                logger.debug(`[RequestConverter] Adjusting Gemini maxOutputTokens from ${currentMaxTokens} to ${adjustedMaxTokens} to exceed thinkingBudget (${thinkingConfig.thinkingBudget})`);
+                googleRequest.generationConfig.maxOutputTokens = adjustedMaxTokens;
+            }
 
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         }
