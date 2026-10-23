@@ -43,7 +43,11 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
         if (block.type === 'text') {
             // Skip empty text blocks - they cause API errors
             if (block.text && block.text.trim()) {
-                parts.push({ text: block.text });
+                const part = { text: block.text };
+                if (isGeminiModel && block.thoughtSignature && block.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+                    part.thoughtSignature = block.thoughtSignature;
+                }
+                parts.push(part);
             }
         } else if (block.type === 'image') {
             // Handle image content
