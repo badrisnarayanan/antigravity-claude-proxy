@@ -216,7 +216,7 @@ async function runTests() {
         const req = convertAnthropicToGoogle({ ...baseRequest, model: CODENAME });
         assertEqual(req.generationConfig.thinkingConfig.includeThoughts, true);
         assertEqual(typeof req.generationConfig.thinkingConfig.thinkingBudget, 'number');
-        assertEqual(req.generationConfig.maxOutputTokens, GEMINI_MAX_OUTPUT_TOKENS);
+        assertEqual(req.generationConfig.maxOutputTokens, Math.min(64000, GEMINI_MAX_OUTPUT_TOKENS));
         assertEqual(req.tools[0].functionDeclarations[0].name, 'get_weather');
         assertEqual(req.toolConfig, undefined, 'VALIDATED mode is Claude-only');
     });
@@ -224,7 +224,7 @@ async function runTests() {
     await test('gemini-3.8-flash-tiered conversion is unchanged', () => {
         const req = convertAnthropicToGoogle({ ...baseRequest, model: 'gemini-3.8-flash-tiered' });
         assertEqual(req.generationConfig.thinkingConfig.includeThoughts, true);
-        assertEqual(req.generationConfig.maxOutputTokens, GEMINI_MAX_OUTPUT_TOKENS);
+        assertEqual(req.generationConfig.maxOutputTokens, Math.min(64000, GEMINI_MAX_OUTPUT_TOKENS));
     });
 
     await test('Headers: no anthropic-beta for Gemini-family models', () => {
