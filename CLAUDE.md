@@ -4,6 +4,8 @@ Node.js proxy that exposes an Anthropic-compatible API backed by Google's Cloud 
 
 Request flow: `Claude Code CLI → Express (server.js) → CloudCode client → Antigravity Cloud Code API`
 
+Also exposes an OpenAI-compatible `POST /v1/chat/completions` endpoint, allowing tools like n8n to use the proxy via their "OpenAI-compatible" provider setting.
+
 ## Commands
 
 ```bash

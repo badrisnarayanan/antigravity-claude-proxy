@@ -18,6 +18,7 @@ import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearThinkingSignatureCache } from './format/signature-cache.js';
+import { convertOpenAIToAnthropic, convertAnthropicToOpenAI, convertAnthropicSSEToOpenAI } from './format/openai-compat.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
@@ -901,6 +902,132 @@ app.post('/v1/messages', async (req, res) => {
                     type: errorType,
                     message: errorMessage
                 }
+            });
+        }
+    }
+});
+
+/**
+ * OpenAI-compatible Chat Completions API
+ * POST /v1/chat/completions
+ */
+app.post('/v1/chat/completions', async (req, res) => {
+    try {
+        await ensureInitialized();
+
+        // Convert OpenAI format to Anthropic format
+        const anthropicRequest = convertOpenAIToAnthropic(req.body);
+
+        // Apply model mapping
+        let requestedModel = anthropicRequest.model || 'claude-3-5-sonnet-20241022';
+        const modelMapping = config.modelMapping || {};
+        if (modelMapping[requestedModel] && modelMapping[requestedModel].mapping) {
+            const targetModel = modelMapping[requestedModel].mapping;
+            logger.info(`[OpenAI-Compat] Mapping model ${requestedModel} -> ${targetModel}`);
+            requestedModel = targetModel;
+        }
+        anthropicRequest.model = requestedModel;
+
+        // Validate model
+        const { account: validationAccount } = accountManager.selectAccount();
+        if (validationAccount) {
+            const token = await accountManager.getTokenForAccount(validationAccount);
+            const projectId = validationAccount.subscription?.projectId || null;
+            const valid = await isValidModel(requestedModel, token, projectId);
+            if (!valid) {
+                return res.status(400).json({
+                    error: {
+                        message: `Invalid model: ${requestedModel}. Use /v1/models to see available models.`,
+                        type: 'invalid_request_error',
+                        code: 'model_not_found'
+                    }
+                });
+            }
+        }
+
+        if (accountManager.isAllRateLimited(requestedModel)) {
+            logger.warn(`[OpenAI-Compat] All accounts rate-limited for ${requestedModel}. Resetting for optimistic retry.`);
+            accountManager.resetAllRateLimits();
+        }
+
+        if (!anthropicRequest.messages || !Array.isArray(anthropicRequest.messages) || anthropicRequest.messages.length === 0) {
+            return res.status(400).json({
+                error: {
+                    message: 'messages is required and must be a non-empty array',
+                    type: 'invalid_request_error',
+                    code: 'invalid_messages'
+                }
+            });
+        }
+
+        logger.info(`[OpenAI-Compat] Request for model: ${requestedModel}, stream: ${!!anthropicRequest.stream}`);
+
+        if (anthropicRequest.stream) {
+            const streamState = { id: null, created: null, toolCallIndex: 0, blockType: null };
+
+            try {
+                const generator = sendMessageStream(anthropicRequest, accountManager, FALLBACK_ENABLED);
+                const firstResult = await generator.next();
+
+                res.status(200);
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.flushHeaders();
+
+                if (!firstResult.done) {
+                    const chunk = convertAnthropicSSEToOpenAI(firstResult.value, requestedModel, streamState);
+                    if (chunk) {
+                        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+                        if (res.flush) res.flush();
+                    }
+                }
+
+                for await (const event of generator) {
+                    const chunk = convertAnthropicSSEToOpenAI(event, requestedModel, streamState);
+                    if (chunk) {
+                        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+                        if (res.flush) res.flush();
+                    }
+                }
+
+                res.write('data: [DONE]\n\n');
+                res.end();
+
+            } catch (error) {
+                if (!res.headersSent) {
+                    const { statusCode, errorMessage } = parseError(error);
+                    return res.status(statusCode).json({
+                        error: { message: errorMessage, type: 'server_error', code: null }
+                    });
+                }
+                logger.error('[OpenAI-Compat] Mid-stream error:', error);
+                res.write(`data: ${JSON.stringify({ error: { message: error.message, type: 'server_error' } })}\n\n`);
+                res.end();
+            }
+
+        } else {
+            const response = await sendMessage(anthropicRequest, accountManager, FALLBACK_ENABLED);
+            res.json(convertAnthropicToOpenAI(response));
+        }
+
+    } catch (error) {
+        logger.error('[OpenAI-Compat] Error:', error);
+        let { statusCode, errorMessage } = parseError(error);
+
+        if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
+            try {
+                accountManager.clearProjectCache();
+                accountManager.clearTokenCache();
+                await forceRefresh();
+                errorMessage = 'Token was expired and has been refreshed. Please retry your request.';
+            } catch { /* ignore refresh failure */ }
+        }
+
+        if (!res.headersSent) {
+            res.status(statusCode).json({
+                error: { message: errorMessage, type: 'server_error', code: null }
             });
         }
     }
