@@ -15,7 +15,7 @@ import { config } from './config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { forceRefresh } from './auth/token-extractor.js';
-import { REQUEST_BODY_LIMIT } from './constants.js';
+import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearThinkingSignatureCache } from './format/signature-cache.js';
 import { formatDuration } from './utils/helpers.js';
@@ -730,6 +730,10 @@ app.post('/v1/messages', async (req, res) => {
             const targetModel = modelMapping[requestedModel].mapping;
             logger.info(`[Server] Mapping model ${requestedModel} -> ${targetModel}`);
             requestedModel = targetModel;
+        } else if (BUILTIN_MODEL_MAPPINGS[requestedModel]) {
+            const targetModel = BUILTIN_MODEL_MAPPINGS[requestedModel];
+            logger.info(`[Server] Built-in mapping model ${requestedModel} -> ${targetModel}`);
+            requestedModel = targetModel;
         }
 
         const modelId = requestedModel;
@@ -812,6 +816,7 @@ app.post('/v1/messages', async (req, res) => {
                 const firstResult = await generator.next();
 
                 // If we get here, the stream started successfully.
+                usageStats.track(modelId);
                 res.status(200);
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -863,6 +868,7 @@ app.post('/v1/messages', async (req, res) => {
         } else {
             // Handle non-streaming response
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            usageStats.track(response?.model || modelId);
             res.json(response);
         }
 

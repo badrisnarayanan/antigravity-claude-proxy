@@ -38,7 +38,8 @@
     "test:sanitizer": "node tests/test-schema-sanitizer.cjs",
     "test:strategies": "node tests/test-strategies.cjs",
     "test:cache-control": "node tests/test-cache-control.cjs",
-    "test:billing-header": "node tests/test-billing-header.cjs"
+    "test:billing-header": "node tests/test-billing-header.cjs",
+    "test:stats": "node tests/test-usage-stats.js"
   },
   "keywords": [
     "claude",
