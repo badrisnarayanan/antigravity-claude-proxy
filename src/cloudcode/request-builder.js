@@ -55,16 +55,22 @@ function parseIdentityScrubEnv(raw) {
         .filter((rule) => rule && rule[0].length > 0);
 }
 
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Terms match as whole words only, so identifiers that merely contain a term
+// (convertAnthropicToGoogle, AnthropicRequest, HermesHandler) are left alone.
 const IDENTITY_SCRUB_RULES = [
     ...DEFAULT_IDENTITY_SCRUB,
     ...parseIdentityScrubEnv(process.env.ANTIGRAVITY_SCRUB_IDENTITY)
-];
+].map(([term, replacement]) => [new RegExp(`\\b${escapeRegExp(term)}\\b`, 'g'), replacement]);
 
 function scrubClientIdentity(text) {
     if (typeof text !== 'string') return text;
     let out = text;
-    for (const [term, replacement] of IDENTITY_SCRUB_RULES) {
-        out = out.split(term).join(replacement);
+    for (const [pattern, replacement] of IDENTITY_SCRUB_RULES) {
+        out = out.replace(pattern, () => replacement);
     }
     return out;
 }
