@@ -22,6 +22,7 @@ const tests = [
     { name: 'Empty Response Retry', file: 'test-empty-response-retry.cjs' },
     { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
     { name: 'Billing Header Stripping', file: 'test-billing-header.cjs' },
+    { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
     { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },
