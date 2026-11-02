@@ -1,6 +1,19 @@
 import assert from 'assert';
-import usageStats, { normalizeHistory, LEGACY_MODEL_MIGRATIONS } from '../src/modules/usage-stats.js';
-import { BUILTIN_MODEL_MAPPINGS } from '../src/constants.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+// Point the home directory at a throwaway folder before loading the module, so
+// setupMiddleware() loads, migrates and saves a temporary usage-history.json
+// instead of the user's real ~/.config/antigravity-proxy/usage-history.json.
+const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'usage-stats-test-'));
+process.env.HOME = tmpHome;
+process.env.USERPROFILE = tmpHome;
+
+const { default: usageStats, normalizeHistory } = await import('../src/modules/usage-stats.js');
+const { BUILTIN_MODEL_MAPPINGS, USAGE_HISTORY_PATH } = await import('../src/constants.js');
+
+assert.ok(USAGE_HISTORY_PATH.startsWith(tmpHome), `history path must be under the temp home, got ${USAGE_HISTORY_PATH}`);
 
 async function testUsageStats() {
     console.log('--- Testing Usage Stats & Model Mapping ---');
@@ -78,8 +91,12 @@ async function testUsageStats() {
     console.log('\n✓ All usage stats tests passed!');
 }
 
-testUsageStats().catch(err => {
-    console.error('\n✗ Usage stats tests failed:');
-    console.error(err);
-    process.exit(1);
-});
+testUsageStats()
+    .catch(err => {
+        console.error('\n✗ Usage stats tests failed:');
+        console.error(err);
+        process.exitCode = 1;
+    })
+    .finally(() => {
+        fs.rmSync(tmpHome, { recursive: true, force: true });
+    });
