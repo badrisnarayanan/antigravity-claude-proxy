@@ -14,6 +14,8 @@ window.Components.dashboard = () => ({
     historyData: {},
     modelTree: {},
     families: [],
+    activeModelKeys: null,
+    activeFamilies: null,
 
     // Claude config status
     claudeConfigStatus: {
