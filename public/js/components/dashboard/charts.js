@@ -461,8 +461,18 @@ window.DashboardCharts.updateTrendChart = function (component) {
       });
     });
 
-    // Build datasets for families
+    // Build datasets for families (only include families with activity > 0)
+    const activeFamilies = new Set();
+    Object.entries(dataByFamily).forEach(([family, values]) => {
+      if (values.some((v) => v > 0)) {
+        activeFamilies.add(family);
+      }
+    });
+    component.activeFamilies = activeFamilies;
+
     component.selectedFamilies.forEach((family) => {
+      if (!activeFamilies.has(family)) return;
+
       const color = window.DashboardFilters.getFamilyColor(family);
       const familyKey =
         "family" + family.charAt(0).toUpperCase() + family.slice(1);
@@ -501,10 +511,22 @@ window.DashboardCharts.updateTrendChart = function (component) {
       });
     });
 
-    // Build datasets for models
+    // Track models with activity > 0 in this filtered time range
+    const activeModelKeys = new Set();
+    Object.entries(dataByModel).forEach(([key, values]) => {
+      if (values.some((v) => v > 0)) {
+        activeModelKeys.add(key);
+      }
+    });
+    component.activeModelKeys = activeModelKeys;
+
+    // Build datasets for models (only include models with activity > 0 in this time range)
     component.families.forEach((family) => {
       (component.selectedModels[family] || []).forEach((model, modelIndex) => {
         const key = `${family}:${model}`;
+        // Skip models with 0 calls in the selected period
+        if (!activeModelKeys.has(key)) return;
+
         const color = window.DashboardFilters.getModelColor(family, modelIndex);
         datasets.push(
           window.DashboardCharts.createDataset(
@@ -516,6 +538,13 @@ window.DashboardCharts.updateTrendChart = function (component) {
         );
       });
     });
+  }
+
+  if (datasets.length === 0) {
+    if (window.UILogger) window.UILogger.debug("No active datasets for trend chart (all zero in time range)");
+    component.hasFilteredTrendData = false;
+    _trendChartUpdateLock = false;
+    return;
   }
 
   try {
@@ -543,6 +572,9 @@ window.DashboardCharts.updateTrendChart = function (component) {
             borderWidth: 1,
             padding: 10,
             displayColors: true,
+            filter: function (tooltipItem) {
+              return (tooltipItem.parsed?.y || 0) > 0;
+            },
             callbacks: {
               label: function (context) {
                 return context.dataset.label + ": " + context.parsed.y;

@@ -290,6 +290,17 @@ export const MODEL_FALLBACK_MAP = {
     'claude-sonnet-4-6': 'gemini-3-flash'
 };
 
+// Built-in model aliases mapped to canonical backend models
+export const BUILTIN_MODEL_MAPPINGS = {
+    'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
+    'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
+    'claude-opus-5-5': 'claude-opus-4-6-thinking',
+    'claude-sonnet-5-5': 'claude-sonnet-4-6',
+    'claude-haiku-5-5': 'claude-sonnet-4-6',
+    'claude-opus-5': 'claude-opus-4-6-thinking',
+    'claude-sonnet-5': 'claude-sonnet-4-6'
+};
+
 // Default test models for each family (used by test suite)
 export const TEST_MODELS = {
     claude: 'claude-sonnet-4-6',
@@ -522,6 +533,7 @@ export default {
     OAUTH_REDIRECT_URI,
     STRATEGY_LABELS,
     MODEL_FALLBACK_MAP,
+    BUILTIN_MODEL_MAPPINGS,
     TEST_MODELS,
     DEFAULT_PRESETS,
     DEFAULT_SERVER_PRESETS,
