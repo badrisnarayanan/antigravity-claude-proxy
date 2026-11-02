@@ -24,10 +24,23 @@ import { deriveSessionId } from './session-manager.js';
 // Defaults cover agents commonly used with this proxy; extend or override with
 // the ANTIGRAVITY_SCRUB_IDENTITY env var, formatted as a comma-separated list of
 // "Term=>Replacement" pairs, e.g. "Nous Research=>the team,Hermes=>the assistant".
+//
+// Claude Code and Anthropic are listed explicitly: issue #375 identified
+// "You are Claude Code, Anthropic's official CLI for Claude." as a 429 trigger
+// alongside the billing header, but the merged fix (2f6afae) only stripped the
+// header and left both names in place.
+//
+// Matching is case-sensitive on purpose, so lower-case header names
+// (x-anthropic-beta, anthropic-version) and file names (CLAUDE.md) are left
+// alone. The bare word "Claude" is deliberately NOT scrubbed: it is legitimate
+// in model self-descriptions, and requests succeed with it present once the two
+// names above are neutralized.
 const DEFAULT_IDENTITY_SCRUB = [
     ['Nous Research', 'the assistant team'],
     ['Hermes Agent', 'the assistant'],
-    ['Hermes', 'the assistant']
+    ['Hermes', 'the assistant'],
+    ['Claude Code', 'the assistant'],
+    ['Anthropic', 'the vendor']
 ];
 
 function parseIdentityScrubEnv(raw) {
