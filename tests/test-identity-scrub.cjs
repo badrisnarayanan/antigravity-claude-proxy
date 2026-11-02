@@ -97,6 +97,17 @@ async function runTests() {
         assert(outgoingSystem(text).includes(text), 'unrelated prompt must be unchanged');
     });
 
+    test('Identifiers containing a scrubbed term are left alone', () => {
+        const text = 'Use convertAnthropicToGoogle() and AnthropicRequest types. See HermesHandler.';
+        assert(outgoingSystem(text).includes(text), `identifiers must not be rewritten: ${outgoingSystem(text)}`);
+    });
+
+    test('Possessive and punctuated forms are still scrubbed', () => {
+        const out = outgoingSystem("Claude Code's docs (Anthropic). Ask Hermes.");
+        assert(!out.includes('Claude Code') && !out.includes('Anthropic') && !out.includes('Hermes'), `term survived: ${out}`);
+        assert(out.includes("the assistant's docs (the vendor)."), `unexpected output: ${out}`);
+    });
+
     console.log('\n' + '═'.repeat(60));
     console.log(`Tests completed: ${passed} passed, ${failed} failed`);
 
