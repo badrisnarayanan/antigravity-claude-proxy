@@ -5,7 +5,7 @@
 
 import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
-import { cacheSignature, cacheThinkingSignature } from './signature-cache.js';
+import { cacheSignature, cacheThinkingSignature, cacheTrailingTextSignature } from './signature-cache.js';
 
 /**
  * Convert Google Generative AI response to Anthropic Messages API format
@@ -14,7 +14,7 @@ import { cacheSignature, cacheThinkingSignature } from './signature-cache.js';
  * @param {string} model - The model name used
  * @returns {Object} Anthropic format response
  */
-export function convertGoogleToAnthropic(googleResponse, model) {
+export function convertGoogleToAnthropic(googleResponse, model, requestContext = {}) {
     // Handle the response wrapper
     const response = googleResponse.response || googleResponse;
 
@@ -26,6 +26,7 @@ export function convertGoogleToAnthropic(googleResponse, model) {
     // Convert parts to Anthropic content blocks
     const anthropicContent = [];
     let hasToolCalls = false;
+    let trailingTextSignature = '';
 
     for (const part of parts) {
         if (part.text !== undefined) {
@@ -46,6 +47,9 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                     signature: signature
                 });
             } else {
+                if (part.thoughtSignature && part.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+                    trailingTextSignature = part.thoughtSignature;
+                }
                 anthropicContent.push({
                     type: 'text',
                     text: part.text
@@ -82,6 +86,12 @@ export function convertGoogleToAnthropic(googleResponse, model) {
                 }
             });
         }
+    }
+
+    if (trailingTextSignature) {
+        const answerText = parts.filter(part => part.thought !== true && part.text !== undefined)
+            .map(part => part.text || '').join('');
+        cacheTrailingTextSignature(model, requestContext, answerText, trailingTextSignature);
     }
 
     // Determine stop reason

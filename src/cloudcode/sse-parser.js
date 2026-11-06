@@ -6,6 +6,7 @@
  */
 
 import { convertGoogleToAnthropic } from '../format/index.js';
+import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -15,10 +16,11 @@ import { logger } from '../utils/logger.js';
  * @param {string} originalModel - The original model name
  * @returns {Promise<Object>} Anthropic-format response object
  */
-export async function parseThinkingSSEResponse(response, originalModel) {
+export async function parseThinkingSSEResponse(response, originalModel, requestContext = {}) {
     let accumulatedThinkingText = '';
     let accumulatedThinkingSignature = '';
     let accumulatedText = '';
+    let trailingTextSignature = '';
     const finalParts = [];
     let usageMetadata = {};
     let finishReason = 'STOP';
@@ -86,6 +88,9 @@ export async function parseThinkingSSEResponse(response, originalModel) {
                         flushText();
                         finalParts.push(part);
                     } else if (part.text !== undefined) {
+                        if (part.thoughtSignature && part.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+                            trailingTextSignature = part.thoughtSignature;
+                        }
                         if (!part.text) continue;
                         flushThinking();
                         accumulatedText += part.text;
@@ -105,6 +110,11 @@ export async function parseThinkingSSEResponse(response, originalModel) {
     flushThinking();
     flushText();
 
+    if (trailingTextSignature) {
+        const lastTextPart = [...finalParts].reverse().find(part => part.thought !== true && part.text !== undefined);
+        if (lastTextPart) lastTextPart.thoughtSignature = trailingTextSignature;
+    }
+
     const accumulatedResponse = {
         candidates: [{ content: { parts: finalParts }, finishReason }],
         usageMetadata
@@ -117,5 +127,5 @@ export async function parseThinkingSSEResponse(response, originalModel) {
         logger.debug('[CloudCode] Thinking signature length:', thinkingPart?.thoughtSignature?.length || 0);
     }
 
-    return convertGoogleToAnthropic(accumulatedResponse, originalModel);
+    return convertGoogleToAnthropic(accumulatedResponse, originalModel, requestContext);
 }

@@ -8,7 +8,7 @@
 import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
 import { EmptyResponseError } from '../errors.js';
-import { cacheSignature, cacheThinkingSignature } from '../format/signature-cache.js';
+import { cacheSignature, cacheThinkingSignature, cacheTrailingTextSignature } from '../format/signature-cache.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -18,7 +18,7 @@ import { logger } from '../utils/logger.js';
  * @param {string} originalModel - The original model name
  * @yields {Object} Anthropic-format SSE events
  */
-export async function* streamSSEResponse(response, originalModel) {
+export async function* streamSSEResponse(response, originalModel, requestContext = {}) {
     const messageId = `msg_${crypto.randomBytes(16).toString('hex')}`;
     let hasEmittedStart = false;
     let blockIndex = 0;
@@ -28,6 +28,8 @@ export async function* streamSSEResponse(response, originalModel) {
     let outputTokens = 0;
     let cacheReadTokens = 0;
     let stopReason = null;
+    let trailingTextSignature = '';
+    let accumulatedText = '';
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -123,10 +125,14 @@ export async function* streamSSEResponse(response, originalModel) {
                         };
 
                     } else if (part.text !== undefined) {
+                        if (part.thoughtSignature && part.thoughtSignature.length >= MIN_SIGNATURE_LENGTH) {
+                            trailingTextSignature = part.thoughtSignature;
+                        }
                         // Skip empty text parts (but preserve whitespace-only chunks for proper spacing)
                         if (part.text === '') {
                             continue;
                         }
+                        accumulatedText += part.text;
 
                         // Handle regular text
                         if (currentBlockType !== 'text') {
@@ -279,6 +285,9 @@ export async function* streamSSEResponse(response, originalModel) {
     }
 
     // Emit message_delta and message_stop
+    if (trailingTextSignature) {
+        cacheTrailingTextSignature(originalModel, requestContext, accumulatedText, trailingTextSignature);
+    }
     yield {
         type: 'message_delta',
         delta: { stop_reason: stopReason || 'end_turn', stop_sequence: null },
