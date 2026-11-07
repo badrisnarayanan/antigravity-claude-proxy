@@ -45,7 +45,7 @@ A proxy server that exposes an **Anthropic-compatible API** backed by **Antigrav
 
 ## Prerequisites
 
-- **Node.js** 18 or later
+- **Node.js** 22 or later
 - **Antigravity** installed (for single-account mode) OR Google account(s) for multi-account mode
 
 ---
