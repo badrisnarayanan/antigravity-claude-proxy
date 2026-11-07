@@ -86,6 +86,11 @@ async function runTests() {
         return jsonResponse(FIXTURE);
     };
 
+    // Keep the persisted signature store out of the real home directory:
+    // the streaming test below caches a fake signature.
+    const sigStoreDir = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'sigstore-registry-'));
+    process.env.ANTIGRAVITY_SIGNATURE_STORE = require('path').join(sigStoreDir, 'store.json');
+
     const { getModelFamily, isThinkingModel, GEMINI_MAX_OUTPUT_TOKENS } = await import('../src/constants.js');
     const { clearModelRegistry, getRegisteredModel } = await import('../src/cloudcode/model-registry.js');
     const { listModels, isValidModel, getModelQuotas } = await import('../src/cloudcode/model-api.js');
