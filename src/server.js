@@ -78,6 +78,12 @@ async function ensureInitialized() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+// Express 5 leaves req.body undefined when no body was parsed (Express 4 set {}).
+// Keep the old behavior so handlers can destructure req.body safely.
+app.use((req, res, next) => {
+    if (req.body === undefined) req.body = {};
+    next();
+});
 
 // API Key authentication middleware for /v1/* endpoints
 app.use('/v1', (req, res, next) => {
@@ -917,8 +923,8 @@ app.post('/v1/messages', async (req, res) => {
  */
 usageStats.setupRoutes(app);
 
-app.use('*', (req, res) => {
-    // Log 404s (use originalUrl since wildcard strips req.path)
+app.use((req, res) => {
+    // Log 404s
     if (logger.isDebugEnabled) {
         logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
     }
