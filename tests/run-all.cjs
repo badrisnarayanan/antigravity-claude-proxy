@@ -7,6 +7,13 @@
  */
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+const SIGNATURE_STORE_FOR_TESTS = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'sigstore-tests-')),
+    'store.json'
+);
 
 const tests = [
     { name: 'Account Selection Strategies', file: 'test-strategies.cjs' },
@@ -37,7 +44,9 @@ async function runTest(test) {
     return new Promise((resolve) => {
         const testPath = path.join(__dirname, test.file);
         const child = spawn('node', [testPath], {
-            stdio: 'inherit'
+            stdio: 'inherit',
+            // Unit tests must never write into the real persisted signature store.
+            env: { ...process.env, ANTIGRAVITY_SIGNATURE_STORE: SIGNATURE_STORE_FOR_TESTS }
         });
 
         child.on('close', (code) => {

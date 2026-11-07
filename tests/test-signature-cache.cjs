@@ -32,6 +32,7 @@ async function runTests() {
         cacheThinkingSignature,
         getCachedSignatureFamily,
         clearAllSignatureCaches,
+        flushSignatureStore,
     } = mod;
 
     let passed = 0;
@@ -79,8 +80,8 @@ async function runTests() {
         assert(getCachedSignatureFamily('short') === null, 'below MIN_SIGNATURE_LENGTH must not be cached');
     });
 
-    await test('store file written with 0600 after debounce', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1300));
+    await test('store file written with 0600 on flush', async () => {
+        await flushSignatureStore();
         assert(fs.existsSync(STORE_PATH), `store file should exist at ${STORE_PATH}`);
         const mode = fs.statSync(STORE_PATH).mode & 0o777;
         assert(mode === 0o600, `expected 0600, got ${mode.toString(8)}`);
@@ -174,6 +175,17 @@ async function runTests() {
         clearAllSignatureCaches();
         assert(getCachedSignature('toolu_1') === null, 'memory should be empty');
         assert(!fs.existsSync(STORE_PATH), 'store file should be removed');
+    });
+
+    await test('clear during an in-flight write does not resurrect the store', async () => {
+        cacheSignature('toolu_race', 'sig-race-' + 'r'.repeat(60));
+        const pending = flushSignatureStore(); // async write starts now
+        clearAllSignatureCaches();             // clear before it finishes
+        await pending;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        assert(!fs.existsSync(STORE_PATH), 'store must stay deleted after clear');
+        const leftovers = fs.readdirSync(path.dirname(STORE_PATH)).filter((f) => f.includes('.tmp-'));
+        assert(leftovers.length === 0, `no tmp files should remain, found ${leftovers.join(',')}`);
     });
 
     console.log('');

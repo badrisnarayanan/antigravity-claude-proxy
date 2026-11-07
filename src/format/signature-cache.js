@@ -15,7 +15,7 @@
  * compatibility checking.
  *
  * Persistence: JSON file, atomic tmp+rename writes, mode 0600, debounced
- * (plus a periodic safety flush and synchronous flush on SIGTERM/SIGINT/
+ * async writes (plus a periodic safety flush and synchronous flush on SIGTERM/SIGINT/
  * exit). All persistence failures fail open: the in-memory cache keeps
  * working and the proxy never errors because of store I/O.
  */
@@ -31,7 +31,7 @@ const thinkingSignatureCache = new Map();   // signature -> modelFamily (inserti
 const STORE_VERSION = 1;
 const DEFAULT_MAX_TOOL_SIGNATURES = 20_000;
 const DEFAULT_MAX_THINKING_SIGNATURES = 10_000;
-const FLUSH_DEBOUNCE_MS = 1000;
+const FLUSH_DEBOUNCE_MS = 5000;
 const PERIODIC_FLUSH_MS = 30_000;
 const MAX_SILENT_STORE_ERRORS = 20;
 
@@ -76,6 +76,8 @@ let flushTimer = null;
 let periodicTimer = null;
 let dirty = false;
 let storeErrorCount = 0;
+let writeInFlight = null;
+let storeGeneration = 0;
 
 function reportStoreError(context, error) {
     if (storeErrorCount < MAX_SILENT_STORE_ERRORS) {
@@ -121,18 +123,27 @@ function loadFromDisk() {
     }
 }
 
+function serializeStore() {
+    return JSON.stringify({
+        version: STORE_VERSION,
+        tool: Object.fromEntries(toolSignatureCache),
+        think: Object.fromEntries(thinkingSignatureCache),
+    });
+}
+
+/**
+ * Synchronous flush, used only on process exit/signals where async I/O
+ * would never complete. Bumps the store generation so any async write still
+ * in flight discards its (older) snapshot instead of renaming over this one.
+ */
 function writeStoreSync() {
     if (!dirty) return;
+    storeGeneration++;
     try {
-        const payload = {
-            version: STORE_VERSION,
-            tool: Object.fromEntries(toolSignatureCache),
-            think: Object.fromEntries(thinkingSignatureCache),
-        };
-        const dir = path.dirname(storePath);
-        fs.mkdirSync(dir, { recursive: true });
-        const tmp = `${storePath}.tmp-${process.pid}`;
-        fs.writeFileSync(tmp, JSON.stringify(payload), { mode: 0o600 });
+        const data = serializeStore();
+        fs.mkdirSync(path.dirname(storePath), { recursive: true });
+        const tmp = `${storePath}.tmp-sync-${process.pid}`;
+        fs.writeFileSync(tmp, data, { mode: 0o600 });
         fs.renameSync(tmp, storePath);
         dirty = false;
     } catch (error) {
@@ -140,12 +151,54 @@ function writeStoreSync() {
     }
 }
 
+/**
+ * Normal-operation flush. File I/O runs asynchronously so a store near the
+ * LRU cap (tens of MB) never blocks the event loop on disk writes; only the
+ * JSON serialization stays synchronous. At most one write is in flight.
+ */
+function writeStoreAsync() {
+    if (!dirty || writeInFlight) return;
+    let data;
+    try {
+        data = serializeStore();
+    } catch (error) {
+        reportStoreError('flush', error);
+        return;
+    }
+    dirty = false;
+    const generation = storeGeneration;
+    const targetPath = storePath;
+    const tmp = `${targetPath}.tmp-${process.pid}`;
+    let failed = false;
+    writeInFlight = (async () => {
+        try {
+            await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+            await fs.promises.writeFile(tmp, data, { mode: 0o600 });
+            if (generation !== storeGeneration) {
+                // Cache was cleared or flushed synchronously meanwhile.
+                await fs.promises.rm(tmp, { force: true });
+                return;
+            }
+            await fs.promises.rename(tmp, targetPath);
+        } catch (error) {
+            failed = true;
+            dirty = true;
+            reportStoreError('flush', error);
+        }
+    })().finally(() => {
+        writeInFlight = null;
+        // Changes made during the write get flushed promptly; after a failed
+        // write, leave the retry to the periodic flush instead of spinning.
+        if (dirty && !failed) scheduleFlush();
+    });
+}
+
 function scheduleFlush() {
     dirty = true;
     if (flushTimer) return;
     flushTimer = setTimeout(() => {
         flushTimer = null;
-        writeStoreSync();
+        writeStoreAsync();
     }, FLUSH_DEBOUNCE_MS);
     if (typeof flushTimer.unref === 'function') flushTimer.unref();
 }
@@ -160,7 +213,7 @@ function removeStoreFile() {
 
 loadFromDisk();
 
-periodicTimer = setInterval(() => writeStoreSync(), PERIODIC_FLUSH_MS);
+periodicTimer = setInterval(() => writeStoreAsync(), PERIODIC_FLUSH_MS);
 if (typeof periodicTimer.unref === 'function') periodicTimer.unref();
 
 for (const signal of ['SIGTERM', 'SIGINT', 'exit']) {
@@ -224,6 +277,22 @@ export function clearThinkingSignatureCache() {
 }
 
 /**
+ * Flush pending changes to disk now and wait for the write to finish.
+ * The debounced flush normally does this; exported for tests and callers
+ * that need the store on disk at a known point.
+ * @returns {Promise<void>}
+ */
+export async function flushSignatureStore() {
+    if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+    }
+    if (writeInFlight) await writeInFlight;
+    writeStoreAsync();
+    if (writeInFlight) await writeInFlight;
+}
+
+/**
  * Clear both signature caches and delete the persisted store.
  */
 export function clearAllSignatureCaches() {
@@ -234,5 +303,6 @@ export function clearAllSignatureCaches() {
         flushTimer = null;
     }
     dirty = false;
+    storeGeneration++; // any in-flight async write must not resurrect the store
     removeStoreFile();
 }

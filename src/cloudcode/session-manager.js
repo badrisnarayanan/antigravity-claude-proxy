@@ -15,9 +15,6 @@ import crypto from 'crypto';
 // Key: accountEmail, Value: sessionId
 const runtimeSessionStore = new Map();
 
-/** Cap on the first-user-text fed to the session hash. */
-const MAX_SESSION_HASH_TEXT_CHARS = 4096;
-
 /**
  * Extract the first meaningful user text from an Anthropic request.
  * Returns null when no user message carries text.
@@ -41,7 +38,11 @@ function extractFirstUserText(anthropicRequest) {
             if (parts.length > 0) text = parts.join('\n');
         }
         if (text && text.trim().length > 0) {
-            return text.slice(0, MAX_SESSION_HASH_TEXT_CHARS);
+            // Hash the full text, never a prefix: clients such as Claude Code
+            // open the first user message with a long shared preamble
+            // (<system-reminder>, CLAUDE.md), so a truncated prefix maps
+            // every conversation in a project to the same session ID.
+            return text;
         }
     }
     return null;
