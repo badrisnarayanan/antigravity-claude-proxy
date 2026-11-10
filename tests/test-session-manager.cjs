@@ -77,6 +77,19 @@ async function runTests() {
         assert(a !== b, 'distinct conversations must not share a session ID');
     });
 
+    test('shared long preamble (e.g. CLAUDE.md system-reminder) does not merge conversations', () => {
+        const preamble = '<system-reminder>\n' + 'Project instructions line. '.repeat(400) + '\n</system-reminder>';
+        const withPreamble = (prompt) => ({
+            messages: [{ role: 'user', content: [{ type: 'text', text: preamble }, { type: 'text', text: prompt }] }]
+        });
+        const a = deriveSessionId(withPreamble('Fix the login bug'), 'user@example.com');
+        const b = deriveSessionId(withPreamble('Write docs for the API'), 'user@example.com');
+        const a2 = deriveSessionId(withPreamble('Fix the login bug'), 'user@example.com');
+        assert(preamble.length > 8000, 'preamble should exceed any prefix cap');
+        assert(a !== b, 'different prompts behind the same preamble must get different IDs');
+        assert(a === a2, 'same conversation must stay stable');
+    });
+
     test('different accounts -> different session IDs for same conversation', () => {
         const a = deriveSessionId(convA, 'one@example.com');
         const b = deriveSessionId(convA, 'two@example.com');

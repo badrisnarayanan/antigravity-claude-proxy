@@ -7,6 +7,13 @@
  */
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+const signatureStoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigstore-tests-'));
+const SIGNATURE_STORE_FOR_TESTS = path.join(signatureStoreDir, 'store.json');
+const offline = process.argv.includes('--offline');
+process.on('exit', () => fs.rmSync(signatureStoreDir, { recursive: true, force: true }));
 
 const tests = [
     { name: 'Account Selection Strategies', file: 'test-strategies.cjs' },
@@ -27,17 +34,26 @@ const tests = [
     { name: 'OAuth No-Browser Mode', file: 'test-oauth-no-browser.cjs' },
     { name: 'Empty Response Retry', file: 'test-empty-response-retry.cjs' },
     { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
+    { name: 'Billing Header Stripping', file: 'test-billing-header.cjs' },
+    { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
     { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },
-    { name: 'Version Detection', file: 'test-version-detection.js' }
+    { name: 'Model Registry & Routing', file: 'test-model-registry.cjs' },
+    { name: 'Version Detection', file: 'test-version-detection.js' },
+    { name: 'Usage Stats & Model Tracking', file: 'test-usage-stats.js' }
 ];
 
 async function runTest(test) {
     return new Promise((resolve) => {
         const testPath = path.join(__dirname, test.file);
         const child = spawn('node', [testPath], {
-            stdio: 'inherit'
+            stdio: 'inherit',
+            env: {
+                ...process.env,
+                ANTIGRAVITY_SIGNATURE_STORE: SIGNATURE_STORE_FOR_TESTS,
+                ...(offline ? { HOME: signatureStoreDir, USERPROFILE: signatureStoreDir } : {})
+            }
         });
 
         child.on('close', (code) => {
@@ -56,15 +72,26 @@ async function main() {
     console.log('║              ANTIGRAVITY PROXY TEST SUITE                    ║');
     console.log('╚══════════════════════════════════════════════════════════════╝');
     console.log('');
-    console.log('Make sure the server is running on port 8080 before running tests.');
+    console.log(offline ? 'Running isolated offline regression suites.' : 'Make sure the server is running on port 8080 before running tests.');
     console.log('');
 
     // Check if running specific test
-    const specificTest = process.argv[2];
+    const specificTest = process.argv.slice(2).find(arg => arg !== '--offline');
     let testsToRun = tests;
 
+    if (offline) {
+        const liveTests = new Set([
+            'test-cache-control.cjs',
+            'test-thinking-signatures.cjs', 'test-multiturn-thinking-tools.cjs',
+            'test-multiturn-thinking-tools-streaming.cjs', 'test-interleaved-thinking.cjs',
+            'test-images.cjs', 'test-caching-streaming.cjs', 'test-cross-model-thinking.cjs',
+            'test-empty-response-retry.cjs'
+        ]);
+        testsToRun = tests.filter(test => !liveTests.has(test.file));
+    }
+
     if (specificTest) {
-        testsToRun = tests.filter(t =>
+        testsToRun = testsToRun.filter(t =>
             t.file.includes(specificTest) || t.name.toLowerCase().includes(specificTest.toLowerCase())
         );
         if (testsToRun.length === 0) {

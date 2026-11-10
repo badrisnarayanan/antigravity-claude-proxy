@@ -18,6 +18,10 @@
   "_webuiPassword_comment": "Optional password to protect WebUI. Can also use WEBUI_PASSWORD env var.",
 
   "port": 8080,
+
+  "antigravityClientVersion": "",
+  "antigravityIdeVersion": "",
+  "_antigravityVersion_comment": "Optional. Antigravity version sent as X-Client-Version / User-Agent (copy 'version' / 'ideVersion' from Antigravity's product.json). Auto-detected when Antigravity is installed locally. The backend hides newer models from outdated client versions. Env vars ANTIGRAVITY_CLIENT_VERSION / FALLBACK_ANTIGRAVITY_VERSION take precedence.",
   "debug": false,
   "logLevel": "info",
 

@@ -8,7 +8,7 @@ const http = require('http');
 
 // Server configuration
 const BASE_URL = 'localhost';
-const PORT = 8080;
+const PORT = parseInt(process.env.TEST_PORT || '8080', 10);
 
 /**
  * Make a streaming SSE request to the API

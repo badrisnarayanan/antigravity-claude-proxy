@@ -451,7 +451,8 @@
             <!-- Family Mode Legend -->
             <template x-if="displayMode === 'family'">
                 <template x-for="family in selectedFamilies" :key="family">
-                    <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                    <div class="flex items-center gap-1.5 text-[10px] font-mono"
+                        x-show="!activeFamilies || activeFamilies.has(family)">
                         <div class="w-2 h-2 rounded-full" :style="'background-color:' + getFamilyColor(family)"></div>
                         <span class="text-gray-400"
                             x-text="$store.global.t('family' + family.charAt(0).toUpperCase() + family.slice(1))"></span>
@@ -462,7 +463,8 @@
             <template x-if="displayMode === 'model'">
                 <template x-for="family in families" :key="'legend-' + family">
                     <template x-for="(model, modelIndex) in (selectedModels[family] || [])" :key="family + ':' + model">
-                        <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                        <div class="flex items-center gap-1.5 text-[10px] font-mono"
+                            x-show="!activeModelKeys || activeModelKeys.has(family + ':' + model)">
                             <div class="w-2 h-2 rounded-full"
                                 :style="'background-color:' + getModelColor(family, modelIndex)"></div>
                             <span class="text-gray-400" x-text="model"></span>

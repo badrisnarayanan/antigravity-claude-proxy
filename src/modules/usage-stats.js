@@ -10,10 +10,46 @@ const DATA_DIR = path.dirname(HISTORY_FILE);
 const OLD_DATA_DIR = path.join(process.cwd(), 'data');
 const OLD_HISTORY_FILE = path.join(OLD_DATA_DIR, 'usage-history.json');
 
+// Legacy model aliases that should be migrated to canonical backend model names in history
+export const LEGACY_MODEL_MIGRATIONS = {
+    'opus-5-5': 'opus-4-6-thinking',
+    'sonnet-5-5': 'sonnet-4-6',
+    'haiku-5-5': 'sonnet-4-6'
+};
+
 // In-memory storage
 // Structure: { "YYYY-MM-DDTHH:00:00.000Z": { "claude": { "model-name": count, "_subtotal": count }, "_total": count } }
 let history = {};
 let isDirty = false;
+
+/**
+ * Migrate legacy/phantom model names in history to canonical backend model names
+ * @param {object} data - History data
+ * @returns {boolean} Whether any migration took place
+ */
+export function normalizeHistory(data) {
+    if (!data || typeof data !== 'object') return false;
+    let modified = false;
+
+    for (const [timestamp, hourData] of Object.entries(data)) {
+        if (!hourData || typeof hourData !== 'object') continue;
+
+        for (const [family, familyData] of Object.entries(hourData)) {
+            if (!familyData || typeof familyData !== 'object' || family.startsWith('_')) continue;
+
+            for (const [legacyName, targetName] of Object.entries(LEGACY_MODEL_MIGRATIONS)) {
+                if (familyData[legacyName] !== undefined) {
+                    const count = familyData[legacyName];
+                    delete familyData[legacyName];
+                    familyData[targetName] = (familyData[targetName] || 0) + count;
+                    modified = true;
+                    logger.info(`[UsageStats] Migrated legacy model ${legacyName} -> ${targetName} (${count} calls at ${timestamp})`);
+                }
+            }
+        }
+    }
+    return modified;
+}
 
 /**
  * Extract model family from model ID
@@ -62,6 +98,10 @@ function load() {
         if (fs.existsSync(HISTORY_FILE)) {
             const data = fs.readFileSync(HISTORY_FILE, 'utf8');
             history = JSON.parse(data);
+            if (normalizeHistory(history)) {
+                isDirty = true;
+                save();
+            }
         }
     } catch (err) {
         logger.error('[UsageStats] Failed to load history:', err);
@@ -143,28 +183,17 @@ function setupMiddleware(app) {
     load();
 
     // Auto-save every minute
-    setInterval(() => {
+    const saveInterval = setInterval(() => {
         save();
         prune();
     }, 60 * 1000);
+    if (saveInterval.unref) {
+        saveInterval.unref();
+    }
 
     // Save on exit
     process.on('SIGINT', () => { save(); process.exit(); });
     process.on('SIGTERM', () => { save(); process.exit(); });
-
-    // Request interceptor
-    // Track both Anthropic (/v1/messages) and OpenAI compatible (/v1/chat/completions) endpoints
-    const TRACKED_PATHS = ['/v1/messages', '/v1/chat/completions'];
-
-    app.use((req, res, next) => {
-        if (req.method === 'POST' && TRACKED_PATHS.includes(req.path)) {
-            const model = req.body?.model;
-            if (model) {
-                track(model);
-            }
-        }
-        next();
-    });
 }
 
 /**
@@ -202,5 +231,7 @@ export default {
     track,
     getFamily,
     getShortName,
-    getHistory
+    getHistory,
+    normalizeHistory,
+    LEGACY_MODEL_MIGRATIONS
 };

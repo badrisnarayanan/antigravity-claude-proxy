@@ -24,6 +24,17 @@ import {
 } from './thinking-utils.js';
 import { logger } from '../utils/logger.js';
 
+// Claude Code injects a billing pseudo-header as a system prompt block, e.g.
+// "x-anthropic-billing-header: cc_version=2.1.274.834; cc_entrypoint=sdk-cli;".
+// Cloud Code API answers any request containing it with a 429 RESOURCE_EXHAUSTED
+// even when quota remains (Issue #375).
+const BILLING_HEADER_LINE = /^x-anthropic-billing-header:[^\n]*\n?/gim;
+
+function stripBillingHeader(text) {
+    if (typeof text !== 'string' || !/x-anthropic-billing-header:/i.test(text)) return text;
+    return text.replace(BILLING_HEADER_LINE, '').trim();
+}
+
 /**
  * Convert Anthropic Messages API request to the format expected by Cloud Code
  *
@@ -56,14 +67,17 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     if (system) {
         let systemParts = [];
         if (typeof system === 'string') {
-            systemParts = [{ text: system }];
+            systemParts = [{ text: stripBillingHeader(system) }];
         } else if (Array.isArray(system)) {
             // Filter for text blocks as system prompts are usually text
             // Anthropic supports text blocks in system prompts
             systemParts = system
                 .filter(block => block.type === 'text')
-                .map(block => ({ text: block.text }));
+                .map(block => ({ text: stripBillingHeader(block.text) }));
         }
+
+        // Drop parts left empty once the billing header is stripped
+        systemParts = systemParts.filter(part => part.text);
 
         if (systemParts.length > 0) {
             googleRequest.systemInstruction = {
@@ -188,13 +202,24 @@ export function convertAnthropicToGoogle(anthropicRequest) {
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         } else if (isGeminiModel) {
             // Gemini thinking config (uses camelCase)
-            // Clamp budget to model-specific max (e.g., Gemini 2.5 Flash max is 24,576)
+            // For callers that did not explicitly request thinking and asked for small max_tokens,
+            // use minimal thinking budget (32) and reserve output headroom so thinking doesn't
+            // consume the entire maxOutputTokens budget and return empty text.
+            const requestedBudget = thinking?.budget_tokens
+                ? clampGeminiThinkingBudget(modelName, thinking.budget_tokens)
+                : (max_tokens && max_tokens <= 1024 ? 32 : clampGeminiThinkingBudget(modelName, undefined));
             const thinkingConfig = {
-                includeThoughts: true,
-                thinkingBudget: clampGeminiThinkingBudget(modelName, thinking?.budget_tokens)
+                includeThoughts: Boolean(thinking?.type === 'enabled' || thinking?.budget_tokens || !max_tokens || max_tokens > 256),
+                thinkingBudget: requestedBudget
             };
             logger.debug(`[RequestConverter] Gemini thinking enabled with budget: ${thinkingConfig.thinkingBudget}`);
 
+            const currentMaxTokens = googleRequest.generationConfig.maxOutputTokens;
+            if (currentMaxTokens && currentMaxTokens <= thinkingConfig.thinkingBudget) {
+                const adjustedMaxTokens = Math.min(thinkingConfig.thinkingBudget + Math.max(currentMaxTokens, 8192), GEMINI_MAX_OUTPUT_TOKENS);
+                logger.debug(`[RequestConverter] Adjusting Gemini maxOutputTokens from ${currentMaxTokens} to ${adjustedMaxTokens} to exceed thinkingBudget (${thinkingConfig.thinkingBudget})`);
+                googleRequest.generationConfig.maxOutputTokens = adjustedMaxTokens;
+            }
 
             googleRequest.generationConfig.thinkingConfig = thinkingConfig;
         }

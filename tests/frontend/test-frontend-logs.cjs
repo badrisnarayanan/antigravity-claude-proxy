@@ -128,6 +128,19 @@ const tests = [
             }
             return 'All log levels have color styling';
         }
+    },
+    {
+        name: 'Log messages render as text, not HTML (issue #382)',
+        async run() {
+            const res = await request('/views/logs.html');
+            if (res.data.includes('x-html="Redact.logMessage')) {
+                throw new Error('Log message is bound with x-html: upstream HTML/JS in log lines would be parsed and executed');
+            }
+            if (!res.data.includes('x-text="Redact.logMessage(log.message)"')) {
+                throw new Error('Log message x-text binding not found');
+            }
+            return 'Log messages use x-text (no HTML parsing of log content)';
+        }
     }
 ];
 

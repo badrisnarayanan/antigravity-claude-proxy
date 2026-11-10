@@ -15,7 +15,7 @@ import { config } from './config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { forceRefresh } from './auth/token-extractor.js';
-import { REQUEST_BODY_LIMIT } from './constants.js';
+import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearAllSignatureCaches } from './format/signature-cache.js';
 import {
@@ -83,6 +83,11 @@ async function ensureInitialized() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
+// Express 5 leaves req.body undefined when no body was parsed.
+app.use((req, res, next) => {
+    if (req.body === undefined) req.body = {};
+    next();
+});
 
 // API Key authentication middleware for /v1/* endpoints
 app.use('/v1', (req, res, next) => {
@@ -812,6 +817,8 @@ const handleChatCompletions = async (req, res) => {
             const targetModel = modelMapping[requestedModel].mapping;
             logger.info(`[OpenAI API] Mapping model ${requestedModel} -> ${targetModel}`);
             requestedModel = targetModel;
+        } else if (BUILTIN_MODEL_MAPPINGS[requestedModel]) {
+            requestedModel = BUILTIN_MODEL_MAPPINGS[requestedModel];
         }
 
         const modelId = requestedModel;
@@ -851,6 +858,7 @@ const handleChatCompletions = async (req, res) => {
                 // Wait for the first result before sending headers (buffering strategy)
                 const firstResult = await generator.next();
 
+                usageStats.track(firstResult.value?.message?.model || modelId);
                 res.status(200);
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -901,6 +909,7 @@ const handleChatCompletions = async (req, res) => {
         } else {
             // Handle non-streaming response
             const anthropicResponse = await sendMessage(anthropicRequest, accountManager, FALLBACK_ENABLED);
+            usageStats.track(anthropicResponse?.model || modelId);
             const openAIResponse = convertAnthropicToOpenAI(anthropicResponse, requestedModel);
             res.json(openAIResponse);
         }
@@ -1008,6 +1017,8 @@ app.post('/v1/messages', async (req, res) => {
             const targetModel = modelMapping[requestedModel].mapping;
             logger.info(`[Server] Mapping model ${requestedModel} -> ${targetModel}`);
             requestedModel = targetModel;
+        } else if (BUILTIN_MODEL_MAPPINGS[requestedModel]) {
+            requestedModel = BUILTIN_MODEL_MAPPINGS[requestedModel];
         }
 
         const modelId = requestedModel;
@@ -1083,6 +1094,7 @@ app.post('/v1/messages', async (req, res) => {
                 const firstResult = await generator.next();
 
                 // If we get here, the stream started successfully.
+                usageStats.track(firstResult.value?.message?.model || modelId);
                 res.status(200);
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -1134,6 +1146,7 @@ app.post('/v1/messages', async (req, res) => {
         } else {
             // Handle non-streaming response
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            usageStats.track(response?.model || modelId);
             res.json(response);
         }
 
@@ -1182,8 +1195,8 @@ app.post('/v1/messages', async (req, res) => {
  */
 usageStats.setupRoutes(app);
 
-app.use('*', (req, res) => {
-    // Log 404s (use originalUrl since wildcard strips req.path)
+app.use((req, res) => {
+    // Log 404s
     if (logger.isDebugEnabled) {
         logger.debug(`[API] 404 Not Found: ${req.method} ${req.originalUrl}`);
     }

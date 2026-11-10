@@ -46,6 +46,21 @@ async function runTests() {
     }
 
     // Test 1: Basic type conversion to uppercase
+    test('Scalar const and enum values are serialized as strings', () => {
+        for (const value of [true, false, 42, 0, 'value']) {
+            assertEqual(sanitizeSchema({ type: 'string', const: value }).enum, [String(value)]);
+        }
+        assertEqual(sanitizeSchema({ type: 'string', enum: [true, 42, 'value'] }).enum,
+            ['true', '42', 'value']);
+    });
+
+    test('Complex const values become description hints without throwing', () => {
+        const result = sanitizeSchema({ type: 'object', const: { key: 'value' } });
+        assertEqual(result.enum, undefined);
+        assertIncludes(result.description, 'Must be:');
+        assertIncludes(result.description, 'value');
+    });
+
     test('Basic type conversion to uppercase', () => {
         const schema = { type: 'string', description: 'A test string' };
         const result = cleanSchema(sanitizeSchema(schema));

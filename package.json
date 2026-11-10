@@ -26,6 +26,7 @@
     "accounts:remove": "node src/cli/accounts.js remove",
     "accounts:verify": "node src/cli/accounts.js verify",
     "test": "node tests/run-all.cjs",
+    "test:offline": "node tests/run-all.cjs --offline",
     "test:signatures": "node tests/test-thinking-signatures.cjs",
     "test:multiturn": "node tests/test-multiturn-thinking-tools.cjs",
     "test:streaming": "node tests/test-multiturn-thinking-tools-streaming.cjs",
@@ -39,6 +40,10 @@
     "test:strategies": "node tests/test-strategies.cjs",
     "test:models": "node tests/test-model-routing.cjs",
     "test:cache-control": "node tests/test-cache-control.cjs",
+    "test:billing-header": "node tests/test-billing-header.cjs",
+    "test:stats": "node tests/test-usage-stats.js",
+    "test:registry": "node tests/test-model-registry.cjs",
+    "test:identity": "node tests/test-identity-scrub.cjs",
     "test:openai": "node tests/test-openai-converter.cjs && node tests/test-openai-endpoints.cjs",
     "test:quota": "node tests/test-quota-summary.cjs"
   },
@@ -66,8 +71,8 @@
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
-    "express": "^4.22.3",
-    "undici": "^8.11.2"
+    "express": "^5.3.0",
+    "undici": "^8.12.4"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.11",

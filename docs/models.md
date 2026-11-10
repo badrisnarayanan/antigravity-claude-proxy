@@ -33,6 +33,37 @@ still work if configured explicitly (e.g. `ANTHROPIC_MODEL=gemini-3.1-pro-low`).
 
 Gemini models include full thinking support with `thoughtSignature` handling for multi-turn conversations.
 
+## New / Codename Models (e.g. Gemini 4 "Argon")
+
+The model list comes from Cloud Code's `fetchAvailableModels`, not from a hardcoded list.
+A model shows up in `/v1/models` as soon as the backend returns it for an enabled account.
+
+- Codename IDs without `gemini`/`claude` in the name are classified by the backend's
+  `apiProvider` and `supportsThinking` metadata. They are only accepted when listed
+  as agent models (`agentModelSorts` / `tieredModelIds`). Internal and other-provider
+  models stay hidden, as do unusable `-disabled` placeholders.
+- Newer models require the Antigravity Hub User-Agent format
+  (`antigravity/hub/<version> <os>/<arch>`). Versions are detected from the installed
+  app, with `2.25.0` as the fallback. Override them in `config.json`:
+
+```json
+{ "antigravityClientVersion": "<version>", "antigravityIdeVersion": "<ideVersion>" }
+```
+
+The environment variables `ANTIGRAVITY_CLIENT_VERSION` / `FALLBACK_ANTIGRAVITY_VERSION`
+take precedence. Restart after changing versions.
+
+Once a real ID appears in `/v1/models`, a friendly name can be configured:
+
+```json
+{ "modelMapping": { "gemini-4-argon": { "mapping": "<id from /v1/models>" } } }
+```
+
+Eligible accounts may expose `gemini-4-argon-low`, `gemini-4-argon-medium` and
+`gemini-4-argon-high`. The bare `gemini-4-argon` ID is not a Cloud Code model ID.
+Use the exact IDs returned by `/v1/models`; requests for unlisted IDs are rejected
+when account discovery succeeds.
+
 ## OpenAI-Compatible Usage
 
 `/v1/chat/completions` reports cache hits in `usage.prompt_tokens_details.cached_tokens`
