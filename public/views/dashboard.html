@@ -1,28 +1,15 @@
 <div x-data="dashboard" class="view-container">
     <!-- Compact Header -->
-    <div class="flex items-center justify-between gap-4 mb-6">
-        <!-- Title with inline subtitle -->
-        <div class="flex flex-wrap items-center gap-4">
-            <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('dashboard')">
-                Dashboard
-            </h1>
-            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
-                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
-                      x-text="$store.global.t('systemDesc')">
-                    CLAUDE PROXY SYSTEM
-                </span>
-            </div>
-        </div>
+    <div class="flex items-end justify-between gap-4">
+        <h1 class="font-display text-[1.5rem] leading-tight font-bold text-white tracking-[-0.01em]" x-text="$store.global.t('dashboard')">
+            Dashboard
+        </h1>
 
         <!-- Compact Status Indicator -->
-        <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-space-900/60 border border-space-border/40 whitespace-nowrap flex-shrink-0">
-            <div class="relative flex items-center justify-center">
-                <span class="absolute w-1.5 h-1.5 bg-neon-green rounded-full animate-ping opacity-75"></span>
-                <span class="relative w-1.5 h-1.5 bg-neon-green rounded-full"></span>
-            </div>
-            <span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider" x-text="$store.global.t('live')">Live</span>
-            <span class="text-gray-700">•</span>
-            <span class="text-[10px] font-mono text-gray-400 tabular-nums"
+        <div class="flex items-center gap-2 text-xs whitespace-nowrap flex-shrink-0">
+            <span class="w-1.5 h-1.5 bg-neon-green rounded-full"></span>
+            <span class="text-gray-500" x-text="$store.global.t('live')">Live</span>
+            <span class="font-mono text-gray-400 tabular-nums"
                   x-text="new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})">
             </span>
         </div>
@@ -34,8 +21,8 @@
         x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="opacity-0 -translate-y-2"
         x-transition:enter-end="opacity-100 translate-y-0"
-        class="alert bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/50 shadow-lg mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        class="alert rounded-lg bg-neon-yellow/[0.07] border border-neon-yellow/30">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-neon-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <div class="flex-1">
@@ -43,7 +30,7 @@
             <span class="text-gray-400 text-sm ml-1" x-text="'- ' + ($store.global.t('claudeConfigNotAppliedDesc') || 'Apply a preset to use the proxy with Claude Code.')"></span>
         </div>
         <div class="flex items-center gap-2">
-            <button type="button" class="btn btn-sm bg-amber-500 hover:bg-amber-600 border-none text-white gap-1"
+            <button type="button" class="btn btn-sm bg-neon-yellow hover:bg-[#f6c06a] border-none text-space-950 gap-1.5"
                 @click="goToClaudeSettings()"
                 :title="$store.global.t('configureNow')">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,43 +72,43 @@
         <!-- Stats Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 lg:gap-3">
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900 border border-space-border rounded-[10px] p-4 lg:p-5 hover:border-gray-600 hover:bg-space-850 transition-colors duration-150 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewAllAccounts')">
             <!-- Icon -->
-            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-cyan-400/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+            <div class="absolute top-4 right-4 text-gray-600 group-hover:text-gray-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z">
                     </path>
                 </svg>
             </div>
             <!-- Value -->
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.total"></div>
+            <div class="stat-value readout text-white text-3xl lg:text-[2.25rem] leading-none font-bold mb-2 truncate" x-text="stats.total"></div>
             <!-- Title -->
-            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
+            <div class="stat-title text-gray-300 text-[13px] font-medium truncate"
                 x-text="$store.global.t('totalAccounts')"></div>
             <!-- Desc -->
-            <div class="stat-desc text-cyan-400/60 text-[10px] truncate flex items-center gap-1">
+            <div class="stat-desc text-gray-500 text-xs mt-0.5 truncate flex items-center gap-1">
                 <span x-text="$store.global.t('linkedAccounts')" class="truncate"></span>
                 <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
             <!-- Tiers -->
-            <div class="flex items-center gap-1 mt-2 text-[10px] font-mono flex-wrap" x-show="stats.subscription">
+            <div class="flex items-center gap-1 mt-3 flex-wrap" x-show="stats.subscription">
                 <template x-if="stats.subscription?.ultra > 0">
-                    <span class="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+                    <span class="status-pill-ultra">
                         <span x-text="stats.subscription.ultra"></span> <span x-text="$store.global.t('tierUltra')">Ultra</span>
                     </span>
                 </template>
                 <template x-if="stats.subscription?.pro > 0">
-                    <span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                    <span class="status-pill-pro">
                         <span x-text="stats.subscription.pro"></span> <span x-text="$store.global.t('tierPro')">Pro</span>
                     </span>
                 </template>
                 <template x-if="stats.subscription?.free > 0">
-                    <span class="px-1.5 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/30">
+                    <span class="status-pill-free">
                         <span x-text="stats.subscription.free"></span> <span x-text="$store.global.t('tierFree')">Free</span>
                     </span>
                 </template>
@@ -129,19 +116,19 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-green-500/30 hover:bg-green-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900 border border-space-border rounded-[10px] p-4 lg:p-5 hover:border-gray-600 hover:bg-space-850 transition-colors duration-150 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'models'"
             :title="$store.global.t('clickToViewModels')">
-            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-green-400/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+            <div class="absolute top-4 right-4 text-gray-600 group-hover:text-gray-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.active"></div>
-            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
+            <div class="stat-value readout text-white text-3xl lg:text-[2.25rem] leading-none font-bold mb-2 truncate" x-text="stats.active"></div>
+            <div class="stat-title text-gray-300 text-[13px] font-medium truncate"
                 x-text="$store.global.t('active')"></div>
-            <div class="stat-desc text-green-400/60 text-[10px] truncate flex items-center gap-1">
+            <div class="stat-desc text-neon-green/80 text-xs mt-0.5 truncate flex items-center gap-1">
                 <span x-text="$store.global.t('operational')" class="truncate"></span>
                 <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -150,19 +137,19 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-red-500/30 hover:bg-red-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900 border border-space-border rounded-[10px] p-4 lg:p-5 hover:border-gray-600 hover:bg-space-850 transition-colors duration-150 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'accounts'"
             :title="$store.global.t('clickToViewLimitedAccounts')">
-            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-red-500/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+            <div class="absolute top-4 right-4 text-gray-600 group-hover:text-gray-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.limited"></div>
-            <div class="stat-title text-gray-500 font-mono text-[10px] uppercase tracking-wider truncate"
+            <div class="stat-value readout text-white text-3xl lg:text-[2.25rem] leading-none font-bold mb-2 truncate" x-text="stats.limited"></div>
+            <div class="stat-title text-gray-300 text-[13px] font-medium truncate"
                 x-text="$store.global.t('rateLimited')"></div>
-            <div class="stat-desc text-red-500/60 text-[10px] truncate flex items-center gap-1">
+            <div class="stat-desc text-gray-500 text-xs mt-0.5 truncate flex items-center gap-1">
                 <span x-text="$store.global.t('cooldown')" class="truncate"></span>
                 <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -171,19 +158,19 @@
         </div>
 
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 lg:p-4 hover:border-orange-500/30 hover:bg-orange-500/5 transition-all duration-300 group relative cursor-pointer min-w-0"
+            class="stat bg-space-900 border border-space-border rounded-[10px] p-4 lg:p-5 hover:border-gray-600 hover:bg-space-850 transition-colors duration-150 group relative cursor-pointer min-w-0"
             @click="$store.global.activeTab = 'models'"
             :title="$store.global.t('clickToViewModels')">
-            <div class="absolute top-3 right-3 text-gray-700/40 group-hover:text-orange-500/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 stroke-current">
+            <div class="absolute top-4 right-4 text-gray-600 group-hover:text-gray-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                 </svg>
             </div>
-            <div class="stat-value text-white font-mono text-2xl lg:text-3xl font-bold mb-1 truncate" x-text="stats.modelUsage ? stats.modelUsage.limited : 0"></div>
-            <div class="stat-title text-gray-500 font-mono text-[10px] lg:text-xs uppercase tracking-wider truncate"
+            <div class="stat-value readout text-white text-3xl lg:text-[2.25rem] leading-none font-bold mb-2 truncate" x-text="stats.modelUsage ? stats.modelUsage.limited : 0"></div>
+            <div class="stat-title text-gray-300 text-[13px] font-medium truncate"
                 x-text="$store.global.t('quotasDepletedTitle')"></div>
-            <div class="stat-desc text-orange-500/60 text-[10px] truncate flex items-center gap-1">
+            <div class="stat-desc text-gray-500 text-xs mt-0.5 truncate flex items-center gap-1">
                 <span x-text="$store.global.t('outOfTracked', {total: stats.modelUsage ? stats.modelUsage.total : 0})" class="truncate"></span>
                 <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -193,29 +180,29 @@
 
         <!-- Global Quota Chart -->
         <div
-            class="stat bg-space-900/40 border border-space-border/30 rounded-xl p-3 xl:p-4 h-full flex flex-row sm:flex-col items-center justify-between gap-2 overflow-hidden relative group hover:border-space-border/60 transition-colors col-span-2 sm:col-span-1 min-w-0">
+            class="stat bg-space-900 border border-space-border rounded-[10px] p-4 h-full flex flex-row sm:flex-col items-center justify-between gap-2 overflow-hidden relative group col-span-2 sm:col-span-1 min-w-0">
             <!-- Chart Container -->
             <div class="h-14 w-14 xl:h-16 xl:w-16 relative flex-shrink-0 self-center">
                 <canvas id="quotaChart"></canvas>
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div class="text-[10px] font-bold text-white font-mono" x-text="stats.overallHealth + '%'">%</div>
+                    <div class="readout text-xs font-bold text-white" x-text="stats.overallHealth + '%'">%</div>
                 </div>
             </div>
 
             <!-- Legend / Info -->
             <div class="flex flex-col justify-center gap-1 flex-grow min-w-0 w-full sm:text-center">
                 <div class="flex items-center justify-between sm:justify-center h-full">
-                    <span class="text-[10px] text-gray-500 uppercase font-mono leading-tight whitespace-normal sm:px-1"
+                    <span class="text-[13px] font-medium text-gray-300 leading-tight whitespace-normal sm:px-1"
                         x-text="$store.global.t('globalQuota')">Global Quota</span>
                 </div>
 
                 <!-- Custom Legend -->
                 <div class="space-y-0.5 sm:flex sm:flex-col sm:items-center w-full">
-                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-[10px] text-gray-400 cursor-pointer hover:text-neon-purple transition-colors group/legend w-full sm:w-auto"
+                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-xs text-gray-400 cursor-pointer hover:text-white transition-colors group/legend w-full sm:w-auto"
                         @click="$store.global.activeTab = 'models'; $nextTick(() => { $store.data.filters.family = 'claude'; $store.data.computeQuotaRows(); })"
                         :title="$store.global.t('clickToFilterClaude')">
                         <div class="flex items-center gap-1.5">
-                            <div class="w-1.5 h-1.5 rounded-full bg-neon-purple flex-shrink-0"></div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-family-claude flex-shrink-0"></div>
                             <span class="truncate" x-text="$store.global.t('familyClaude')">Claude</span>
                             <!-- Hidden arrow on desktop/stacked view to save space -->
                             <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity flex-shrink-0 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -223,11 +210,11 @@
                             </svg>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-[10px] text-gray-400 cursor-pointer hover:text-neon-green transition-colors group/legend w-full sm:w-auto"
+                    <div class="flex items-center justify-between sm:justify-center sm:gap-2 text-xs text-gray-400 cursor-pointer hover:text-white transition-colors group/legend w-full sm:w-auto"
                         @click="$store.global.activeTab = 'models'; $nextTick(() => { $store.data.filters.family = 'gemini'; $store.data.computeQuotaRows(); })"
                         :title="$store.global.t('clickToFilterGemini')">
                         <div class="flex items-center gap-1.5">
-                            <div class="w-1.5 h-1.5 rounded-full bg-neon-green flex-shrink-0"></div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-family-gemini flex-shrink-0"></div>
                             <span class="truncate" x-text="$store.global.t('familyGemini')">Gemini</span>
                             <!-- Hidden arrow on desktop/stacked view to save space -->
                             <svg class="w-2.5 h-2.5 opacity-0 group-hover/legend:opacity-100 transition-opacity flex-shrink-0 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -242,41 +229,41 @@
     <!-- Usage Trend Chart -->
     <div class="view-card">
         <!-- Header with Stats and Filter -->
-        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 mb-6">
             <div class="flex flex-wrap items-center gap-5">
                 <div class="flex items-center gap-2.5">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        class="w-4 h-4 text-neon-purple">
+                        class="w-4 h-4 text-gray-500">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                     </svg>
-                    <h3 class="text-xs font-mono text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                    <h3 class="text-[15px] font-medium text-white whitespace-nowrap"
                         x-text="$store.global.t('requestVolume')">Request Volume</h3>
                 </div>
 
                 <!-- Usage Stats Pills -->
-                <div class="flex flex-wrap gap-2.5 text-[10px] font-mono">
-                    <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
+                <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs">
+                    <div class="whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('totalColon')">Total:</span>
-                        <span class="text-white ml-1 font-bold" x-text="usageStats.total"></span>
+                        <span class="text-white ml-1 font-mono font-medium" x-text="usageStats.total"></span>
                     </div>
-                    <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
+                    <div class="whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('todayColon')">Today:</span>
-                        <span class="text-neon-cyan ml-1 font-bold" x-text="usageStats.today"></span>
+                        <span class="text-white ml-1 font-mono font-medium" x-text="usageStats.today"></span>
                     </div>
-                    <div class="px-2.5 py-1 rounded bg-space-850 border border-space-border/60 whitespace-nowrap">
+                    <div class="whitespace-nowrap">
                         <span class="text-gray-500" x-text="$store.global.t('hour1Colon')">1H:</span>
-                        <span class="text-neon-green ml-1 font-bold" x-text="usageStats.thisHour"></span>
+                        <span class="text-white ml-1 font-mono font-medium" x-text="usageStats.thisHour"></span>
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-start sm:justify-end flex-wrap lg:flex-nowrap lg:gap-4 lg:bg-space-900/40 lg:p-1.5 lg:rounded-lg lg:border lg:border-space-border/30 lg:whitespace-nowrap lg:flex-shrink-0">
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end flex-wrap lg:flex-nowrap lg:whitespace-nowrap lg:flex-shrink-0">
                 <!-- Time Range Dropdown -->
                 <div class="relative flex-1 sm:flex-none">
                     <button @click="showTimeRangeDropdown = !showTimeRangeDropdown; showDisplayModeDropdown = false; showModelFilter = false"
                         class="filter-control">
-                        <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -291,22 +278,22 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-75"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-1 w-36 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 py-1"
+                        class="absolute right-0 mt-1 w-36 bg-space-850 border border-space-border rounded-lg shadow-[0_12px_32px_-12px_rgba(0,0,0,0.7)] z-50 py-1"
                         style="display: none;">
                         <button @click="setTimeRange('1h')" class="filter-control-item"
-                            :class="timeRange === '1h' ? 'text-neon-cyan' : 'text-gray-400'"
+                            :class="timeRange === '1h' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('last1Hour')"></button>
                         <button @click="setTimeRange('6h')" class="filter-control-item"
-                            :class="timeRange === '6h' ? 'text-neon-cyan' : 'text-gray-400'"
+                            :class="timeRange === '6h' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('last6Hours')"></button>
                         <button @click="setTimeRange('24h')" class="filter-control-item"
-                            :class="timeRange === '24h' ? 'text-neon-cyan' : 'text-gray-400'"
+                            :class="timeRange === '24h' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('last24Hours')"></button>
                         <button @click="setTimeRange('7d')" class="filter-control-item"
-                            :class="timeRange === '7d' ? 'text-neon-cyan' : 'text-gray-400'"
+                            :class="timeRange === '7d' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('last7Days')"></button>
                         <button @click="setTimeRange('all')" class="filter-control-item"
-                            :class="timeRange === 'all' ? 'text-neon-cyan' : 'text-gray-400'"
+                            :class="timeRange === 'all' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('allTime')"></button>
                     </div>
                 </div>
@@ -314,8 +301,8 @@
                 <!-- Display Mode Dropdown -->
                 <div class="relative flex-1 sm:flex-none">
                     <button @click="showDisplayModeDropdown = !showDisplayModeDropdown; showTimeRangeDropdown = false; showModelFilter = false"
-                        class="flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-xs font-mono font-medium text-gray-400 bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 hover:border-neon-purple/50 lg:hover:border-neon-purple/30 lg:hover:shadow-lg lg:hover:shadow-neon-purple/10 transition-all duration-200 whitespace-nowrap w-full sm:w-auto">
-                        <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="filter-control">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
@@ -330,13 +317,13 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-75"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-1 w-32 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 py-1"
+                        class="absolute right-0 mt-1 w-32 bg-space-850 border border-space-border rounded-lg shadow-[0_12px_32px_-12px_rgba(0,0,0,0.7)] z-50 py-1"
                         style="display: none;">
                         <button @click="setDisplayMode('family')" class="filter-control-item"
-                            :class="displayMode === 'family' ? 'text-neon-purple' : 'text-gray-400'"
+                            :class="displayMode === 'family' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('family')"></button>
                         <button @click="setDisplayMode('model')" class="filter-control-item"
-                            :class="displayMode === 'model' ? 'text-neon-purple' : 'text-gray-400'"
+                            :class="displayMode === 'model' ? 'text-white bg-space-800' : 'text-gray-400'"
                             x-text="$store.global.t('model')"></button>
                     </div>
                 </div>
@@ -344,8 +331,8 @@
                 <!-- Filter Dropdown -->
                 <div class="relative flex-1 sm:flex-none min-w-[120px]">
                     <button @click="showModelFilter = !showModelFilter; showTimeRangeDropdown = false; showDisplayModeDropdown = false"
-                        class="flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 text-[10px] lg:text-xs font-mono font-medium text-gray-400 bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 hover:border-neon-purple/50 lg:hover:border-neon-purple/30 lg:hover:shadow-lg lg:hover:shadow-neon-purple/10 transition-all duration-200 whitespace-nowrap w-full sm:w-auto">
-                        <svg class="w-3 h-3 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="filter-control">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>
@@ -362,24 +349,24 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         x-transition:leave="transition ease-in duration-75"
                         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                        class="absolute right-0 mt-1 w-72 bg-space-900 border border-space-border rounded-lg shadow-xl z-50 overflow-hidden"
+                        class="absolute right-0 mt-1 w-72 bg-space-850 border border-space-border rounded-lg shadow-[0_12px_32px_-12px_rgba(0,0,0,0.7)] z-50 overflow-hidden"
                         style="display: none;">
 
                         <!-- Header -->
                         <div
-                            class="flex items-center justify-between px-3 py-2 border-b border-space-border/50 bg-space-800/50">
-                            <span class="text-[10px] font-mono text-gray-500 uppercase"
+                            class="flex items-center justify-between px-3 py-2 border-b border-space-border">
+                            <span class="text-xs text-gray-500"
                                 x-text="displayMode === 'family' ? $store.global.t('selectFamilies') : $store.global.t('selectModels')"></span>
                             <div class="flex gap-1">
-                                <button @click="autoSelectTopN(5)" class="text-[10px] text-neon-purple hover:underline"
+                                <button @click="autoSelectTopN(5)" class="text-xs text-neon-purple hover:underline"
                                     :title="$store.global.t('smartTitle')" x-text="$store.global.t('frequentModels')">
                                     Smart
                                 </button>
                                 <span class="text-gray-600">|</span>
-                                <button @click="selectAll()" class="text-[10px] text-neon-cyan hover:underline"
+                                <button @click="selectAll()" class="text-xs text-gray-300 hover:underline"
                                     x-text="$store.global.t('all')">All</button>
                                 <span class="text-gray-600">|</span>
-                                <button @click="deselectAll()" class="text-[10px] text-gray-500 hover:underline"
+                                <button @click="deselectAll()" class="text-xs text-gray-500 hover:underline"
                                     x-text="$store.global.t('none')">None</button>
                             </div>
                         </div>
@@ -404,7 +391,7 @@
                                     </label>
 
                                     <!-- Family Section Header (Model Mode) -->
-                                    <div class="flex items-center gap-2 px-2 py-1 text-[10px] text-gray-500 uppercase font-bold"
+                                    <div class="flex items-center gap-2 px-2 py-1 text-xs text-gray-500 font-medium"
                                         x-show="displayMode === 'model'">
                                         <div class="w-1.5 h-1.5 rounded-full"
                                             :style="'background-color:' + getFamilyColor(family)"></div>
@@ -446,12 +433,12 @@
         </div>
 
         <!-- Dynamic Legend -->
-        <div class="flex flex-wrap gap-3 mb-5"
+        <div class="flex flex-wrap gap-x-4 gap-y-1.5 mb-4"
             x-show="displayMode === 'family' ? selectedFamilies.length > 0 : Object.values(selectedModels).flat().length > 0">
             <!-- Family Mode Legend -->
             <template x-if="displayMode === 'family'">
                 <template x-for="family in selectedFamilies" :key="family">
-                    <div class="flex items-center gap-1.5 text-[10px] font-mono"
+                    <div class="flex items-center gap-1.5 text-xs font-mono"
                         x-show="!activeFamilies || activeFamilies.has(family)">
                         <div class="w-2 h-2 rounded-full" :style="'background-color:' + getFamilyColor(family)"></div>
                         <span class="text-gray-400"
@@ -463,7 +450,7 @@
             <template x-if="displayMode === 'model'">
                 <template x-for="family in families" :key="'legend-' + family">
                     <template x-for="(model, modelIndex) in (selectedModels[family] || [])" :key="family + ':' + model">
-                        <div class="flex items-center gap-1.5 text-[10px] font-mono"
+                        <div class="flex items-center gap-1.5 text-xs font-mono"
                             x-show="!activeModelKeys || activeModelKeys.has(family + ':' + model)">
                             <div class="w-2 h-2 rounded-full"
                                 :style="'background-color:' + getModelColor(family, modelIndex)"></div>
@@ -475,14 +462,14 @@
         </div>
 
         <!-- Chart -->
-        <div class="h-48 w-full relative">
+        <div class="h-56 w-full relative">
             <canvas id="usageTrendChart"></canvas>
 
             <!-- Overall Loading State -->
             <div x-show="!stats.hasTrendData"
-                class="absolute inset-0 flex items-center justify-center bg-space-900/50 backdrop-blur-sm z-10"
+                class="absolute inset-0 flex items-center justify-center bg-space-900/80 z-10"
                 style="display: none;">
-                <div class="text-xs font-mono text-gray-500 flex items-center gap-2">
+                <div class="text-xs text-gray-500 flex items-center gap-2">
                     <span class="loading loading-spinner loading-xs"></span>
                     <span x-text="$store.global.t('syncing')">SYNCING...</span>
                 </div>
@@ -499,7 +486,7 @@
                                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </div>
-                    <div class="text-xs font-mono text-gray-500 text-center">
+                    <div class="text-xs text-gray-500 text-center">
                         <p x-text="$store.global.t('noDataTracked')">No data tracked yet</p>
                         <p class="text-[10px] opacity-60 mt-1" x-text="'[' + getTimeRangeLabel() + ']'"></p>
                     </div>
@@ -510,7 +497,7 @@
             <div x-show="stats.hasTrendData && hasFilteredTrendData && (displayMode === 'family' ? selectedFamilies.length === 0 : Object.values(selectedModels).flat().length === 0)"
                 class="absolute inset-0 flex items-center justify-center bg-space-900/30 z-10"
                 style="display: none;">
-                <div class="text-xs font-mono text-gray-500"
+                <div class="text-xs text-gray-500"
                     x-text="displayMode === 'family' ? $store.global.t('selectFamilies') : $store.global.t('selectModels')">
                 </div>
             </div>

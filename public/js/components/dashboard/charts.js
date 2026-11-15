@@ -26,13 +26,13 @@ const getThemeColor = (name) => window.utils.getThemeColor(name);
 // Color palette for different families and models
 const FAMILY_COLORS = {
   get claude() {
-    return getThemeColor("--color-neon-purple");
+    return getThemeColor("--color-family-claude");
   },
   get gemini() {
-    return getThemeColor("--color-neon-green");
+    return getThemeColor("--color-family-gemini");
   },
   get other() {
-    return getThemeColor("--color-neon-cyan");
+    return getThemeColor("--color-family-other");
   },
 };
 
@@ -81,51 +81,25 @@ function isCanvasReady(canvas) {
 }
 
 /**
- * Create a Chart.js dataset with gradient fill
+ * Create a Chart.js dataset drawn as a plain instrument trace (no area fill)
  * @param {string} label - Dataset label
  * @param {Array} data - Data points
  * @param {string} color - Line color
- * @param {HTMLCanvasElement} canvas - Canvas element
  * @returns {object} Chart.js dataset configuration
  */
-window.DashboardCharts.createDataset = function (label, data, color, canvas) {
-  let gradient;
-
-  try {
-    // Safely create gradient with fallback
-    if (canvas && canvas.getContext) {
-      const ctx = canvas.getContext("2d");
-      if (ctx && ctx.createLinearGradient) {
-        gradient = ctx.createLinearGradient(0, 0, 0, 200);
-        gradient.addColorStop(0, window.DashboardCharts.hexToRgba(color, 0.12));
-        gradient.addColorStop(
-          0.6,
-          window.DashboardCharts.hexToRgba(color, 0.05)
-        );
-        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-      }
-    }
-  } catch (e) {
-    if (window.UILogger) window.UILogger.debug("Gradient fallback:", e.message);
-    gradient = null;
-  }
-
-  // Fallback to solid color if gradient creation failed
-  const backgroundColor =
-    gradient || window.DashboardCharts.hexToRgba(color, 0.08);
-
+window.DashboardCharts.createDataset = function (label, data, color) {
   return {
     label,
     data,
     borderColor: color,
-    backgroundColor: backgroundColor,
-    borderWidth: 2.5,
-    tension: 0.35,
-    fill: true,
-    pointRadius: 2.5,
-    pointHoverRadius: 6,
+    backgroundColor: color,
+    borderWidth: 2,
+    tension: 0.25,
+    fill: false,
+    pointRadius: 2,
+    pointHoverRadius: 5,
     pointBackgroundColor: color,
-    pointBorderColor: "rgba(9, 9, 11, 0.8)",
+    pointBorderColor: getThemeColor("--color-space-900") || "#111214",
     pointBorderWidth: 1.5,
   };
 };
@@ -214,9 +188,9 @@ window.DashboardCharts.updateCharts = function (component) {
     : 0;
 
   const familyColors = {
-    claude: getThemeColor("--color-neon-purple") || "#a855f7",
-    gemini: getThemeColor("--color-neon-green") || "#22c55e",
-    unknown: getThemeColor("--color-neon-cyan") || "#06b6d4",
+    claude: getThemeColor("--color-family-claude") || "#4cc9d6",
+    gemini: getThemeColor("--color-family-gemini") || "#d9c39a",
+    unknown: getThemeColor("--color-family-other") || "#9aa7b0",
   };
 
   const data = [];
@@ -588,7 +562,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
             grid: { display: false },
             ticks: {
               color: getThemeColor("--color-text-muted"),
-              font: { size: 10 },
+              font: { size: 10, family: '"B612 Mono", ui-monospace, monospace' },
             },
           },
           y: {
@@ -602,7 +576,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
             },
             ticks: {
               color: getThemeColor("--color-text-muted"),
-              font: { size: 10 },
+              font: { size: 10, family: '"B612 Mono", ui-monospace, monospace' },
             },
           },
         },

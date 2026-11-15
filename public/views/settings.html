@@ -217,7 +217,7 @@
 
                 <!-- Mode Toggle (Proxy/Paid) -->
                 <div class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <label class="label text-xs uppercase text-gray-500 font-semibold mb-3"
+                    <label class="label text-xs text-gray-500 font-semibold mb-3"
                         x-text="$store.global.t('connectionMode')">Connection Mode</label>
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col gap-1">
@@ -262,7 +262,7 @@
                         <div>
                             <p class="text-sm font-semibold text-neon-green" x-text="$store.global.t('paidModeTitle')">Claude CLI is using the official Anthropic API</p>
                             <p class="text-[11px] text-gray-400 mt-1" x-text="$store.global.t('paidModeDesc')">All proxy configuration has been removed. Claude CLI uses your Anthropic subscription directly.</p>
-                            <p class="text-[10px] text-gray-500 mt-2" x-text="$store.global.t('paidModeHint')">Switch to Proxy mode to configure model routing and presets.</p>
+                            <p class="text-[11px] text-gray-500 mt-2" x-text="$store.global.t('paidModeHint')">Switch to Proxy mode to configure model routing and presets.</p>
                         </div>
                     </div>
                 </div>
@@ -276,7 +276,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                             </svg>
-                            <label class="text-xs uppercase text-neon-cyan font-semibold"
+                            <label class="text-xs text-neon-cyan font-semibold"
                                 x-text="$store.global.t('configPresets') || 'Configuration Presets'">Configuration
                                 Presets</label>
                         </div>
@@ -317,12 +317,12 @@
                             <span x-show="deletingPreset" class="loading loading-spinner loading-xs"></span>
                         </button>
                     </div>
-                    <p class="text-[10px] text-gray-600 mt-2" x-text="$store.global.t('presetHint') || 'Select a preset to load it. Click &quot;Apply to Claude CLI&quot; to save changes.'">Select a preset to load it. Click "Apply to Claude CLI" to save changes.</p>
+                    <p class="text-[11px] text-gray-600 mt-2" x-text="$store.global.t('presetHint') || 'Select a preset to load it. Click &quot;Apply to Claude CLI&quot; to save changes.'">Select a preset to load it. Click "Apply to Claude CLI" to save changes.</p>
                 </div>
 
                 <!-- Base URL -->
                 <div x-show="currentMode === 'proxy'" class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <label class="label text-xs uppercase text-gray-500 font-semibold mb-2"
+                    <label class="label text-xs text-gray-500 font-semibold mb-2"
                         x-text="$store.global.t('proxyConnection')">Proxy Connection</label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -341,7 +341,7 @@
 
                 <!-- Models Selection -->
                 <div x-show="currentMode === 'proxy'" class="card bg-space-900/30 border border-space-border/50 p-5">
-                    <label class="label text-xs uppercase text-gray-500 font-semibold mb-2"
+                    <label class="label text-xs text-gray-500 font-semibold mb-2"
                         x-text="$store.global.t('modelSelection')">Model Selection</label>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -387,7 +387,7 @@
                                     <!-- Grouped models -->
                                     <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                            <div class="text-[11px] font-medium capitalize px-2 pt-2 pb-1 select-none"
                                                 :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
                                                 x-text="group.label"></div>
                                             <ul>
@@ -403,7 +403,7 @@
                                                                 <span x-text="modelId"></span>
                                                             </div>
                                                             <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                                <span class="text-[11px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-medium tracking-tighter">[1M]</span>
                                                             </template>
                                                         </a>
                                                     </li>
@@ -417,7 +417,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono" x-text="field"></span>
+                            <span class="text-[11px] text-gray-600 mt-1 font-mono" x-text="field"></span>
                         </div>
 
                         <!-- Sub-agent -->
@@ -460,7 +460,7 @@
                                     </li>
                                     <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                            <div class="text-[11px] font-medium capitalize px-2 pt-2 pb-1 select-none"
                                                 :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
                                                 x-text="group.label"></div>
                                             <ul>
@@ -476,7 +476,7 @@
                                                                 <span x-text="modelId"></span>
                                                             </div>
                                                             <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                                <span class="text-[11px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-medium tracking-tighter">[1M]</span>
                                                             </template>
                                                         </a>
                                                     </li>
@@ -490,7 +490,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <span class="text-[10px] text-gray-600 mt-1 font-mono" x-text="field"></span>
+                            <span class="text-[11px] text-gray-600 mt-1 font-mono" x-text="field"></span>
                         </div>
                     </div>
 
@@ -501,7 +501,7 @@
                     <div class="space-y-4">
                         <!-- Opus -->
                         <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_OPUS_MODEL', 'opusAlias', 'cyan')">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                            <label class="label pt-0 pb-1 text-[11px] text-gray-500 font-medium"
                                 x-text="$store.global.t(labelKey)">Opus Alias</label>
                             <div class="relative w-full">
                                 <input type="text" :value="open ? searchTerm : currentValue"
@@ -538,7 +538,7 @@
                                     </li>
                                     <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                            <div class="text-[11px] font-medium capitalize px-2 pt-2 pb-1 select-none"
                                                 :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
                                                 x-text="group.label"></div>
                                             <ul>
@@ -554,7 +554,7 @@
                                                                 <span x-text="modelId"></span>
                                                             </div>
                                                             <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                                <span class="text-[11px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-medium tracking-tighter">[1M]</span>
                                                             </template>
                                                         </a>
                                                     </li>
@@ -571,7 +571,7 @@
                         </div>
                         <!-- Sonnet -->
                         <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_SONNET_MODEL', 'sonnetAlias', 'cyan')">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                            <label class="label pt-0 pb-1 text-[11px] text-gray-500 font-medium"
                                 x-text="$store.global.t(labelKey)">Sonnet Alias</label>
                             <div class="relative w-full">
                                 <input type="text" :value="open ? searchTerm : currentValue"
@@ -608,7 +608,7 @@
                                     </li>
                                     <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                            <div class="text-[11px] font-medium capitalize px-2 pt-2 pb-1 select-none"
                                                 :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
                                                 x-text="group.label"></div>
                                             <ul>
@@ -624,7 +624,7 @@
                                                                 <span x-text="modelId"></span>
                                                             </div>
                                                             <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                                <span class="text-[11px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-medium tracking-tighter">[1M]</span>
                                                             </template>
                                                         </a>
                                                     </li>
@@ -641,7 +641,7 @@
                         </div>
                         <!-- Haiku -->
                         <div class="form-control" x-data="window.Components.modelDropdown('ANTHROPIC_DEFAULT_HAIKU_MODEL', 'haikuAlias', 'cyan')">
-                            <label class="label pt-0 pb-1 text-[10px] text-gray-500 uppercase font-bold"
+                            <label class="label pt-0 pb-1 text-[11px] text-gray-500 font-medium"
                                 x-text="$store.global.t(labelKey)">Haiku Alias</label>
                             <div class="relative w-full">
                                 <input type="text" :value="open ? searchTerm : currentValue"
@@ -678,7 +678,7 @@
                                     </li>
                                     <template x-for="group in groupedModels" :key="group.family">
                                         <li>
-                                            <div class="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1 select-none"
+                                            <div class="text-[11px] font-medium capitalize px-2 pt-2 pb-1 select-none"
                                                 :class="group.family === 'claude' ? 'text-purple-400/70' : (group.family === 'gemini' ? 'text-green-400/70' : 'text-gray-500')"
                                                 x-text="group.label"></div>
                                             <ul>
@@ -694,7 +694,7 @@
                                                                 <span x-text="modelId"></span>
                                                             </div>
                                                             <template x-if="gemini1mSuffix && $store.data.getModelFamily(modelId) === 'gemini'">
-                                                                <span class="text-[10px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-bold uppercase tracking-tighter">[1M]</span>
+                                                                <span class="text-[11px] bg-neon-green/10 text-neon-green px-1.5 py-0.5 rounded border border-neon-green/20 font-medium tracking-tighter">[1M]</span>
                                                             </template>
                                                         </a>
                                                     </li>
@@ -746,7 +746,7 @@
                             <span class="text-[11px] text-gray-500" x-text="$store.global.t('gemini1mDesc')">
                                 Appends [1m] suffix to Gemini models for 1M context window support.
                             </span>
-                            <span class="text-[10px] text-yellow-500/80" x-text="$store.global.t('gemini1mWarning')">
+                            <span class="text-[11px] text-yellow-500/80" x-text="$store.global.t('gemini1mWarning')">
                                 ⚠ Large context may reduce Gemini performance.
                             </span>
                         </div>
@@ -772,7 +772,7 @@
                         <span x-show="!restoring" x-text="$store.global.t('restoreDefault')">Restore Default</span>
                         <span x-show="restoring" class="loading loading-spinner loading-xs"></span>
                     </button>
-                    <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white px-6 gap-2"
+                    <button class="btn btn-sm bg-neon-purple hover:bg-[#7fdbe4] border-none text-space-950 px-6 gap-2"
                         @click="saveClaudeConfig" :disabled="loading">
                         <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1102,7 +1102,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <label class="text-xs uppercase text-neon-purple font-semibold"
+                            <label class="text-xs text-neon-purple font-semibold"
                                 x-text="$store.global.t('serverPresets')">Server Presets</label>
                         </div>
                         <button class="btn btn-xs btn-ghost text-neon-purple hover:bg-neon-purple/10 gap-1"
@@ -1172,7 +1172,7 @@
                     <template x-if="selectedServerPreset && getPresetPreviewSections()">
                         <div class="mt-2" x-data="{ get preview() { return getPresetPreviewSections() } }">
                             <div class="flex items-center gap-2">
-                                <button class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-neon-purple transition-colors"
+                                <button class="flex items-center gap-1 text-[11px] text-gray-500 hover:text-neon-purple transition-colors"
                                     @click="presetPreviewExpanded = !presetPreviewExpanded">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition-transform duration-200"
                                         :class="presetPreviewExpanded ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1183,7 +1183,7 @@
                                 <!-- Edit Config button -->
                                 <button x-show="presetPreviewExpanded && !isSelectedPresetBuiltIn() && !editingPresetConfig"
                                     @click="enterPresetConfigEdit()"
-                                    class="text-[10px] text-neon-cyan hover:text-neon-cyan/80 transition-colors flex items-center gap-0.5">
+                                    class="text-[11px] text-neon-cyan hover:text-neon-cyan/80 transition-colors flex items-center gap-0.5">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
@@ -1219,7 +1219,7 @@
                                 <div x-show="configEditMode === 'ui' || !editingPresetConfig">
                                     <!-- Strategy dropdown (editing) -->
                                     <div class="mb-2" x-show="editingPresetConfig">
-                                        <label class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold">Strategy</label>
+                                        <label class="text-[11px] text-gray-600 font-semibold">Strategy</label>
                                         <select class="select select-sm bg-space-800 border-space-border text-white text-xs w-full mt-0.5"
                                             x-model="editingConfigDraft.accountSelection.strategy">
                                             <option value="sticky" x-text="$store.global.t('strategyStickyLabel') || 'Sticky'"></option>
@@ -1230,7 +1230,7 @@
                                     <!-- Sections -->
                                     <template x-for="section in preview.sections" :key="section.label">
                                         <div class="mb-1.5 last:mb-0">
-                                            <div class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-0.5" x-text="section.label"></div>
+                                            <div class="text-[11px] capitalize text-gray-600 font-semibold mb-0.5" x-text="section.label"></div>
                                             <template x-for="row in section.rows" :key="row.key">
                                                 <div class="flex justify-between items-center py-px gap-2">
                                                     <span class="text-[11px] text-gray-500 shrink-0" x-text="row.label"></span>
@@ -1257,7 +1257,7 @@
                                                                 @change="validatePresetConfigField(row.key, $event.target.value)"
                                                                 @input="editingConfigDraft[row.key] = Number($event.target.value)">
                                                         </template>
-                                                        <span x-show="row.suffix" class="text-[10px] text-gray-600 w-5" x-text="row.suffix"></span>
+                                                        <span x-show="row.suffix" class="text-[11px] text-gray-600 w-5" x-text="row.suffix"></span>
                                                     </div>
                                                 </div>
                                             </template>
@@ -1268,7 +1268,7 @@
                                 <div x-show="editingPresetConfig && configEditMode === 'json'">
                                     <textarea class="textarea w-full font-mono text-[11px] bg-space-800 border-space-border text-white leading-relaxed"
                                         rows="22" x-model="editingJsonText" @input="validateJsonText()"></textarea>
-                                    <p x-show="jsonParseError" class="text-[10px] text-red-400 mt-1" x-text="jsonParseError"></p>
+                                    <p x-show="jsonParseError" class="text-[11px] text-red-400 mt-1" x-text="jsonParseError"></p>
                                 </div>
                                 <!-- Save/Cancel buttons -->
                                 <div x-show="editingPresetConfig" class="flex justify-end gap-2 mt-2 pt-2 border-t border-space-border/20">
@@ -1286,7 +1286,7 @@
                             </div>
                         </div>
                     </template>
-                    <p class="text-[10px] text-gray-600 mt-2"
+                    <p class="text-[11px] text-gray-600 mt-2"
                         x-text="$store.global.t('serverPresetsHint')">
                         Select a preset and click the download icon to apply it. Built-in presets (🔒) cannot be deleted.
                     </p>
@@ -1314,7 +1314,7 @@
                             <form method="dialog">
                                 <button class="btn btn-sm btn-ghost" x-text="$store.global.t('cancel')">Cancel</button>
                             </form>
-                            <button class="btn btn-sm bg-neon-purple text-white hover:bg-neon-purple/80"
+                            <button class="btn btn-sm bg-neon-purple text-space-950 border-none hover:bg-[#7fdbe4]"
                                 @click="editingPresetMode ? executeEditServerPreset() : executeSaveServerPreset(newServerPresetName)"
                                 :disabled="!newServerPresetName.trim() || savingServerPreset">
                                 <span x-show="!savingServerPreset" x-text="editingPresetMode ? ($store.global.t('saveChanges') || 'Save Changes') : $store.global.t('savePreset')">Save Preset</span>
@@ -1330,7 +1330,7 @@
                 <!-- ⚡ Common Settings -->
                 <div class="space-y-3">
                     <div class="flex items-center gap-2 mb-1 px-1">
-                        <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
+                        <span class="text-[11px] text-gray-500 font-medium"
                             x-text="$store.global.t('runtimeConfig')">Common Settings</span>
                         <div class="h-px flex-1 bg-space-border/30"></div>
                     </div>
@@ -1530,7 +1530,7 @@
                 <!-- 🔀 Account Selection Strategy -->
                 <div class="space-y-3">
                     <div class="flex items-center gap-2 mb-1 px-1">
-                        <span class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
+                        <span class="text-[11px] text-gray-500 font-medium"
                             x-text="$store.global.t('accountSelectionStrategy')">Account Selection Strategy</span>
                         <div class="h-px flex-1 bg-space-border/30"></div>
                     </div>
@@ -1573,7 +1573,7 @@
                             <div>
                                 <span class="text-sm font-semibold text-gray-200"
                                     x-text="$store.global.t('advancedSettings')">Advanced Settings</span>
-                                <span class="text-[10px] text-gray-600 block"
+                                <span class="text-[11px] text-gray-600 block"
                                     x-text="$store.global.t('serverReadOnly')">Settings managed via config.json</span>
                             </div>
                         </div>
@@ -1591,7 +1591,7 @@
                         <!-- Network Retry Settings -->
                         <div class="space-y-4">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                <span class="text-[11px] text-gray-500 font-medium"
                                     x-text="$store.global.t('networkRetry')">Network Retry Settings</span>
                             </div>
 
@@ -1663,7 +1663,7 @@
                         <!-- Account Rate Limiting -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                <span class="text-[11px] text-gray-500 font-medium"
                                     x-text="$store.global.t('rateLimiting')">Rate Limiting & Timeouts</span>
                             </div>
 
@@ -1687,7 +1687,7 @@
                                         @change="toggleDefaultCooldownMs($event.target.value)"
                                         aria-label="Default cooldown value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('defaultCooldownDesc')">Fallback cooldown when API doesn't
                                     provide a reset time.</p>
                             </div>
@@ -1712,7 +1712,7 @@
                                         @change="toggleMaxWaitBeforeErrorMs($event.target.value)"
                                         aria-label="Max wait before error value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('maxWaitDesc')">If all accounts are rate-limited longer than
                                     this, error immediately.</p>
                             </div>
@@ -1721,7 +1721,7 @@
 <!-- Quota Protection -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                <span class="text-[11px] text-gray-500 font-medium"
                                     x-text="$store.global.t('quotaProtection')">Quota Protection</span>
                             </div>
 
@@ -1745,7 +1745,7 @@
                                         @change="toggleGlobalQuotaThreshold($event.target.value)"
                                         aria-label="Minimum quota level value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('minimumQuotaLevelDesc')">Switch accounts when quota drops below this level. Per-account overrides take priority.</p>
                             </div>
                         </div>
@@ -1753,8 +1753,8 @@
                         <!-- Request Throttling -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Request Throttling</span>
-                                <span class="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">Experimental</span>
+                                <span class="text-[11px] text-gray-500 font-medium">Request Throttling</span>
+                                <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">Experimental</span>
                             </div>
 
                             <!-- Request Throttling Card -->
@@ -1801,7 +1801,7 @@
                                                 @change="toggleRequestDelayMs($event.target.value)"
                                                 aria-label="Request delay value">
                                         </div>
-                                        <p class="text-[9px] text-amber-100/40 mt-2 leading-tight">
+                                        <p class="text-[10px] text-amber-100/40 mt-2 leading-tight">
                                             Milliseconds to wait before each API call (token refresh, quota check, messages, etc).</p>
                                     </div>
                                 </div>
@@ -1811,7 +1811,7 @@
                         <!-- Error Handling Tuning -->
                         <div class="space-y-4 pt-2 border-t border-space-border/10">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
+                                <span class="text-[11px] text-gray-500 font-medium"
                                     x-text="$store.global.t('errorHandlingTuning')">Error Handling Tuning</span>
                             </div>
 
@@ -1835,7 +1835,7 @@
                                         @change="toggleRateLimitDedupWindowMs($event.target.value)"
                                         aria-label="Rate limit dedup window value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('rateLimitDedupWindowDesc')">Prevents concurrent retry
                                     storms.</p>
                             </div>
@@ -1861,7 +1861,7 @@
                                         @change="toggleMaxConsecutiveFailures($event.target.value)"
                                         aria-label="Max consecutive failures value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('maxConsecutiveFailuresDesc')">Failures before extended
                                     cooldown.</p>
                             </div>
@@ -1886,7 +1886,7 @@
                                         @change="toggleExtendedCooldownMs($event.target.value)"
                                         aria-label="Extended cooldown value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('extendedCooldownDesc')">Applied after max consecutive
                                     failures.</p>
                             </div>
@@ -1911,7 +1911,7 @@
                                         @change="toggleMaxCapacityRetries($event.target.value)"
                                         aria-label="Max capacity retries value">
                                 </div>
-                                <p class="text-[9px] text-gray-600 mt-1 leading-tight"
+                                <p class="text-[10px] text-gray-600 mt-1 leading-tight"
                                     x-text="$store.global.t('maxCapacityRetriesDesc')">Retries before switching
                                     accounts.</p>
                             </div>
@@ -1976,7 +1976,7 @@
                         <div class="flex justify-end gap-2 mt-6">
                             <button class="btn btn-sm btn-ghost text-gray-400" @click="hidePasswordDialog()"
                                 x-text="$store.global.t('cancel')">Cancel</button>
-                            <button class="btn btn-sm bg-neon-purple hover:bg-purple-600 border-none text-white"
+                            <button class="btn btn-sm bg-neon-purple hover:bg-[#7fdbe4] border-none text-space-950"
                                 @click="changePassword()" x-text="$store.global.t('changePassword')">
                                 Change Password
                             </button>

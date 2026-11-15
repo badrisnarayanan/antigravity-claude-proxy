@@ -2,97 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens.
+ * JS reads several of these by name (charts.js) and appends alpha suffixes,
+ * so every colour must stay a 6-digit hex.
+ */
 :root {
-  /* === Background Layers === */
-  --color-space-950: #09090b;
-  --color-space-900: #0f0f11;
-  --color-space-850: #121214;
-  --color-space-800: #18181b;
-  --color-space-border: #27272a;
+  /* === Surfaces: near-black panel, darkest first === */
+  --color-space-950: #0b0c0d;
+  --color-space-900: #111214;
+  --color-space-850: #16181a;
+  --color-space-800: #1c1e21;
+  --color-space-border: #27292d;
 
-  /* === Neon Accents (Full Saturation) === */
-  --color-neon-purple: #a855f7;
-  --color-neon-green: #22c55e;
-  --color-neon-cyan: #06b6d4;
-  --color-neon-yellow: #eab308;
-  --color-neon-red: #ef4444;
+  /* === Glass-cockpit colour code (legacy token names kept for JS) ===
+     purple -> cyan  : things you set
+     magenta         : the one current thing
+     green/yellow/red: normal / caution / warning */
+  --color-neon-purple: #4cc9d6;
+  --color-neon-cyan: #4cc9d6;
+  --color-neon-magenta: #d45bc2;
+  --color-neon-green: #6fcf6a;
+  --color-neon-yellow: #f2a93b;
+  --color-neon-red: #ee5a4f;
 
-  /* === Soft Neon (Reduced Saturation for Fills) === */
-  --color-neon-purple-soft: #9333ea;
-  --color-neon-green-soft: #16a34a;
-  --color-neon-cyan-soft: #0891b2;
+  --color-neon-purple-soft: #2fa3b0;
+  --color-neon-green-soft: #57b553;
+  --color-neon-cyan-soft: #2fa3b0;
 
-  /* === Text Hierarchy (WCAG AA Compliant) === */
-  --color-text-primary: #ffffff; /* Emphasis: Titles, Key Numbers */
-  --color-text-secondary: #d4d4d8; /* Content: Body Text (zinc-300) */
-  --color-text-tertiary: #a1a1aa; /* Metadata: Timestamps, Labels (zinc-400) */
-  --color-text-quaternary: #71717a; /* Subtle: Decorative (zinc-500) */
+  /* === Model families: never share a hue with a status === */
+  --color-family-claude: #4cc9d6;
+  --color-family-gemini: #d9c39a;
+  --color-family-other: #9aa7b0;
 
-  /* === Legacy Aliases (Backward Compatibility) === */
+  /* === Lettering === */
+  --color-text-primary: #eceae4;
+  --color-text-secondary: #c4c2bc;
+  --color-text-tertiary: #a3a19c;
+  --color-text-quaternary: #87857f;
+
+  /* === Legacy aliases (read by charts.js) === */
   --color-text-main: var(--color-text-secondary);
   --color-text-dim: var(--color-text-tertiary);
   --color-text-muted: var(--color-text-tertiary);
   --color-text-bright: var(--color-text-primary);
 
-  /* Gradient Accents */
-  --color-green-400: #4ade80;
-  --color-yellow-400: #facc15;
-  --color-red-400: #f87171;
+  --color-green-400: #93dc8f;
+  --color-yellow-400: #f6c06a;
+  --color-red-400: #f27e74;
 
-  /* Chart Colors */
-  --color-chart-1: #a855f7;
-  --color-chart-2: #c084fc;
-  --color-chart-3: #e879f9;
-  --color-chart-4: #d946ef;
-  --color-chart-5: #22c55e;
-  --color-chart-6: #4ade80;
-  --color-chart-7: #86efac;
-  --color-chart-8: #10b981;
-  --color-chart-9: #06b6d4;
-  --color-chart-10: #f59e0b;
-  --color-chart-11: #ef4444;
-  --color-chart-12: #ec4899;
-  --color-chart-13: #8b5cf6;
-  --color-chart-14: #14b8a6;
-  --color-chart-15: #f97316;
-  --color-chart-16: #6366f1;
+  /* === Chart series: Claude models in blue-greens, Gemini in sands, others in steel === */
+  --color-chart-1: #4cc9d6;
+  --color-chart-2: #7fdbe4;
+  --color-chart-3: #2fa3b0;
+  --color-chart-4: #a9e7ec;
+  --color-chart-5: #d9c39a;
+  --color-chart-6: #bfa678;
+  --color-chart-7: #ecdcbc;
+  --color-chart-8: #a08a5f;
+  --color-chart-9: #9aa7b0;
+  --color-chart-10: #c7ccd1;
+  --color-chart-11: #74828c;
+  --color-chart-12: #5fb3a0;
+  --color-chart-13: #c2a1bb;
+  --color-chart-14: #8fb7c9;
+  --color-chart-15: #b8b08f;
+  --color-chart-16: #6f97a8;
+
+  /* === Shape === */
+  --view-padding: 2rem;
+  --view-gap: 1.75rem;
+  --card-radius: 0.625rem;
+  --control-radius: 0.375rem;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --view-padding: 1rem;
+    --view-gap: 1.25rem;
+  }
 }
 
 [x-cloak] {
   display: none !important;
 }
 
-/* Custom Scrollbar */
+/* -------------------------------------------------------------------------- */
+/* Base                                                                       */
+/* -------------------------------------------------------------------------- */
+
+html {
+  font-feature-settings: "ss02";
+}
+
+body {
+  background-color: var(--color-space-950);
+  letter-spacing: -0.003em;
+}
+
+/* Tabular figures wherever numbers are compared side by side */
+.font-mono,
+.stat-value,
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-neon-purple);
+  outline-offset: 2px;
+}
+
+.btn:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.toggle:focus-visible {
+  outline: 2px solid var(--color-neon-purple);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(76, 201, 214, 0.3);
+  color: var(--color-text-primary);
+}
+
+/*
+ * Small all-caps tracked labels read as template chrome.
+ * Labels across views carry `uppercase` + `tracking-*`; calm them globally
+ * so the copy (sentence case in translations) sets the tone.
+ */
+.uppercase.tracking-wider,
+.uppercase.tracking-widest,
+.uppercase.tracking-wide {
+  letter-spacing: 0.02em;
+}
+
+/* Glows and frosted glass are replaced by flat surfaces */
+[class*="shadow-[0_0_"] {
+  --tw-shadow: 0 0 #0000 !important;
+  --tw-shadow-colored: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+
+/* Scrollbar */
 .custom-scrollbar {
   scrollbar-gutter: stable;
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(9, 9, 11, 0.3);
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.2s ease;
+  background: var(--color-space-border);
+  border-radius: 999px;
+  border: 3px solid var(--color-space-950);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #3f3f46 0%, #27272a 100%);
-  border-color: rgba(168, 85, 247, 0.3);
+  background: #4d4d4a;
 }
 
-/* Animations */
+/* -------------------------------------------------------------------------- */
+/* Motion                                                                     */
+/* -------------------------------------------------------------------------- */
+
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .fade-enter-from,
@@ -103,58 +184,133 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
-.nav-item.active {
-  background: linear-gradient(
-    90deg,
-    theme("colors.neon.purple / 15%") 0%,
-    transparent 100%
-  );
-  @apply border-l-4 border-neon-purple text-white;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shell                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.app-topbar {
+  background: var(--color-space-950);
+  border-bottom: 1px solid var(--color-space-border);
+}
+
+.app-sidebar {
+  background: var(--color-space-950);
+}
+
+.nav-section-label {
+  @apply px-5 mb-1.5 text-xs font-medium text-gray-600;
 }
 
 .nav-item {
-  @apply border-l-4 border-transparent transition-all duration-200;
+  @apply relative mx-3 rounded-md transition-colors duration-150;
+}
+
+.nav-item.active {
+  background: var(--color-space-800);
+  @apply text-white;
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  top: 0.625rem;
+  bottom: 0.625rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-neon-magenta);
+}
+
+.nav-item.active svg {
+  color: var(--color-neon-magenta);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quota gauges                                                               */
+/* Progress bars read as instrument tapes: square ends, a 10% tick scale      */
+/* engraved on the track, and a fill coloured only by health.                 */
+/* -------------------------------------------------------------------------- */
+
+.progress {
+  border-radius: 1px;
+  background-color: var(--color-space-800);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(10% - 1px),
+    rgba(236, 234, 228, 0.14) calc(10% - 1px),
+    rgba(236, 234, 228, 0.14) 10%
+  );
+}
+
+.progress::-webkit-progress-bar {
+  background: transparent;
+  border-radius: 1px;
+}
+
+.progress::-webkit-progress-value {
+  border-radius: 1px;
+}
+
+.progress::-moz-progress-bar {
+  border-radius: 1px;
 }
 
 .progress-gradient-success::-webkit-progress-value {
-  background-image: linear-gradient(
-    to right,
-    var(--color-neon-green),
-    var(--color-green-400)
-  );
+  background: var(--color-neon-green);
 }
 
 .progress-gradient-warning::-webkit-progress-value {
-  background-image: linear-gradient(
-    to right,
-    var(--color-neon-yellow),
-    var(--color-yellow-400)
-  );
+  background: var(--color-neon-yellow);
 }
 
 .progress-gradient-error::-webkit-progress-value {
-  background-image: linear-gradient(
-    to right,
-    var(--color-neon-red),
-    var(--color-red-400)
-  );
+  background: var(--color-neon-red);
 }
 
-/* Tooltip Customization */
+.progress-gradient-success::-moz-progress-bar {
+  background: var(--color-neon-green);
+}
+
+.progress-gradient-warning::-moz-progress-bar {
+  background: var(--color-neon-yellow);
+}
+
+.progress-gradient-error::-moz-progress-bar {
+  background: var(--color-neon-red);
+}
+
+/* Readouts: every number a person reads off the panel */
+.readout {
+  @apply font-display;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* Tooltip */
 .tooltip:before {
-  @apply bg-space-800 border border-space-border text-gray-200 font-mono text-xs;
+  @apply bg-space-800 border border-space-border text-gray-200 font-sans text-xs;
+  border-radius: var(--control-radius);
 }
 
 .tooltip-left:before {
@@ -162,38 +318,23 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Refactored Global Utilities                                                */
+/* Layout                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/* Standard Layout Constants */
-:root {
-  --view-padding: 2rem; /* 32px - Standard Padding */
-  --view-gap: 2rem; /* 32px - Standard component gap */
-  --card-radius: 0.75rem; /* 12px */
-}
-
-@media (max-width: 768px) {
-  :root {
-    --view-padding: 1rem;
-    --view-gap: 1.25rem;
-  }
-}
-
-/* Base View Container */
 .view-container {
-    display: flex;
-    flex-direction: column;
-    margin-left: auto;
-    margin-right: auto;
-    width: 100%;
-    padding: var(--view-padding);
-    gap: var(--view-gap);
-    min-height: calc(100vh - 56px); /* Align with navbar height */
-    max-width: 1400px;
-    scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding: var(--view-padding);
+  gap: var(--view-gap);
+  min-height: calc(100vh - 56px);
+  max-width: 1400px;
+  scrollbar-gutter: stable;
 }
 
-/* Specialized container for data-heavy pages (Logs) */
+/* Data-heavy pages (Logs) */
 .view-container-full {
   @apply w-full animate-fade-in flex flex-col;
   padding: var(--view-padding);
@@ -202,29 +343,27 @@
   max-width: 100%;
 }
 
-/* Centered container for form-heavy pages (Settings/Accounts) */
+/* Form-heavy pages (Settings/Accounts) */
 .view-container-centered {
   @apply mx-auto w-full animate-fade-in flex flex-col;
   padding: var(--view-padding);
   gap: var(--view-gap);
   min-height: calc(100vh - 56px);
-  max-width: 900px; /* Comfortable reading width for forms */
+  max-width: 900px;
 }
 
-/* Standard Section Header */
 .view-header {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 @media (min-width: 768px) {
-    .view-header {
-        flex-direction: row;
-        align-items: flex-end;
-    }
+  .view-header {
+    flex-direction: row;
+    align-items: flex-end;
+  }
 }
 
 .view-header-title {
@@ -232,7 +371,8 @@
 }
 
 .view-header-title h2 {
-  @apply text-2xl font-bold text-white tracking-tight;
+  @apply font-display text-[1.5rem] leading-tight font-bold text-white;
+  letter-spacing: -0.01em;
 }
 
 .view-header-title p {
@@ -243,59 +383,69 @@
   @apply flex items-center gap-3;
 }
 
-/* Standard Card Panel */
+/* Panel */
 .view-card {
-    position: relative;
-    overflow: hidden;
-    border-radius: var(--card-radius);
-    padding: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(135deg,
-        rgba(15, 15, 17, 0.75) 0%,
-        rgba(18, 18, 20, 0.70) 100%
-    );
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.02) inset,
-        0 4px 24px rgba(0, 0, 0, 0.4);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.view-card:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-        0 8px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  padding: 1.5rem;
+  border: 1px solid var(--color-space-border);
+  background: var(--color-space-900);
 }
 
 .view-card-header {
-  @apply flex items-center justify-between mb-4 pb-4 border-b border-[rgba(39,39,42,0.3)];
+  @apply flex items-center justify-between mb-4 pb-4 border-b border-space-border;
 }
 
-/* Component Unification */
+/* Stat tiles share the panel surface */
+.stat {
+  border-color: var(--color-space-border);
+}
+
+.stat-title {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tables                                                                     */
+/* -------------------------------------------------------------------------- */
+
 .standard-table {
   @apply table w-full border-separate border-spacing-0;
 }
+
 .standard-table thead {
-  @apply bg-space-900/50 text-gray-500 font-mono text-xs uppercase border-b border-space-border;
+  @apply text-gray-500 font-sans text-xs border-b border-space-border;
+  background: transparent;
 }
+
+.standard-table thead th {
+  @apply font-medium normal-case;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--color-space-border);
+}
+
 .standard-table tbody tr {
-  @apply transition-all duration-200 border-b border-[rgba(39,39,42,0.3)] last:border-0;
+  @apply transition-colors duration-150;
+}
+
+.standard-table tbody td {
+  border-bottom: 1px solid rgba(39, 41, 45, 0.7);
+}
+
+.standard-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .standard-table tbody tr:hover {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background: rgba(28, 30, 33, 0.6);
 }
 
-/* Custom Range Slider - Simplified */
+/* -------------------------------------------------------------------------- */
+/* Range slider                                                               */
+/* -------------------------------------------------------------------------- */
+
 .custom-range {
   -webkit-appearance: none;
   appearance: none;
@@ -314,6 +464,8 @@
   height: 14px;
   border-radius: 50%;
   background: var(--range-color, var(--color-neon-purple));
+  border: 2px solid var(--color-space-950);
+  box-shadow: 0 0 0 1px var(--range-color, var(--color-neon-purple));
   cursor: pointer;
   transition: transform 0.1s ease;
 }
@@ -325,7 +477,7 @@
 .custom-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  border: none;
+  border: 2px solid var(--color-space-950);
   border-radius: 50%;
   background: var(--range-color, var(--color-neon-purple));
   cursor: pointer;
@@ -336,7 +488,11 @@
   transform: scale(1.15);
 }
 
-/* Color Variants */
+.custom-range:focus-visible {
+  outline: 2px solid var(--color-neon-purple);
+  outline-offset: 4px;
+}
+
 .custom-range-purple {
   --range-color: var(--color-neon-purple);
 }
@@ -354,29 +510,26 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Refactored UI Components (Phase 1.2)                                       */
+/* Controls                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/* Phase 1.2 additions ... */
-
-/* Filter Controls */
 .filter-control {
-    @apply flex items-center justify-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 
-           text-[10px] lg:text-xs font-mono font-medium text-gray-400 
-           bg-space-800 lg:bg-transparent border border-space-border/50 lg:border-transparent 
-           rounded lg:rounded-md hover:text-white lg:hover:bg-space-800 
-           transition-all duration-200 whitespace-nowrap w-full sm:w-auto;
-}
-
-.filter-control:hover {
-    @apply border-neon-cyan/50 lg:border-neon-cyan/30 lg:shadow-lg lg:shadow-neon-cyan/10;
+  @apply flex items-center justify-center gap-2 px-3 py-1.5
+         text-xs font-sans font-medium text-gray-400
+         bg-space-800 border border-space-border
+         rounded-md hover:text-white hover:border-gray-600
+         transition-colors duration-150 whitespace-nowrap w-full sm:w-auto;
 }
 
 .filter-control-item {
-    @apply block w-full px-3 py-1.5 text-left text-[10px] font-mono hover:bg-white/5 transition-colors;
+  @apply block w-full px-3 py-1.5 text-left text-xs font-sans hover:bg-white/5 transition-colors;
 }
 
-/* Action Buttons */
+.btn {
+  @apply font-medium normal-case;
+  letter-spacing: 0;
+}
+
 .btn-action-ghost {
   @apply btn btn-xs btn-ghost text-gray-400 hover:text-white transition-colors;
 }
@@ -386,92 +539,109 @@
 }
 
 .btn-action-primary {
-  @apply btn bg-gradient-to-r from-neon-purple to-indigo-600
-         border-none text-white shadow-lg shadow-neon-purple/20
-         hover:shadow-neon-purple/40 transition-all;
+  @apply btn border-none transition-colors;
+  background: var(--color-neon-purple);
+  color: var(--color-space-950);
+}
+
+.btn-action-primary:hover {
+  background: #7fdbe4;
 }
 
 .btn-action-success {
-  @apply btn btn-xs btn-ghost btn-square text-green-500 hover:bg-green-500/20;
+  @apply btn btn-xs btn-ghost btn-square text-neon-green hover:bg-neon-green/15;
 }
 
 .btn-action-danger {
-  @apply btn btn-xs btn-ghost btn-square text-red-400 hover:bg-red-500/20;
+  @apply btn btn-xs btn-ghost btn-square text-neon-red hover:bg-neon-red/15;
 }
 
 .btn-action-neutral {
   @apply btn btn-xs btn-ghost btn-square text-gray-500 hover:bg-gray-500/20;
 }
 
-/* Status Pills/Badges */
+/* Status pills: quiet sentence-case chips; colour carries the meaning */
 .status-pill {
-  @apply px-2 py-1 text-[10px] font-mono font-bold uppercase rounded border;
+  @apply inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-sans font-medium rounded-full border normal-case;
+  letter-spacing: 0;
 }
 
 .status-pill-purple {
-  @apply status-pill bg-neon-purple/10 text-neon-purple border-neon-purple/30;
+  @apply status-pill bg-neon-purple/10 text-neon-purple border-neon-purple/25;
 }
 
 .status-pill-ultra {
-  @apply status-pill bg-yellow-500/10 text-yellow-400 border-yellow-500/30;
+  @apply status-pill bg-neon-yellow/10 text-neon-yellow border-neon-yellow/25;
 }
 
 .status-pill-pro {
-  @apply status-pill bg-blue-500/10 text-blue-400 border-blue-500/30;
+  @apply status-pill bg-neon-cyan/10 text-neon-cyan border-neon-cyan/25;
 }
 
 .status-pill-free {
-  @apply status-pill bg-gray-500/10 text-gray-400 border-gray-500/30;
+  @apply status-pill bg-gray-500/10 text-gray-400 border-gray-500/25;
 }
 
 .status-pill-success {
-  @apply status-pill bg-neon-green/10 text-neon-green border-neon-green/30;
+  @apply status-pill bg-neon-green/10 text-neon-green border-neon-green/25;
 }
 
 .status-pill-warning {
-  @apply status-pill bg-yellow-500/10 text-yellow-400 border-yellow-500/30;
+  @apply status-pill bg-neon-yellow/10 text-neon-yellow border-neon-yellow/25;
 }
 
 .status-pill-error {
-  @apply status-pill bg-red-500/10 text-red-400 border-red-500/30;
+  @apply status-pill bg-neon-red/10 text-neon-red border-neon-red/25;
 }
 
-/* Input Components */
+/* Inputs */
 .input-search {
-  @apply w-full bg-space-900/50 border border-[rgba(39,39,42,0.5)] text-gray-300
-         rounded-lg pl-10 pr-4 py-2
-         focus:outline-none focus:bg-space-800 focus:border-neon-purple/50
-         hover:border-space-border hover:bg-space-800/80
-         transition-all placeholder-gray-600/80;
+  @apply w-full bg-space-900 border border-space-border text-gray-200
+         rounded-md pl-10 pr-4 py-2
+         focus:outline-none focus:border-neon-purple/60
+         hover:border-gray-600
+         transition-colors placeholder-gray-600;
 }
 
 .input-search-sm {
   @apply input-search h-8 text-xs font-normal;
 }
 
+.input,
+.select,
+.textarea {
+  border-radius: var(--control-radius);
+}
+
+/* Modals */
+.modal-box {
+  border-radius: 0.75rem;
+}
+
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 /* -------------------------------------------------------------------------- */
-/* Skeleton Loading (Phase 4.1)                                               */
+/* Skeleton loading                                                           */
 /* -------------------------------------------------------------------------- */
 
-/* Skeleton animation */
 @keyframes skeleton-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.5;
   }
 }
 
-/* Base skeleton element */
 .skeleton {
-  @apply bg-gradient-to-r from-space-900/60 via-space-800/40 to-space-900/60;
-  background-size: 200% 100%;
+  background: var(--color-space-800);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   border-radius: 0.375rem;
 }
 
-/* Skeleton variants */
 .skeleton-text {
   @apply skeleton h-4 w-full;
 }
@@ -506,7 +676,7 @@
   background-color: oklch(var(--su)) !important;
 }
 
-/* Desktop Sidebar Collapsed State */
+/* Desktop sidebar collapsed state */
 @media (min-width: 1024px) {
   body .sidebar-collapsed {
     width: 0;

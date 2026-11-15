@@ -49,6 +49,8 @@ window.Components.dashboard = () => ({
                 this.$nextTick(() => {
                     this.updateStats();
                     this.updateCharts();
+                    // History that arrived while another tab was active was skipped by the watcher below
+                    this.syncHistory(this.$store.data.usageHistory);
                     this.updateTrendChart();
                     this.checkClaudeConfigStatus();
                 });
@@ -71,15 +73,8 @@ window.Components.dashboard = () => ({
 
         // Watch for history updates from data-store (automatically loaded with account data)
         this.$watch('$store.data.usageHistory', (newHistory) => {
-            if (this.$store.global.activeTab === 'dashboard' && newHistory && Object.keys(newHistory).length > 0) {
-                // Optimization: Skip if data hasn't changed (prevents double render on load)
-                if (this.historyData && JSON.stringify(newHistory) === JSON.stringify(this.historyData)) {
-                    return;
-                }
-
-                this.historyData = newHistory;
-                this.processHistory(newHistory);
-                this.stats.hasTrendData = true;
+            if (this.$store.global.activeTab === 'dashboard') {
+                this.syncHistory(newHistory);
             }
         });
 
@@ -89,20 +84,20 @@ window.Components.dashboard = () => ({
             this.$nextTick(() => {
                 this.updateStats();
                 this.updateCharts();
-
-                // Optimization: Only process history if it hasn't been processed yet
-                // The usageHistory watcher above will handle updates if data changes
-                const history = Alpine.store('data').usageHistory;
-                if (history && Object.keys(history).length > 0) {
-                    // Check if we already have this data to avoid redundant chart update
-                    if (!this.historyData || JSON.stringify(history) !== JSON.stringify(this.historyData)) {
-                        this.historyData = history;
-                        this.processHistory(history);
-                        this.stats.hasTrendData = true;
-                    }
-                }
+                // The store may already hold history loaded before this component initialised
+                this.syncHistory(Alpine.store('data').usageHistory);
             });
         }
+    },
+
+    // Process usage history unless it is empty or identical to what is already rendered
+    syncHistory(history) {
+        if (!history || Object.keys(history).length === 0) return;
+        if (JSON.stringify(history) === JSON.stringify(this.historyData)) return;
+
+        this.historyData = history;
+        this.processHistory(history);
+        this.stats.hasTrendData = true;
     },
 
     processHistory(history) {

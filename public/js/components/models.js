@@ -6,16 +6,17 @@
 window.Components = window.Components || {};
 
 window.Components.models = () => ({
-    // Color palette for per-account threshold markers
+    // Per-account threshold marker colours. They only tell accounts apart, so none of them
+    // reuses a status hue (green/amber/red); markers are flat ticks with no glow.
     thresholdColors: [
-        { bg: '#eab308', shadow: 'rgba(234,179,8,0.5)' },    // yellow
-        { bg: '#06b6d4', shadow: 'rgba(6,182,212,0.5)' },     // cyan
-        { bg: '#a855f7', shadow: 'rgba(168,85,247,0.5)' },    // purple
-        { bg: '#22c55e', shadow: 'rgba(34,197,94,0.5)' },     // green
-        { bg: '#ef4444', shadow: 'rgba(239,68,68,0.5)' },     // red
-        { bg: '#f97316', shadow: 'rgba(249,115,22,0.5)' },    // orange
-        { bg: '#ec4899', shadow: 'rgba(236,72,153,0.5)' },    // pink
-        { bg: '#8b5cf6', shadow: 'rgba(139,92,246,0.5)' },    // violet
+        { bg: '#eceae4', shadow: 'transparent' },    // lettering white
+        { bg: '#4cc9d6', shadow: 'transparent' },    // cyan
+        { bg: '#d9c39a', shadow: 'transparent' },    // sand
+        { bg: '#9aa7b0', shadow: 'transparent' },    // steel
+        { bg: '#7fdbe4', shadow: 'transparent' },    // pale cyan
+        { bg: '#bfa678', shadow: 'transparent' },    // khaki
+        { bg: '#c2a1bb', shadow: 'transparent' },    // dusty mauve
+        { bg: '#6f97a8', shadow: 'transparent' },    // slate blue
     ],
 
     getThresholdColor(index) {

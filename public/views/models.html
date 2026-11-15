@@ -1,17 +1,13 @@
 <div x-data="models" class="view-container">
     <!-- Compact Header -->
-    <div class="flex items-center justify-between gap-4 mb-6">
-        <!-- Title with inline subtitle -->
-        <div class="flex flex-wrap items-center gap-4">
-            <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('models')">
+    <div class="flex items-end justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="font-display text-[1.5rem] leading-tight font-bold text-white tracking-[-0.01em]" x-text="$store.global.t('models')">
                 Models
             </h1>
-            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
-                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
-                      x-text="$store.global.t('modelsPageDesc')">
-                    Real-time quota and status for all available models.
-                </span>
-            </div>
+            <p class="text-sm text-gray-500" x-text="$store.global.t('modelsPageDesc')">
+                Real-time quota and status for all available models.
+            </p>
         </div>
 
         <!-- Search Bar -->
@@ -65,23 +61,23 @@
             <!-- Filter Buttons -->
             <div class="join h-9 w-full md:w-auto overflow-x-auto">
                 <button
-                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-all font-medium text-[10px] tracking-wide"
+                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-colors font-medium text-xs"
                     :class="$store.data.filters.family === 'all'
-                        ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
+                        ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/50'
                         : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
                     @click="$store.data.filters.family = 'all'; $store.data.computeQuotaRows()"
                     x-text="$store.global.t('allCaps')">ALL</button>
                 <button
-                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-all font-medium text-[10px] tracking-wide"
+                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-colors font-medium text-xs"
                     :class="$store.data.filters.family === 'claude'
-                        ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/60 shadow-lg shadow-neon-purple/10'
+                        ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/50'
                         : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
                     @click="$store.data.filters.family = 'claude'; $store.data.computeQuotaRows()"
                     x-text="$store.global.t('claudeCaps')">CLAUDE</button>
                 <button
-                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-all font-medium text-[10px] tracking-wide"
+                    class="join-item btn btn-xs h-full flex-1 md:flex-none px-6 border-space-border/50 bg-space-800 transition-colors font-medium text-xs"
                     :class="$store.data.filters.family === 'gemini'
-                        ? 'bg-neon-green/20 text-neon-green border-neon-green/60 shadow-lg shadow-neon-green/10'
+                        ? 'bg-neon-green/15 text-neon-green border-neon-green/50'
                         : 'text-gray-400 hover:text-white hover:bg-space-700 hover:border-space-border'"
                     @click="$store.data.filters.family = 'gemini'; $store.data.computeQuotaRows()"
                     x-text="$store.global.t('geminiCaps')">GEMINI</button>
@@ -96,7 +92,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                 </svg>
-                <span class="text-[10px] font-medium uppercase tracking-wide" x-text="$store.settings.showHiddenModels ? $store.global.t('hiddenOn') : $store.global.t('hiddenOff')"></span>
+                <span class="text-[11px] font-medium" x-text="$store.settings.showHiddenModels ? $store.global.t('hiddenOn') : $store.global.t('hiddenOff')"></span>
             </button>
 
             <!-- Show All Accounts Toggle (only in detail mode) -->
@@ -108,7 +104,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span class="text-[10px] font-medium uppercase tracking-wide" x-text="$store.settings.showAllAccounts ? 'All' : 'Capped'"></span>
+                <span class="text-[11px] font-medium capitalize" x-text="$store.settings.showAllAccounts ? 'All' : 'Capped'"></span>
             </button>
         </div>
     </div>
@@ -189,10 +185,10 @@
                             </div>
                         </td>
                         <td>
-                            <div class="font-bold text-gray-200 group-hover:text-neon-purple transition-colors"
+                            <div class="font-mono text-[13px] font-medium text-gray-100"
                                 :class="$store.settings.compact ? 'text-xs' : ''"
                                 x-text="row.modelId"></div>
-                            <div class="text-[10px] font-mono text-gray-500 uppercase"
+                            <div class="text-[11px] text-gray-500"
                                 x-show="!$store.settings.compact"
                                 x-text="$store.global.t('family' + row.family.charAt(0).toUpperCase() + row.family.slice(1))">
                             </div>
@@ -202,17 +198,17 @@
                                  :class="$store.settings.compact ? 'gap-0.5' : 'gap-1'">
                                 <div class="flex justify-between text-xs font-mono">
                                     <span class="flex items-center gap-1.5">
-                                        <span x-text="row.avgQuota + '%'"
+                                        <span class="readout text-[13px] font-bold" x-text="row.avgQuota + '%'"
                                             :class="row.avgQuota > 0 ? 'text-white' : 'text-red-500'"></span>
                                         <!-- Threshold indicator (inline) -->
                                         <span x-show="row.effectiveThresholdPct > 0"
-                                              class="text-[10px] text-gray-500"
+                                              class="text-[11px] text-gray-500"
                                               x-text="row.hasVariedThresholds && row.quotaInfo.some(q => q.thresholdPct > 0)
                                                   ? '· min ' + Math.min(...row.quotaInfo.map(q => q.thresholdPct).filter(t => t > 0)) + '–' + row.effectiveThresholdPct + '%'
                                                   : '· min ' + row.effectiveThresholdPct + '%'"></span>
                                         <!-- Inline reset time (compact only) -->
                                         <span x-show="$store.settings.compact && row.resetIn && row.resetIn !== '-'"
-                                              class="text-[10px]"
+                                              class="text-[11px]"
                                               :class="row.resetIn.indexOf('h') === -1 ? 'text-neon-purple' : 'text-gray-500'"
                                               x-text="'· ' + row.resetIn"></span>
                                     </span>
@@ -229,7 +225,7 @@
                                                   x-text="'+' + (row.quotaInfo.length - 8)"></span>
                                         </span>
                                         <!-- Available/Total Accounts Indicator -->
-                                        <span class="text-gray-500 text-[10px]"
+                                        <span class="text-gray-500 text-[11px]"
                                               x-text="row.quotaInfo.filter(q => q.pct > 0).length + '/' + row.quotaInfo.length"></span>
                                     </span>
                                 </div>
@@ -270,30 +266,30 @@
                                      class="flex flex-col gap-1 mt-1 pt-1 border-t border-space-border/30">
                                     <template x-for="q in getVisibleAccounts(row)" :key="q.fullEmail + '-detail'">
                                         <div class="flex items-center gap-2">
-                                            <span class="text-[10px] font-mono text-gray-500 w-20 truncate text-right flex-shrink-0"
+                                            <span class="text-[11px] font-mono text-gray-500 w-20 truncate text-right flex-shrink-0"
                                                   x-text="Redact.email(q.email)"></span>
-                                            <div class="flex-1 h-1 rounded-full bg-space-800 overflow-hidden">
-                                                <div class="h-full rounded-full transition-all duration-500"
-                                                     :class="q.pct > 50 ? 'bg-neon-green/70' : (q.pct > 0 ? 'bg-yellow-500/70' : 'bg-red-500/50')"
+                                            <div class="flex-1 h-1 rounded-[1px] bg-space-800 overflow-hidden">
+                                                <div class="h-full rounded-[1px] transition-all duration-500"
+                                                     :class="q.pct > 50 ? 'bg-neon-green/80' : (q.pct > 0 ? 'bg-neon-yellow/80' : 'bg-neon-red/60')"
                                                      :style="'width: ' + q.pct + '%'"></div>
                                             </div>
-                                            <span class="text-[10px] font-mono w-8 text-right flex-shrink-0"
+                                            <span class="text-[11px] font-mono w-8 text-right flex-shrink-0"
                                                   :class="q.pct > 0 ? 'text-gray-400' : 'text-red-500/70'"
                                                   x-text="q.pct + '%'"></span>
                                             <span x-show="q.resetTime"
-                                                  class="text-[9px] font-mono text-gray-600 w-12 text-right flex-shrink-0"
+                                                  class="text-[10px] font-mono text-gray-600 w-16 text-right whitespace-nowrap flex-shrink-0"
                                                   x-text="window.utils.formatTimeUntil(q.resetTime)"></span>
                                         </div>
                                     </template>
                                     <!-- "+N more" expand button -->
                                     <button x-show="getHiddenCount(row) > 0"
                                             @click="toggleExpanded(row.modelId)"
-                                            class="text-[10px] font-mono text-neon-purple/70 hover:text-neon-purple transition-colors text-left pl-[88px] py-0.5 cursor-pointer"
+                                            class="text-[11px] font-mono text-neon-purple/70 hover:text-neon-purple transition-colors text-left pl-[88px] py-0.5 cursor-pointer"
                                             x-text="'+' + getHiddenCount(row) + ' more'"></button>
                                     <!-- "Show less" collapse button -->
                                     <button x-show="isExpanded(row.modelId) && !$store.settings.showAllAccounts && row.quotaInfo.length > window.AppConstants.LIMITS.ACCOUNT_BREAKDOWN_LIMIT"
                                             @click="toggleExpanded(row.modelId)"
-                                            class="text-[10px] font-mono text-gray-500 hover:text-gray-300 transition-colors text-left pl-[88px] py-0.5 cursor-pointer">Show less</button>
+                                            class="text-[11px] font-mono text-gray-500 hover:text-gray-300 transition-colors text-left pl-[88px] py-0.5 cursor-pointer">Show less</button>
                                 </div>
                             </div>
                         </td>
@@ -301,12 +297,12 @@
                             <div class="tooltip tooltip-left"
                                  :data-tip="row.quotaInfo && row.quotaInfo.length > 0 ? row.quotaInfo.filter(q => q.resetTime).map(q => Redact.email(q.email) + ': ' + q.resetTime).join('\n') : 'No reset data'">
                                 <span x-text="row.resetIn"
-                                    :class="(row.resetIn && row.resetIn.indexOf('h') === -1 && row.resetIn !== '-') ? 'text-neon-purple font-bold' : 'text-gray-400'"></span>
+                                    :class="(row.resetIn && row.resetIn.indexOf('h') === -1 && row.resetIn !== '-') ? 'text-neon-cyan font-bold' : 'text-gray-400'"></span>
                             </div>
                         </td>
                         <td x-show="!$store.settings.compact">
                             <div class="flex items-center justify-start gap-3">
-                                <div class="text-[10px] font-mono text-gray-500 hidden xl:block text-left leading-tight opacity-70">
+                                <div class="text-[11px] font-mono text-gray-500 hidden xl:block text-left leading-tight opacity-70">
                                     <div
                                         x-text="$store.global.t('activeCount', {count: row.quotaInfo?.filter(q => q.pct > 0).length || 0})">
                                     </div>
@@ -314,7 +310,7 @@
                                 <!-- Account Status Indicators -->
                                 <div class="flex flex-wrap gap-1 justify-start max-w-[200px]" x-data="{ maxVisible: 12 }">
                                     <template x-if="!row.quotaInfo || row.quotaInfo.length === 0">
-                                        <div class="text-[10px] text-gray-600 italic" x-text="$store.global.t('noData')">No data</div>
+                                        <div class="text-[11px] text-gray-600 italic" x-text="$store.global.t('noData')">No data</div>
                                     </template>
                                     <template x-if="row.quotaInfo && row.quotaInfo.length > 0">
                                         <div class="flex flex-wrap gap-1 justify-start">
@@ -417,7 +413,7 @@
                             <p class="text-sm text-gray-600 max-w-md leading-relaxed">
                                 No model data available. Add accounts to see available models and quota information.
                             </p>
-                            <button class="btn bg-neon-purple hover:bg-purple-600 border-none text-white btn-sm gap-2 shadow-lg shadow-neon-purple/20"
+                            <button class="btn bg-neon-purple hover:bg-[#7fdbe4] border-none text-space-950 btn-sm gap-2"
                                 @click="$store.global.activeTab = 'accounts'">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

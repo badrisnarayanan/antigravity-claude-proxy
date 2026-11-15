@@ -1,17 +1,13 @@
 <div x-data="accountManager" class="view-container">
     <!-- Compact Header -->
-    <div class="flex items-center justify-between gap-4 mb-6">
-        <!-- Title with inline subtitle -->
-        <div class="flex flex-wrap items-center gap-4">
-            <h1 class="text-2xl font-bold text-white tracking-tight" x-text="$store.global.t('accountManagement')">
+    <div class="flex items-end justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="font-display text-[1.5rem] leading-tight font-bold text-white tracking-[-0.01em]" x-text="$store.global.t('accountManagement')">
                 Account Management
             </h1>
-            <div class="flex items-center h-6 px-3 rounded-full bg-space-800/80 border border-space-border/50 shadow-sm backdrop-blur-sm">
-                <span class="text-[10px] font-mono text-gray-400 uppercase tracking-wider"
-                      x-text="$store.global.t('manageTokens')">
-                    Manage Google Account tokens and authorization states
-                </span>
-            </div>
+            <p class="text-sm text-gray-500" x-text="$store.global.t('manageTokens')">
+                Manage Google Account tokens and authorization states
+            </p>
         </div>
 
         <!-- Action Buttons -->
@@ -68,7 +64,7 @@
                       :class="$store.data.accounts.length >= $store.data.maxAccounts ? 'text-yellow-400' : 'text-gray-400'"
                       x-text="$store.data.accounts.length + '/' + $store.data.maxAccounts"></span>
             </div>
-            <button class="btn bg-neon-purple hover:bg-purple-600 border-none text-white btn-xs gap-2 shadow-lg shadow-neon-purple/20 h-8"
+            <button class="btn bg-neon-purple hover:bg-[#7fdbe4] border-none text-space-950 btn-xs gap-2 h-8"
                 :class="{ 'opacity-50 cursor-not-allowed': $store.data.accounts.length >= $store.data.maxAccounts }"
                 :disabled="$store.data.accounts.length >= $store.data.maxAccounts"
                 @click="$store.data.accounts.length < $store.data.maxAccounts && document.getElementById('add_account_modal').showModal()">
@@ -85,13 +81,13 @@
         <table class="w-full">
             <thead x-show="$store.data.accounts.length > 0">
                 <tr class="bg-space-900/50 border-b border-space-border/50">
-                    <th class="pl-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('enabled')">Enabled</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20" x-text="$store.global.t('source')">Source</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16" x-text="$store.global.t('tier')">Tier</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('quota')">Quota</th>
-                    <th class="py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-24" x-text="$store.global.t('health')">Health</th>
-                    <th class="py-3 pr-6 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider w-32" x-text="$store.global.t('operations')">Operations</th>
+                    <th class="pl-6 py-3 text-left text-[11px] font-medium text-gray-500 w-16" x-text="$store.global.t('enabled')">Enabled</th>
+                    <th class="py-3 text-left text-[11px] font-medium text-gray-500 flex-1 min-w-[200px]" x-text="$store.global.t('accountEmail')">Account (Email)</th>
+                    <th class="py-3 text-left text-[11px] font-medium text-gray-500 w-20" x-text="$store.global.t('source')">Source</th>
+                    <th class="py-3 text-left text-[11px] font-medium text-gray-500 w-16" x-text="$store.global.t('tier')">Tier</th>
+                    <th class="py-3 text-left text-[11px] font-medium text-gray-500 w-32" x-text="$store.global.t('quota')">Quota</th>
+                    <th class="py-3 text-left text-[11px] font-medium text-gray-500 w-24" x-text="$store.global.t('health')">Health</th>
+                    <th class="py-3 pr-6 text-right text-[11px] font-medium text-gray-500 w-32" x-text="$store.global.t('operations')">Operations</th>
                 </tr>
             </thead>
             <tbody>
@@ -111,7 +107,7 @@
                                     Get started by adding a Google account via OAuth, or use the CLI command to import credentials.
                                 </p>
                                 <div class="flex items-center gap-4 mt-2">
-                                    <button class="btn bg-neon-purple hover:bg-purple-600 border-none text-white btn-sm gap-2 shadow-lg shadow-neon-purple/20"
+                                    <button class="btn bg-neon-purple hover:bg-[#7fdbe4] border-none text-space-950 btn-sm gap-2"
                                         onclick="document.getElementById('add_account_modal').showModal()">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -181,7 +177,7 @@
                                     <span class="text-xs text-gray-600">-</span>
                                 </template>
                                 <div x-show="acc.quotaThreshold !== undefined"
-                                     class="text-[10px] font-mono text-neon-yellow/60 mt-0.5"
+                                     class="text-[11px] font-mono text-neon-yellow/60 mt-0.5"
                                      x-text="'min: ' + getEffectiveThreshold(acc)"></div>
                             </div>
                         </td>
@@ -199,7 +195,7 @@
                                       x-text="acc.status.toUpperCase()">
                                 </span>
                                 <p x-show="acc.status === 'banned'" 
-                                   class="text-[9px] text-red-600/70 mt-0.5 max-w-[200px] leading-tight"
+                                   class="text-[10px] text-red-600/70 mt-0.5 max-w-[200px] leading-tight"
                                    x-text="acc.error || 'Gemini disabled for ToS violation'">
                                 </p>
                             </div>
@@ -208,7 +204,7 @@
                             <div class="flex justify-end gap-2">
                                 <!-- Fix Button -->
                                 <button x-show="acc.status === 'invalid'"
-                                    class="px-3 py-1 text-[10px] font-bold font-mono uppercase tracking-wider rounded bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 transition-all"
+                                    class="px-3 py-1 text-[11px] font-medium rounded bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 transition-all"
                                     @click="fixAccount(acc.email)"
                                     x-text="$store.global.t('fix')">
                                     FIX
@@ -216,7 +212,7 @@
                                 <!-- Appeal Button (banned accounts only) -->
                                 <a x-show="acc.status === 'banned'"
                                    href="mailto:gemini-code-assist-user-feedback@google.com"
-                                   class="px-3 py-1 text-[10px] font-bold font-mono uppercase tracking-wider rounded bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800/30 hover:border-red-800/50 transition-all"
+                                   class="px-3 py-1 text-[11px] font-medium rounded bg-red-900/20 text-red-400 hover:bg-red-900/30 border border-red-800/30 hover:border-red-800/50 transition-all"
                                    title="Email Google to appeal this ban">
                                    APPEAL
                                 </a>
@@ -293,7 +289,7 @@
             <button class="w-full flex items-center justify-between px-6 py-3 bg-space-900/50 border-b border-space-border/50 hover:bg-space-900/70 transition-colors"
                 @click="$store.settings.toggle('healthInspectorOpen'); if ($store.settings.healthInspectorOpen && !healthData.strategy) fetchHealthData()">
                 <div class="flex items-center gap-3">
-                    <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">DEV</span>
+                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">DEV</span>
                     <span class="text-sm font-semibold text-gray-300" x-text="$store.global.t('strategyHealthInspector')">Strategy Health Inspector</span>
                 </div>
                 <svg class="w-4 h-4 text-gray-500 transition-transform" :class="{ 'rotate-180': $store.settings.healthInspectorOpen }"
@@ -331,14 +327,14 @@
                     <table class="w-full">
                         <thead>
                             <tr class="border-b border-space-border/50">
-                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-40"
+                                <th class="py-2 text-left text-[11px] font-medium text-gray-500">Email</th>
+                                <th class="py-2 text-left text-[11px] font-medium text-gray-500 w-40"
                                     x-text="$store.global.t('healthScore')">Health Score</th>
-                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-28"
+                                <th class="py-2 text-left text-[11px] font-medium text-gray-500 w-28"
                                     x-text="$store.global.t('tokenBucket')">Tokens</th>
-                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20"
+                                <th class="py-2 text-left text-[11px] font-medium text-gray-500 w-20"
                                     x-text="$store.global.t('consecutiveFailures')">Failures</th>
-                                <th class="py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider w-20">Status</th>
+                                <th class="py-2 text-left text-[11px] font-medium text-gray-500 w-20">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -375,7 +371,7 @@
                                             x-text="acc.consecutiveFailures"></span>
                                     </td>
                                     <td class="py-2">
-                                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                        <span class="text-[11px] font-medium capitalize px-1.5 py-0.5 rounded"
                                             :class="acc.isUsable ? 'bg-neon-green/10 text-neon-green border border-neon-green/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'"
                                             x-text="acc.isUsable ? 'OK' : 'DEGRADED'"></span>
                                     </td>
@@ -387,7 +383,7 @@
 
                 <!-- Scoring reference -->
                 <div x-show="healthData.trackers !== null && healthData.trackers?.accounts?.length > 0" class="mt-3 px-3 py-2 rounded bg-space-900/40 border border-space-border/30">
-                    <p class="text-[10px] text-gray-500 font-mono leading-relaxed">
+                    <p class="text-[11px] text-gray-500 font-mono leading-relaxed">
                         Score is adjusted for successes, rate limits, and failures with passive recovery.
                         <br>
                         Selection uses weighted health, token usage, quota, and recency (LRU).
@@ -444,7 +440,7 @@
     </dialog>
 
     <!-- Quota Distribution Modal -->
-    <dialog id="quota_modal" class="modal backdrop-blur-sm">
+    <dialog id="quota_modal" class="modal">
         <div class="modal-box max-w-2xl w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6">
             <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
                 <svg class="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,9 +470,9 @@
                         </div>
 
                         <div class="flex justify-between items-center">
-                            <span class="text-[10px] text-gray-500 uppercase font-bold" x-text="$store.data.getModelFamily(modelId)"></span>
+                            <span class="text-[11px] text-gray-500 capitalize font-medium" x-text="$store.data.getModelFamily(modelId)"></span>
                             <template x-if="limit.resetTime">
-                                <span class="text-[10px] text-yellow-500/80 font-mono italic"
+                                <span class="text-[11px] text-yellow-500/80 font-mono italic"
                                       x-text="$store.global.t('resetsIn', { time: window.utils.formatTimeUntil(limit.resetTime) })"></span>
                             </template>
                         </div>
@@ -502,7 +498,7 @@
     </dialog>
 
     <!-- Threshold Settings Modal -->
-    <dialog id="threshold_modal" class="modal backdrop-blur-sm">
+    <dialog id="threshold_modal" class="modal">
         <div class="modal-box max-w-md w-full bg-space-900 border border-space-border text-gray-300 shadow-2xl p-6">
             <h3 class="font-bold text-xl text-white mb-2 flex items-center gap-2">
                 <svg class="w-6 h-6 text-neon-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,7 +542,7 @@
                             <span class="text-gray-500 text-xs">%</span>
                         </div>
                     </div>
-                    <p class="text-[10px] text-gray-600 mt-1">
+                    <p class="text-[11px] text-gray-600 mt-1">
                         Leave empty to use the global threshold from Settings.
                     </p>
                 </div>
@@ -585,7 +581,7 @@
                                         :value="threshold"
                                         @input="updateModelThreshold(modelId, $event.target.value)"
                                         aria-label="Model threshold">
-                                    <span class="text-gray-500 text-[10px]">%</span>
+                                    <span class="text-gray-500 text-[11px]">%</span>
                                 </div>
                                 <button class="btn btn-xs btn-ghost text-gray-500 hover:text-red-400 px-1"
                                         @click="removeModelThreshold(modelId)">
@@ -597,7 +593,7 @@
                         </template>
 
                         <template x-if="Object.keys(thresholdDialog.modelQuotaThresholds).length === 0">
-                            <p class="text-[10px] text-gray-600 text-center py-2">
+                            <p class="text-[11px] text-gray-600 text-center py-2">
                                 No per-model overrides configured.
                             </p>
                         </template>

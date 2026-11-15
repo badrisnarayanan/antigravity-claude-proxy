@@ -27,7 +27,7 @@
             </div>
 
             <!-- Filters -->
-            <div class="hidden md:flex gap-3 text-[10px] font-mono font-bold uppercase select-none">
+            <div class="hidden md:flex gap-3 text-[11px] font-mono font-bold uppercase select-none">
                  <label class="flex items-center gap-1.5 cursor-pointer text-blue-400 opacity-50 hover:opacity-100 transition-opacity" :class="{'opacity-100': filters.INFO}">
                      <input type="checkbox" class="checkbox checkbox-xs checkbox-info rounded-[2px] w-3 h-3 border-blue-400/50" x-model="filters.INFO"> <span x-text="$store.global.t('logLevelInfo')">INFO</span>
                  </label>
@@ -45,11 +45,11 @@
 
         <!-- Right: Controls -->
         <div class="flex items-center gap-4 shrink-0">
-            <div class="text-[10px] font-mono text-gray-600 hidden lg:block">
+            <div class="text-[11px] font-mono text-gray-600 hidden lg:block">
                 <span x-text="filteredLogs.length"></span>/<span x-text="logs.length"></span>
             </div>
             <label class="cursor-pointer flex items-center gap-2">
-                <span class="text-[10px] font-mono text-gray-500 uppercase hidden sm:inline-block"
+                <span class="text-[11px] font-mono text-gray-500 uppercase hidden sm:inline-block"
                     x-text="$store.global.t('autoScroll')">Auto-Scroll</span>
                 <input type="checkbox" class="toggle toggle-xs toggle-success" x-model="isAutoScroll">
             </label>
@@ -77,7 +77,7 @@
 
                 <!-- Level: Tag Style -->
                 <div class="w-14 shrink-0 flex items-center">
-                    <span class="px-1.5 py-0.5 rounded-[2px] text-[10px] font-bold uppercase tracking-wider leading-none border"
+                    <span class="px-1.5 py-0.5 rounded-[2px] text-[11px] font-bold uppercase tracking-wider leading-none border"
                         :class="{
                             'bg-blue-500/10 text-blue-400 border-blue-500/20': log.level === 'INFO',
                             'bg-yellow-500/10 text-yellow-400 border-yellow-500/20': log.level === 'WARN',
