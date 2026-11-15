@@ -40,8 +40,8 @@ async function testVersionDetection() {
     assert.deepStrictEqual(resolveUserAgentVersion({ localVersion: '2.20.0' }), { version: '2.20.0', source: 'local' });
     assert.deepStrictEqual(resolveUserAgentVersion({ localVersion: '2.30.1' }), { version: '2.30.1', source: 'local' });
     if (!process.env.FALLBACK_ANTIGRAVITY_VERSION) {
-        assert.deepStrictEqual(resolveUserAgentVersion({}), { version: '2.25.0', source: 'fallback' });
-        assert.deepStrictEqual(resolveUserAgentVersion({ localVersion: '1.0.0' }), { version: '2.25.0', source: 'fallback' }, 'legacy installs are ignored');
+        assert.deepStrictEqual(resolveUserAgentVersion({}), { version: '2.32.0', source: 'fallback' });
+        assert.deepStrictEqual(resolveUserAgentVersion({ localVersion: '1.0.0' }), { version: '2.32.0', source: 'fallback' }, 'legacy installs are ignored');
     }
     console.log('User-Agent version resolution: OK');
 

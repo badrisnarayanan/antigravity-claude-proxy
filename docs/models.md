@@ -32,7 +32,7 @@ A model shows up in `/v1/models` as soon as the backend returns it for your acco
 - **Client version gating:** the backend hides newer models unless the User-Agent uses the
   Antigravity Hub format (`antigravity/hub/<version> <os>/<arch>`) with a recent version. The
   version is detected from the installed Antigravity app; if none is found, the fallback is
-  `2.25.0`. To override the detected versions, set them in `config.json`:
+  `2.32.0`. To override the detected versions, set them in `config.json`:
 
   ```json
   { "antigravityClientVersion": "<version>", "antigravityIdeVersion": "<ideVersion>" }

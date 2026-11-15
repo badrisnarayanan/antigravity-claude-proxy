@@ -27,7 +27,7 @@ import { config } from '../config.js';
 
 // Fallback for User-Agent version (ideVersion in product.json), used only when
 // no installed Antigravity version is detected
-const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.25.0';
+const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.32.0';
 
 // Detected versions must be above this to be used (older installs are ignored)
 const MIN_DETECTED_USER_AGENT_VERSION = '2.0.3';
