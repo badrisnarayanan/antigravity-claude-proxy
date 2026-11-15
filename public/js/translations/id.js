@@ -228,7 +228,6 @@ window.translations.id = {
     reauthenticating: "Autentikasi ulang {email}...",
     authUrlFailed: "Gagal mendapatkan URL autentikasi",
     deletedAccount: "{email} berhasil dihapus",
-    deleteFailed: "Gagal menghapus",
     accountsReloaded: "Akun berhasil dimuat ulang",
     reloadFailed: "Gagal memuat ulang",
 

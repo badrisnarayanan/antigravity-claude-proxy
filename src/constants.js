@@ -301,13 +301,11 @@ export const BUILTIN_MODEL_MAPPINGS = {
     'claude-sonnet-5': 'claude-sonnet-4-6'
 };
 
-// Default test models for each family (used by test suite)
 export const TEST_MODELS = {
     claude: 'claude-sonnet-4-6',
     gemini: 'gemini-3.8-flash-tiered'
 };
 
-// Default Claude CLI presets (used by WebUI settings)
 export const DEFAULT_PRESETS = [
     {
         name: 'Claude Thinking',

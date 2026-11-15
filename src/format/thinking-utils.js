@@ -7,10 +7,6 @@ import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { getCachedSignature, getCachedSignatureFamily } from './signature-cache.js';
 import { logger } from '../utils/logger.js';
 
-// ============================================================================
-// Gemini Thinking Budget Limits (Issue #289)
-// ============================================================================
-
 // Max thinking budget per Gemini model version
 // Gemini 2.5 Flash: max 24,576 (API error: "supported values are integers from 1 to 24576")
 const GEMINI_THINKING_BUDGET_LIMITS = {
@@ -57,10 +53,6 @@ export function clampGeminiThinkingBudget(modelName, budget) {
     return requestedBudget;
 }
 
-// ============================================================================
-// Cache Control Cleaning (Issue #189)
-// ============================================================================
-
 /**
  * Remove cache_control fields from all content blocks in messages.
  * This is a critical fix for Issue #189 where Claude Code CLI sends cache_control
@@ -94,7 +86,7 @@ export function cleanCacheControl(messages) {
             if (block.cache_control === undefined) return block;
 
             // Create a shallow copy without cache_control
-            const { cache_control, ...cleanBlock } = block;
+            const { cache_control: _cacheControl, ...cleanBlock } = block;
             removedCount++;
 
             return cleanBlock;
@@ -430,10 +422,6 @@ export function reorderAssistantContent(content) {
 
     return reordered;
 }
-
-// ============================================================================
-// Thinking Recovery Functions
-// ============================================================================
 
 /**
  * Check if a message has any VALID (signed) thinking blocks.

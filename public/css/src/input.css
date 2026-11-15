@@ -152,13 +152,6 @@
   );
 }
 
-/* Dashboard Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-}
-
 /* Tooltip Customization */
 .tooltip:before {
   @apply bg-space-800 border border-space-border text-gray-200 font-mono text-xs;

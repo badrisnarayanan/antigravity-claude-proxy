@@ -42,10 +42,13 @@ document.addEventListener('alpine:init', () => {
             })
             .catch(err => {
                 console.error('Failed to load view:', viewName, err);
-                el.innerHTML = `<div class="p-4 border border-red-500/50 bg-red-500/10 rounded-lg text-red-400 font-mono text-sm">
-                    Error loading view: ${viewName}<br>
-                    <span class="text-xs opacity-75">${err.message}</span>
-                </div>`;
+                const box = document.createElement('div');
+                box.className = 'p-4 border border-red-500/50 bg-red-500/10 rounded-lg text-red-400 font-mono text-sm';
+                const detail = document.createElement('span');
+                detail.className = 'text-xs opacity-75';
+                detail.textContent = err.message;
+                box.append(`Error loading view: ${viewName}`, document.createElement('br'), detail);
+                el.replaceChildren(box);
             });
     });
 

@@ -64,14 +64,12 @@ export function rebuildModule(packagePath) {
     try {
         logger.info(`[NativeModule] Rebuilding native module at: ${packagePath}`);
 
-        // Run npm rebuild in the package directory
         const output = execSync('npm rebuild', {
             cwd: packagePath,
             stdio: 'pipe', // Capture output instead of printing
             timeout: 120000 // 2 minute timeout
         });
 
-        // Log rebuild output for debugging
         const outputStr = output?.toString().trim();
         if (outputStr) {
             logger.debug(`[NativeModule] Rebuild output:\n${outputStr}`);
@@ -140,7 +138,6 @@ export function clearRequireCache(modulePath, cache, visited = new Set()) {
         }
     }
 
-    // Remove from parent's children array
     if (mod.parent && mod.parent.children) {
         const idx = mod.parent.children.indexOf(mod);
         if (idx !== -1) {
@@ -148,7 +145,6 @@ export function clearRequireCache(modulePath, cache, visited = new Set()) {
         }
     }
 
-    // Delete from cache
     delete cache[modulePath];
 }
 

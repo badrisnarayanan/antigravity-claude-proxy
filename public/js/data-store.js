@@ -51,7 +51,7 @@ document.addEventListener('alpine:init', () => {
                 if (saved.placeholderMode) {
                     this.setPlaceholderMode(true, saved.placeholderIncludeReal !== false);
                 }
-            } catch (e) { /* ignore parse errors */ }
+            } catch { /* ignore parse errors */ }
 
             // Watch filters to recompute
             // Alpine stores don't have $watch automatically unless inside a component?
@@ -187,7 +187,7 @@ document.addEventListener('alpine:init', () => {
                         if (data.config) {
                             this.devMode = !!data.config.devMode;
                         }
-                    } catch (e) { /* ignore parse errors */ }
+                    } catch { /* ignore parse errors */ }
                 } else {
                     this.connectionStatus = 'disconnected';
                 }

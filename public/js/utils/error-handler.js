@@ -21,7 +21,6 @@ window.ErrorHandler.safeAsync = async function(fn, errorMessage = null, options 
     try {
         return await fn();
     } catch (error) {
-        // Log error for debugging
         console.error(`[ErrorHandler] ${defaultErrorMessage}:`, error);
 
         // Show toast notification
@@ -86,7 +85,6 @@ window.ErrorHandler.withLoading = async function(asyncFn, context, loadingKey = 
     context[loadingKey] = true;
 
     try {
-        // Execute the async function with error handling
         const result = await window.ErrorHandler.safeAsync(asyncFn, options.errorMessage, options);
         return result;
     } finally {

@@ -46,7 +46,6 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                 parts.push({ text: block.text });
             }
         } else if (block.type === 'image') {
-            // Handle image content
             if (block.source?.type === 'base64') {
                 // Base64-encoded image
                 parts.push({
@@ -93,7 +92,6 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                 functionCall.id = block.id;
             }
 
-            // Build the part with functionCall
             const part = { functionCall };
 
             // For Gemini models, include thoughtSignature at the part level
@@ -133,7 +131,6 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
                     }
                 }
 
-                // Extract text content
                 const texts = responseContent
                     .filter(c => c.type === 'text')
                     .map(c => c.text)
@@ -157,7 +154,6 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             // This ensures all functionResponse parts are consecutive
             deferredInlineData.push(...imageParts);
         } else if (block.type === 'thinking') {
-            // Handle thinking blocks with signature compatibility check
             if (block.signature && block.signature.length >= MIN_SIGNATURE_LENGTH) {
                 const signatureFamily = getCachedSignatureFamily(block.signature);
                 const targetFamily = isClaudeModel ? 'claude' : isGeminiModel ? 'gemini' : null;

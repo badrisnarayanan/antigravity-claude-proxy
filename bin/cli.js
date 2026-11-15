@@ -20,13 +20,6 @@ const PID_FILE = join(CONFIG_DIR, 'server.pid');
 const args = process.argv.slice(2);
 const command = args[0];
 
-// Ensure config directory exists
-function ensureConfigDir() {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
-  }
-}
-
 /**
  * Check if the service is running by reading PID file and verifying process
  */
@@ -46,7 +39,7 @@ function isServiceRunning() {
     // Check if process is running (signal 0 doesn't kill, just checks)
     process.kill(pid, 0);
     return true;
-  } catch (e) {
+  } catch {
     // Process doesn't exist
     cleanupPidFile();
     return false;
@@ -63,7 +56,7 @@ function getServicePid() {
   try {
     const pid = parseInt(readFileSync(PID_FILE, 'utf-8'), 10);
     return isNaN(pid) ? null : pid;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -86,7 +79,7 @@ function cleanupPidFile() {
     try {
       unlinkSync(PID_FILE);
     } catch (e) {
-      // Ignore cleanup errors
+      console.warn(`Could not remove PID file ${PID_FILE}: ${e.message}`);
     }
   }
 }
@@ -266,7 +259,7 @@ async function restartServer() {
       console.log('');
       // Wait for process to fully terminate
       await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (e) {
+    } catch {
       console.log('   └─ No previous instance found');
       console.log('');
       cleanupPidFile();

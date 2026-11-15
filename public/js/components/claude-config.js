@@ -203,10 +203,6 @@ window.Components.claudeConfig = () => ({
         }
     },
 
-    // ==========================================
-    // Presets Management
-    // ==========================================
-
     /**
      * Fetch all saved presets from the server
      */
@@ -437,10 +433,6 @@ window.Components.claudeConfig = () => ({
             this.deletingPreset = false;
         }
     },
-
-    // ==========================================
-    // Mode Toggle (Proxy/Paid)
-    // ==========================================
 
     /**
      * Fetch current mode from server

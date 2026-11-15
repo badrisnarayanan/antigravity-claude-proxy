@@ -50,7 +50,7 @@ function isServerRunning() {
             resolve(false);
         });
 
-        socket.on('error', (err) => {
+        socket.on('error', () => {
             socket.destroy();
             resolve(false); // Port free
         });
@@ -447,6 +447,7 @@ async function verifyAccounts() {
             console.log(`  ✓ ${email} - OK`);
         } catch (error) {
             console.log(`  ✗ ${account.email} - ${error.message}`);
+            process.exitCode = 1;
         }
     }
 }

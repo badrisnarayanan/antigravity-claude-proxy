@@ -55,6 +55,7 @@ function loadDatabaseModule() {
                     return Database;
                 } catch (retryError) {
                     // Rebuild succeeded but reload failed - user needs to restart
+                    logger.debug(`[Database] Reload after rebuild failed: ${retryError.message}`);
                     moduleLoadError = new NativeModuleError(
                         'Native module rebuild completed. Please restart the server to apply the fix.',
                         true,  // rebuildSucceeded

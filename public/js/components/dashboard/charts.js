@@ -75,7 +75,7 @@ function isCanvasReady(canvas) {
   try {
     const ctx = canvas.getContext("2d");
     return !!ctx;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -139,14 +139,14 @@ window.DashboardCharts.updateCharts = function (component) {
 
   // Safety checks
   if (!canvas) {
-    console.debug("quotaChart canvas not found");
+    window.UILogger?.debug("quotaChart canvas not found");
     return;
   }
 
   // FORCE DESTROY: Check for existing chart on the canvas element property
   // This handles cases where Component state is lost but DOM persists
   if (canvas._chartInstance) {
-    console.debug("Destroying existing quota chart from canvas property");
+    window.UILogger?.debug("Destroying existing quota chart from canvas property");
     try {
         canvas._chartInstance.destroy();
     } catch(e) { if (window.UILogger) window.UILogger.debug(e); }
@@ -157,7 +157,7 @@ window.DashboardCharts.updateCharts = function (component) {
   if (component.charts.quotaDistribution) {
      try {
          component.charts.quotaDistribution.destroy();
-     } catch(e) { }
+     } catch (e) { window.UILogger?.debug("quotaDistribution destroy failed", e); }
      component.charts.quotaDistribution = null;
   }
   
@@ -165,7 +165,7 @@ window.DashboardCharts.updateCharts = function (component) {
   if (typeof Chart !== "undefined" && Chart.getChart) {
       const regChart = Chart.getChart(canvas);
       if (regChart) {
-          try { regChart.destroy(); } catch(e) {}
+          try { regChart.destroy(); } catch (e) { window.UILogger?.debug("Registry chart destroy failed", e); }
       }
   }
 
@@ -332,7 +332,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
   // FORCE DESTROY: Check for existing chart on the canvas element property
   if (canvas) {
       if (canvas._chartInstance) {
-        console.debug("Destroying existing trend chart from canvas property");
+        window.UILogger?.debug("Destroying existing trend chart from canvas property");
         try {
             canvas._chartInstance.stop();
             canvas._chartInstance.destroy();
@@ -344,7 +344,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
       if (typeof Chart !== "undefined" && Chart.getChart) {
           const regChart = Chart.getChart(canvas);
           if (regChart) {
-              try { regChart.stop(); regChart.destroy(); } catch(e) {}
+              try { regChart.stop(); regChart.destroy(); } catch (e) { window.UILogger?.debug("Registry chart destroy failed", e); }
           }
       }
   }
@@ -354,7 +354,7 @@ window.DashboardCharts.updateTrendChart = function (component) {
     try {
       component.charts.usageTrend.stop();
       component.charts.usageTrend.destroy();
-    } catch (e) { }
+    } catch (e) { window.UILogger?.debug("usageTrend destroy failed", e); }
     component.charts.usageTrend = null;
   }
 

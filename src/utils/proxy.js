@@ -1,13 +1,4 @@
-/**
- * HTTP Proxy Support
- * 
- * Configures global fetch to use HTTP proxy from environment variables.
- * Supports: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
- * 
- * This module should be imported at the very beginning of the application
- * entry point (src/index.js) before any fetch calls are made.
- */
-
+// Routes global fetch through http(s)_proxy env vars. Import before any fetch call (see src/index.js).
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { logger } from './logger.js';
 

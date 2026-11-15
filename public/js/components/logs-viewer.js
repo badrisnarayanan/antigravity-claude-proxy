@@ -28,7 +28,7 @@ window.Components.logsViewer = () => ({
         try {
             const regex = new RegExp(query, 'i');
             matcher = (msg) => regex.test(msg);
-        } catch (e) {
+        } catch {
             // Invalid regex, fallback to case-insensitive string search
             const lowerQuery = query.toLowerCase();
             matcher = (msg) => msg.toLowerCase().includes(lowerQuery);

@@ -28,7 +28,7 @@
         // Check localStorage
         try {
             return localStorage.getItem('ag_debug') === 'true';
-        } catch (e) {
+        } catch {
             return false;
         }
     }
@@ -53,7 +53,7 @@
                 debugEnabled = true;
                 console.info('[UILogger] Debug mode enabled. Refresh page to see all logs.');
             } catch (e) {
-                console.warn('[UILogger] Could not save debug preference');
+                console.warn('[UILogger] Could not save debug preference', e);
             }
         },
 
@@ -66,7 +66,7 @@
                 debugEnabled = false;
                 console.info('[UILogger] Debug mode disabled.');
             } catch (e) {
-                // Ignore
+                console.warn('[UILogger] Could not clear debug preference', e);
             }
         },
 
@@ -103,6 +103,7 @@
          */
         log(...args) {
             if (debugEnabled) {
+                // aislop-ignore-next-line console-leftover -- UILogger's own output sink
                 console.log(...args);
             }
         },

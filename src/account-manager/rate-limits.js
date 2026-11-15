@@ -309,11 +309,6 @@ export function incrementConsecutiveFailures(accounts, email) {
     return account.consecutiveFailures;
 }
 
-// ============================================================================
-// Cooldown Mechanism (matches opencode-antigravity-auth)
-// Separate from rate limits - used for temporary backoff after failures
-// ============================================================================
-
 /**
  * Cooldown reasons for debugging/logging
  */

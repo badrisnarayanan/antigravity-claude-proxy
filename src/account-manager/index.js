@@ -328,10 +328,6 @@ export class AccountManager {
         return getLimitInfo(this.#accounts, email, modelId);
     }
 
-    // ============================================================================
-    // Cooldown Methods (matches opencode-antigravity-auth)
-    // ============================================================================
-
     /**
      * Mark an account as cooling down for a specified duration
      * Used for temporary backoff separate from rate limits

@@ -1,10 +1,4 @@
-/**
- * Rate Limit State Management
- *
- * Shared utilities for rate limit tracking, backoff calculation,
- * and error classification. Used by both streaming and non-streaming handlers.
- */
-
+// Rate limit tracking, backoff and error classification shared by streaming and non-streaming handlers.
 import {
     RATE_LIMIT_DEDUP_WINDOW_MS,
     RATE_LIMIT_STATE_RESET_MS,

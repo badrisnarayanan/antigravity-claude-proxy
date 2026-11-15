@@ -88,9 +88,6 @@ export function getRegisteredModel(modelId) {
     return registry.get(modelId);
 }
 
-/**
- * Clear all recorded metadata (used by tests).
- */
 export function clearModelRegistry() {
     registry.clear();
 }

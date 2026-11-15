@@ -100,7 +100,7 @@ if (!fs.existsSync(CONFIG_DIR)) {
     try {
         fs.mkdirSync(CONFIG_DIR, { recursive: true });
     } catch (err) {
-        // Ignore
+        logger.warn(`[Config] Could not create config directory ${CONFIG_DIR}: ${err.message}`);
     }
 }
 

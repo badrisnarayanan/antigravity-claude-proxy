@@ -83,7 +83,7 @@ export async function updateClaudeConfig(updates) {
     try {
         await fs.mkdir(configDir, { recursive: true });
     } catch (error) {
-        // Ignore if exists
+        logger.debug(`[ClaudeConfig] Could not create ${configDir}: ${error.message}`);
     }
 
     // 4. Write back to file
@@ -112,7 +112,7 @@ export async function replaceClaudeConfig(config) {
     try {
         await fs.mkdir(configDir, { recursive: true });
     } catch (error) {
-        // Ignore if exists
+        logger.debug(`[ClaudeConfig] Could not create ${configDir}: ${error.message}`);
     }
 
     // 2. Write config directly (no merge)
@@ -152,10 +152,6 @@ function deepMerge(target, source) {
 function isObject(item) {
     return (item && typeof item === 'object' && !Array.isArray(item));
 }
-
-// ==========================================
-// Claude CLI Presets
-// ==========================================
 
 /**
  * Get the path to the presets file

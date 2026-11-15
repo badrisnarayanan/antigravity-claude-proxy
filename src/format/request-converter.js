@@ -51,7 +51,7 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // before any other processing, following the pattern from Antigravity-Manager.
     const messages = cleanCacheControl(anthropicRequest.messages || []);
 
-    const { system, max_tokens, temperature, top_p, top_k, stop_sequences, tools, tool_choice, thinking } = anthropicRequest;
+    const { system, max_tokens, temperature, top_p, top_k, stop_sequences, tools, thinking } = anthropicRequest;
     const modelName = anthropicRequest.model || '';
     const modelFamily = getModelFamily(modelName);
     const isClaudeModel = modelFamily === 'claude';
@@ -63,7 +63,6 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         generationConfig: {}
     };
 
-    // Handle system instruction
     if (system) {
         let systemParts = [];
         if (typeof system === 'string') {
@@ -126,7 +125,6 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         if ((msg.role === 'assistant' || msg.role === 'model') && Array.isArray(msgContent)) {
             // First, try to restore signatures for unsigned thinking blocks from cache
             msgContent = restoreThinkingSignatures(msgContent);
-            // Remove trailing unsigned thinking blocks
             msgContent = removeTrailingThinkingBlocks(msgContent);
             // Reorder: thinking first, then text, then tool_use
             msgContent = reorderAssistantContent(msgContent);
@@ -228,13 +226,10 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // Convert tools to Google format
     if (tools && tools.length > 0) {
         const functionDeclarations = tools.map((tool, idx) => {
-            // Extract name from various possible locations
             const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
 
-            // Extract description from various possible locations
             const description = tool.description || tool.function?.description || tool.custom?.description || '';
 
-            // Extract schema from various possible locations
             const schema = tool.input_schema
                 || tool.function?.input_schema
                 || tool.function?.parameters

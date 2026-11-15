@@ -10,14 +10,13 @@ import app, { accountManager } from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
 import { config } from './config.js';
-import { getStrategyLabel, STRATEGY_NAMES, DEFAULT_STRATEGY } from './account-manager/strategies/index.js';
+import { STRATEGY_NAMES } from './account-manager/strategies/index.js';
 import { getPackageVersion } from './utils/helpers.js';
 import path from 'path';
 import os from 'os';
 
 const packageVersion = getPackageVersion();
 
-// Parse command line arguments
 const args = process.argv.slice(2);
 const isDebug = args.includes('--debug') || args.includes('--dev-mode') || process.env.DEBUG === 'true' || process.env.DEV_MODE === 'true';
 const isFallbackEnabled = args.includes('--fallback') || process.env.FALLBACK === 'true';
@@ -31,13 +30,11 @@ for (let i = 0; i < args.length; i++) {
         strategyOverride = args[i + 1];
     }
 }
-// Validate strategy
 if (strategyOverride && !STRATEGY_NAMES.includes(strategyOverride.toLowerCase())) {
     logger.warn(`[Startup] Invalid strategy "${strategyOverride}". Valid options: ${STRATEGY_NAMES.join(', ')}. Using default.`);
     strategyOverride = null;
 }
 
-// Initialize logger and devMode
 logger.setDebug(isDebug);
 
 if (isDebug) {
@@ -65,7 +62,6 @@ const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
 const server = app.listen(PORT, HOST, () => {
-    // Get actual bound address
     const address = server.address();
     const boundHost = typeof address === 'string' ? address : address.address;
     const boundPort = typeof address === 'string' ? null : address.port;
@@ -78,7 +74,6 @@ const server = app.listen(PORT, HOST, () => {
     const align = (text) => text + ' '.repeat(Math.max(0, 60 - text.length));
     const align4 = (text) => text + ' '.repeat(Math.max(0, 58 - text.length));
 
-    // Build Control section dynamically
     const strategyOptions = `(${STRATEGY_NAMES.join('/')})`;
     const strategyLine2 = '                       ' + strategyOptions;
     let controlSection = '║  Control:                                                    ║\n';

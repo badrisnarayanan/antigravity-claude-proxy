@@ -178,7 +178,7 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
     let actualPort = OAUTH_CONFIG.callbackPort;
     const host = process.env.HOST || '0.0.0.0';
 
-    const promise = new Promise(async (resolve, reject) => {
+    const promise = new Promise((resolve, reject) => {
         // Build list of ports to try: primary + fallbacks
         const portsToTry = [OAUTH_CONFIG.callbackPort, ...(OAUTH_CONFIG.callbackFallbackPorts || [])];
         const errors = [];
@@ -265,37 +265,38 @@ export function startCallbackServer(expectedState, timeoutMs = 120000) {
         });
 
         // Try ports with fallback logic (issue #176 - Windows EACCES fix)
-        let boundSuccessfully = false;
-        for (const port of portsToTry) {
-            try {
-                await tryBindPort(server, port, host);
-                actualPort = port;
-                boundSuccessfully = true;
+        (async () => {
+            let boundSuccessfully = false;
+            for (const port of portsToTry) {
+                try {
+                    await tryBindPort(server, port, host);
+                    actualPort = port;
+                    boundSuccessfully = true;
 
-                if (port !== OAUTH_CONFIG.callbackPort) {
-                    logger.warn(`[OAuth] Primary port ${OAUTH_CONFIG.callbackPort} unavailable, using fallback port ${port}`);
-                } else {
-                    logger.info(`[OAuth] Callback server listening on ${host}:${port}`);
+                    if (port !== OAUTH_CONFIG.callbackPort) {
+                        logger.warn(`[OAuth] Primary port ${OAUTH_CONFIG.callbackPort} unavailable, using fallback port ${port}`);
+                    } else {
+                        logger.info(`[OAuth] Callback server listening on ${host}:${port}`);
+                    }
+                    break;
+                } catch (err) {
+                    const errMsg = err.code === 'EACCES'
+                        ? `Permission denied on port ${port}`
+                        : err.code === 'EADDRINUSE'
+                        ? `Port ${port} already in use`
+                        : `Failed to bind port ${port}: ${err.message}`;
+                    errors.push(errMsg);
+                    logger.warn(`[OAuth] ${errMsg}`);
                 }
-                break;
-            } catch (err) {
-                const errMsg = err.code === 'EACCES'
-                    ? `Permission denied on port ${port}`
-                    : err.code === 'EADDRINUSE'
-                    ? `Port ${port} already in use`
-                    : `Failed to bind port ${port}: ${err.message}`;
-                errors.push(errMsg);
-                logger.warn(`[OAuth] ${errMsg}`);
             }
-        }
 
-        if (!boundSuccessfully) {
-            // All ports failed - provide helpful error message
-            const isWindows = process.platform === 'win32';
-            let errorMsg = `Failed to start OAuth callback server.\nTried ports: ${portsToTry.join(', ')}\n\nErrors:\n${errors.join('\n')}`;
+            if (!boundSuccessfully) {
+                // All ports failed - provide helpful error message
+                const isWindows = process.platform === 'win32';
+                let errorMsg = `Failed to start OAuth callback server.\nTried ports: ${portsToTry.join(', ')}\n\nErrors:\n${errors.join('\n')}`;
 
-            if (isWindows) {
-                errorMsg += `\n
+                if (isWindows) {
+                    errorMsg += `\n
 ================== WINDOWS TROUBLESHOOTING ==================
 The default port range may be reserved by Hyper-V/WSL2/Docker.
 
@@ -311,21 +312,22 @@ Option 3: Check reserved port ranges
 Option 4: Exclude port from reservation (run as Administrator)
   netsh int ipv4 add excludedportrange protocol=tcp startport=51121 numberofports=1
 ==============================================================`;
-            } else {
-                errorMsg += `\n\nTry setting a custom port: OAUTH_CALLBACK_PORT=3456`;
+                } else {
+                    errorMsg += `\n\nTry setting a custom port: OAUTH_CALLBACK_PORT=3456`;
+                }
+
+                reject(new Error(errorMsg));
+                return;
             }
 
-            reject(new Error(errorMsg));
-            return;
-        }
-
-        // Timeout after specified duration
-        timeoutId = setTimeout(() => {
-            if (!isAborted) {
-                server.close();
-                reject(new Error('OAuth callback timeout - no response received'));
-            }
-        }, timeoutMs);
+            // Timeout after specified duration
+            timeoutId = setTimeout(() => {
+                if (!isAborted) {
+                    server.close();
+                    reject(new Error('OAuth callback timeout - no response received'));
+                }
+            }, timeoutMs);
+        })().catch(reject);
     });
 
     // Abort function to clean up server when manual completion happens

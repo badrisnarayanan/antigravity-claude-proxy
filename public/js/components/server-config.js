@@ -452,10 +452,6 @@ window.Components.serverConfig = () => ({
         return descriptions[strategy] || '';
     },
 
-    // ==========================================
-    // Server Configuration Presets
-    // ==========================================
-
     async fetchServerPresets() {
         const password = Alpine.store('global').webuiPassword;
         try {
@@ -847,10 +843,6 @@ window.Components.serverConfig = () => ({
         };
     },
 
-    // ==========================================
-    // Inline Preset Config Editing
-    // ==========================================
-
     /**
      * Flatten a nested config object into a flat draft for UI editing.
      * Converts fractions to percentages where needed.
@@ -1040,7 +1032,7 @@ window.Components.serverConfig = () => ({
                 // Validate capacityBackoffTiersMs text
                 this.validatePresetConfigField('capacityBackoffTiersMs', this.editingConfigDraft.capacityBackoffTiersMs);
                 this.configEditMode = 'ui';
-            } catch (e) {
+            } catch {
                 this.jsonParseError = Alpine.store('global').t('invalidJson') || 'Invalid JSON';
             }
         }

@@ -155,7 +155,6 @@ window.translations.pt = {
     requestVolume: "Volume de Requisições",
     filter: "Filtrar",
     all: "Todos",
-    none: "Nenhum",
     noDataTracked: "Nenhum dado rastreado ainda",
     selectFamilies: "Selecione famílias para exibir",
     selectModels: "Selecione modelos para exibir",

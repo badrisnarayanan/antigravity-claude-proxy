@@ -163,7 +163,7 @@ function mergeAllOf(schema) {
 
         // Merge properties (allOf properties override parent for same keys)
         if (Object.keys(mergedProperties).length > 0) {
-            result.properties = { ...mergedProperties, ...(result.properties || {}) };
+            result.properties = { ...mergedProperties, ...result.properties };
         }
 
         // Merge required
@@ -288,10 +288,6 @@ function flattenAnyOfOneOf(schema) {
 
     return result;
 }
-
-// ============================================================================
-// Enhanced Schema Hints (for preserving semantic information)
-// ============================================================================
 
 /**
  * Add hints for enum values (if ≤10 values).
@@ -611,7 +607,6 @@ export function cleanSchema(schema) {
     if (!schema || typeof schema !== 'object') return schema;
     if (Array.isArray(schema)) return schema.map(cleanSchema);
 
-    // Phase 1: Convert $refs to hints
     let result = convertRefsToHints(schema);
 
     // Phase 1b: Add enum hints (preserves enum info in description)
@@ -632,7 +627,6 @@ export function cleanSchema(schema) {
     // Phase 2c: Flatten type arrays and update required for nullable
     result = flattenTypeArrays(result);
 
-    // Phase 3: Remove unsupported keywords
     const unsupported = [
         'additionalProperties', 'default', '$schema', '$defs',
         'definitions', '$ref', '$id', '$comment', 'title',
@@ -652,7 +646,6 @@ export function cleanSchema(schema) {
         }
     }
 
-    // Phase 4: Final cleanup - recursively clean nested schemas and validate required
     if (result.properties && typeof result.properties === 'object') {
         const newProps = {};
         for (const [key, value] of Object.entries(result.properties)) {
@@ -678,21 +671,11 @@ export function cleanSchema(schema) {
         }
     }
 
-    // Phase 5: Convert type to Google's uppercase format (STRING, OBJECT, ARRAY, etc.)
-    // Only convert at current level - nested types already converted by recursive cleanSchema calls
     if (result.type && typeof result.type === 'string') {
         result.type = toGoogleType(result.type);
     }
 
-    // Phase 6: Google's protobuf-based schema requires every ARRAY type to
-    // declare a single object `items` schema. Plain JSON Schema allows this
-    // to be omitted (`{ type: 'array' }` = "array of anything"), boolean
-    // (`items: true` = "any"), or tuple-form (`items: [...]`) - none of
-    // which the Cloud Code API accepts; it rejects the first two with
-    // "items: missing field". This runs after the items/properties
-    // recursion above (and after Phase 5's type conversion), so it applies
-    // at every nesting depth - fixing issue #368 (nested array schemas like
-    // `where.items.items` losing their innermost `items`).
+    // Cloud Code rejects ARRAY schemas without a single object `items` ("items: missing field"), issue #368.
     if (result.type === 'ARRAY') {
         if (!result.items || typeof result.items !== 'object') {
             // Missing entirely, or a boolean schema like `items: true`.
@@ -713,9 +696,7 @@ export function cleanSchema(schema) {
         }
     }
 
-    // Phase 7: Google rejects `properties`/`required` on a non-OBJECT schema.
-    // These can survive on the current node after anyOf/oneOf flattening
-    // picked a non-object option while the parent still carried them.
+    // Google rejects properties/required on non-OBJECT nodes, which anyOf/oneOf flattening can leave behind.
     if (result.type !== 'OBJECT') {
         delete result.properties;
         delete result.required;

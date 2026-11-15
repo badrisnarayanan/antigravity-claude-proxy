@@ -68,7 +68,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             } catch (error) {
-                console.debug('Could not fetch version:', error);
+                window.UILogger?.debug('Could not fetch version:', error);
             }
         },
 

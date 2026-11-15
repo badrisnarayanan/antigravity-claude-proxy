@@ -32,7 +32,6 @@ window.Components.models = () => ({
         originalPct: 0
     },
 
-    // Tracks which model rows have their per-account breakdown expanded beyond the cap
     expandedModels: new Set(),
 
     isExpanded(modelId) {
@@ -197,7 +196,7 @@ window.Components.models = () => ({
         const previousModelThresholds = account.modelQuotaThresholds ? { ...account.modelQuotaThresholds } : {};
 
         // Build full modelQuotaThresholds for API (full replacement, not merge)
-        const existingModelThresholds = { ...(account.modelQuotaThresholds || {}) };
+        const existingModelThresholds = { ...account.modelQuotaThresholds };
 
         // Preserve the account-level quotaThreshold
         const quotaThreshold = account.quotaThreshold !== undefined ? account.quotaThreshold : null;
@@ -251,7 +250,7 @@ window.Components.models = () => ({
      * Markers within 2% of each other are considered overlapping.
      * Returns a CSS pixel offset string (e.g., '6px' or '-6px').
      */
-    getMarkerOffset(q, row, qIdx) {
+    getMarkerOffset(q, row, _qIdx) {
         const pct = this.getMarkerPct(q, row);
         const visible = row.quotaInfo.filter(item => item.thresholdPct > 0 || this.isDragging(item, row));
         // Find all markers within 2% of this one

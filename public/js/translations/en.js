@@ -88,7 +88,6 @@ window.translations.en = {
     toggleVisibility: "Toggle Visibility",
     noModels: "NO MODELS DETECTED",
     modelMappingHint: "Server-side model routing. Claude Code users: see 'Claude CLI' tab for client-side setup.",
-    modelMapping: "Mapping (Target Model ID)",
     // Settings - Claude
     proxyConnection: "Proxy Connection",
     modelSelection: "Model Selection",
@@ -179,7 +178,6 @@ window.translations.en = {
     requestVolume: "Request Volume",
     filter: "Filter",
     all: "All",
-    none: "None",
     noDataTracked: "No data tracked yet",
     selectFamilies: "Select families to display",
     selectModels: "Select models to display",

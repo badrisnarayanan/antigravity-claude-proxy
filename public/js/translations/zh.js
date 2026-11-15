@@ -88,7 +88,6 @@ window.translations.zh = {
     toggleVisibility: "切换可见性",
     noModels: "未检测到模型",
     modelMappingHint: "服务端模型路由功能。Claude Code 用户请使用 'Claude CLI' 标签页以便捷配置。",
-    modelMapping: "映射 (目标模型 ID)",
     // Settings - Claude
     proxyConnection: "代理连接",
     modelSelection: "模型选择",
@@ -179,7 +178,6 @@ window.translations.zh = {
     requestVolume: "请求量",
     filter: "筛选",
     all: "全选",
-    none: "清空",
     noDataTracked: "暂无追踪数据",
     selectFamilies: "选择要显示的系列",
     selectModels: "选择要显示的模型",

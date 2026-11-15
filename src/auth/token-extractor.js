@@ -60,7 +60,7 @@ async function getTokenData() {
             return dbData;
         }
     } catch (err) {
-        logger.warn('[Token] DB extraction failed, trying HTML page...');
+        logger.warn(`[Token] DB extraction failed (${err.message}), trying HTML page...`);
     }
 
     // Fallback to HTML page

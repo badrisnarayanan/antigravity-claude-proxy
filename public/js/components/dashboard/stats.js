@@ -81,7 +81,7 @@ window.DashboardStats.updateStats = function(component) {
 
     enabledAccounts.forEach(acc => {
          const limits = Object.entries(acc.limits || {});
-         limits.forEach(([id, l]) => {
+         limits.forEach(([_id, l]) => {
              totalTrackedModels++;
              if (!l || l.remainingFraction == null || l.remainingFraction <= 0.05) {
                  totalLimitedModels++;

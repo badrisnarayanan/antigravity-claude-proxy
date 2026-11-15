@@ -88,7 +88,6 @@ window.translations.tr = {
     toggleVisibility: "Görünürlüğü Değiştir",
     noModels: "MODEL ALGILANMADI",
     modelMappingHint: "Sunucu tarafı model yönlendirme. Claude Code kullanıcıları: istemci tarafı kurulumu için 'Claude CLI' sekmesine bakın.",
-    modelMapping: "Eşleştirme (Hedef Model ID)",
     // Settings - Claude
     proxyConnection: "Proxy Bağlantısı",
     modelSelection: "Model Seçimi",
@@ -158,7 +157,6 @@ window.translations.tr = {
     requestVolume: "İstek Hacmi",
     filter: "Filtrele",
     all: "Tümü",
-    none: "Hiçbiri",
     noDataTracked: "Henüz veri izlenmedi",
     selectFamilies: "Görüntülenecek aileleri seçin",
     selectModels: "Görüntülenecek modelleri seçin",

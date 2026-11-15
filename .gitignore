@@ -33,3 +33,6 @@ tests/utils/*.jpeg
 # Build output
 dist/
 build/
+
+# aislop scan history
+.aislop/

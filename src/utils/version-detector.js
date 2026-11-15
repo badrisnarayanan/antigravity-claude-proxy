@@ -104,12 +104,21 @@ function getProductJson() {
                 }
             }
         } catch (e) {
-            // Continue to next path
+            logDetectionFailure(`Reading ${p}`, e);
         }
     }
 
     cachedProductJson = null;
     return null;
+}
+
+/**
+ * Debug-log a failed detection step (lazy import to avoid circular deps).
+ */
+function logDetectionFailure(step, err) {
+    import('./logger.js').then(({ logger }) => {
+        logger.debug(`[VersionDetector] ${step} failed: ${err?.message ?? err}`);
+    }).catch(() => {});
 }
 
 /**
@@ -188,7 +197,7 @@ function getUserAgentVersionConfig() {
             localVersion = getVersionWindows();
         }
     } catch (error) {
-        // Silently fail and use fallback
+        logDetectionFailure('OS version detection', error);
     }
 
     return resolveUserAgentVersion({ localVersion });
@@ -246,7 +255,7 @@ function getVersionMacos() {
             return version;
         }
     } catch (e) {
-        // plutil failed or file not found
+        logDetectionFailure('plutil', e);
     }
     return null;
 }
@@ -273,7 +282,7 @@ function getVersionWindows() {
             }
         }
     } catch (e) {
-        // PowerShell or path issues
+        logDetectionFailure('PowerShell version lookup', e);
     }
     return null;
 }

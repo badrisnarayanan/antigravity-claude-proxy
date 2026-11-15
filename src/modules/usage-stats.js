@@ -179,7 +179,7 @@ function track(modelId) {
  * Setup Express Middleware
  * @param {import('express').Application} app
  */
-function setupMiddleware(app) {
+function setupMiddleware(_app) {
     load();
 
     // Auto-save every minute

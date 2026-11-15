@@ -15,7 +15,6 @@ import { cacheSignature, cacheThinkingSignature } from './signature-cache.js';
  * @returns {Object} Anthropic format response
  */
 export function convertGoogleToAnthropic(googleResponse, model) {
-    // Handle the response wrapper
     const response = googleResponse.response || googleResponse;
 
     const candidates = response.candidates || [];
@@ -29,7 +28,6 @@ export function convertGoogleToAnthropic(googleResponse, model) {
 
     for (const part of parts) {
         if (part.text !== undefined) {
-            // Handle thinking blocks
             if (part.thought === true) {
                 const signature = part.thoughtSignature || '';
 
@@ -72,7 +70,6 @@ export function convertGoogleToAnthropic(googleResponse, model) {
             anthropicContent.push(toolUseBlock);
             hasToolCalls = true;
         } else if (part.inlineData) {
-            // Handle image content from Google format
             anthropicContent.push({
                 type: 'image',
                 source: {
