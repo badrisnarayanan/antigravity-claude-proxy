@@ -40,14 +40,16 @@ async function runTests() {
 
     const IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude.";
 
-    // The outgoing system instruction is what cloudcode-pa actually sees.
+    // The caller system prompt travels in systemInstruction or the first user
+    // turn (#408); check every text cloudcode-pa sees in either place.
     function outgoingSystem(system) {
         const payload = buildCloudCodeRequest(
             { model: 'gemini-4-argon-medium', system, messages: [{ role: 'user', content: 'hi' }] },
             'project-id',
             'test@example.com'
         );
-        return payload.request.systemInstruction.parts.map(p => p.text).join('\n');
+        const { systemInstruction, contents } = payload.request;
+        return [...systemInstruction.parts, ...contents[0].parts].map(p => p.text).join('\n');
     }
 
     test('Claude Code identity line is neutralized in the outgoing system prompt', () => {
