@@ -31,7 +31,7 @@ function familyFromProvider(apiProvider) {
  * @param {Object} data - fetchAvailableModels response
  * @returns {Set<string>}
  */
-function collectAgentModelIds(data) {
+export function collectAgentModelIds(data) {
     const ids = new Set();
     for (const sort of data?.agentModelSorts || []) {
         for (const group of sort?.groups || []) {
@@ -73,6 +73,7 @@ export function recordModels(data) {
         registry.set(modelId, {
             family,
             supportsThinking: modelData?.supportsThinking === true,
+            supportsAdaptiveThinking: modelData?.supportsAdaptiveThinking === true,
             maxOutputTokens: modelData?.maxOutputTokens ?? null,
             displayName: modelData?.displayName || null
         });

@@ -4,7 +4,8 @@
  * automatic failover, and smart cooldown for rate-limited accounts.
  */
 
-import { ACCOUNT_CONFIG_PATH } from '../constants.js';
+import { ACCOUNT_CONFIG_PATH, MODEL_VALIDATION_CACHE_TTL_MS } from '../constants.js';
+import { listModels, isValidModel } from '../cloudcode/model-api.js';
 import { config } from '../config.js';
 import { loadAccounts, loadDefaultAccount, saveAccounts } from './storage.js';
 import {
@@ -30,6 +31,7 @@ import {
 import {
     getTokenForAccount as fetchToken,
     getProjectForAccount as fetchProject,
+    knownProjectForAccount,
     clearProjectCache as clearProject,
     clearTokenCache as clearToken
 } from './credentials.js';
@@ -48,6 +50,7 @@ export class AccountManager {
     // Per-account caches
     #tokenCache = new Map(); // email -> { token, extractedAt }
     #projectCache = new Map(); // email -> projectId
+    #modelAccess = new Map(); // account object -> confirmed, short-lived model catalog
 
     constructor(configPath = ACCOUNT_CONFIG_PATH, strategyName = null) {
         this.#configPath = configPath;
@@ -99,9 +102,123 @@ export class AccountManager {
      * Useful when accounts.json is modified externally (e.g., by WebUI)
      */
     async reload() {
+        // Replace the maps, so a pre-reload token/project lookup still running
+        // cannot repopulate the current identity's caches after a credential edit.
+        this.#tokenCache = new Map();
+        this.#projectCache = new Map();
+        this.#modelAccess.clear();
         this.#initialized = false;
         await this.initialize();
         logger.info('[AccountManager] Accounts reloaded from disk');
+    }
+
+    /**
+     * Resolve real model eligibility using metadata only. Product tier names do
+     * not grant model access: a trial Pro account may have a smaller catalog.
+     * listModels owns the account/project-scoped cache and request coalescing.
+     * No project discovery/onboarding or generation is triggered here.
+     * @param {string|null} modelId - Optional requested exact backend model ID
+     * @returns {Promise<{object: string, data: Array<Object>}>} Union of confirmed catalogs
+     */
+    async prepareModelAccess(modelId = null) {
+        const accounts = this.#accounts.filter(a => a.enabled !== false && !a.isInvalid);
+        if (accounts.length === 0) throw new Error('No accounts available');
+        let failures = 0;
+        let confirmed = 0;
+        await Promise.all(accounts.map(async account => {
+            let deadline;
+            let finished = false;
+            try {
+                const lookup = (async () => {
+                    const token = await this.getTokenForAccount(account);
+                    if (finished) throw new Error('Model metadata deadline expired');
+                    const project = knownProjectForAccount(account, this.#projectCache);
+                    const models = await listModels(token, project);
+                    if (finished) throw new Error('Model metadata deadline expired');
+                    if (!Array.isArray(models?.data)) throw new Error('Invalid model metadata');
+                    const ids = new Set(models.data.map(model => model.id));
+                    // Listing hides older generations, but a client may still
+                    // request an exact legacy ID that the backend actively offers.
+                    if (modelId && !ids.has(modelId) && await isValidModel(modelId, token, project)) ids.add(modelId);
+                    return { ids, models: models.data, checkedAt: Date.now() };
+                })();
+                const snapshot = await Promise.race([
+                    lookup,
+                    new Promise((_, reject) => {
+                        // Bound the entire lookup, including token refresh. A
+                        // stalled account must not block every healthy account.
+                        deadline = setTimeout(() => reject(new Error('Model metadata deadline expired')), 6000);
+                    })
+                ]);
+                if (!this.#accounts.includes(account) || account.enabled === false || account.isInvalid) return;
+                this.#modelAccess.set(account, snapshot);
+                confirmed++;
+            } catch {
+                // Never retain a previously granted model after a failed refresh.
+                this.#modelAccess.delete(account);
+                failures++;
+            } finally {
+                finished = true;
+                clearTimeout(deadline);
+            }
+        }));
+
+        if (!this.#accounts.some(account => account.enabled !== false && !account.isInvalid)) throw new Error('No accounts available');
+        if (modelId && this.#accountsForModel(modelId).length === 0) {
+            if (failures > 0) throw new Error('MODEL_METADATA_UNAVAILABLE: Could not verify model access. Retry before generating.');
+            throw new Error(`invalid_request_error: Model ${modelId} is not available to any enabled account. Use /v1/models to see available models.`);
+        }
+        if (confirmed === 0) throw new Error('MODEL_METADATA_UNAVAILABLE: Could not retrieve any account model catalog.');
+        const byId = new Map();
+        for (const account of accounts) {
+            if (account.enabled === false || account.isInvalid) continue;
+            for (const model of this.#modelAccess.get(account)?.models || []) byId.set(model.id, model);
+        }
+        return { object: 'list', data: [...byId.values()] };
+    }
+
+    /** Recheck the selected account against its actual inference project. */
+    async assertModelAccessForAccount(account, modelId, token, project = null) {
+        if (!this.#accounts.includes(account) || account.enabled === false || account.isInvalid) {
+            throw new Error('MODEL_METADATA_UNAVAILABLE: Selected account is no longer available.');
+        }
+        let models;
+        let valid;
+        try {
+            models = await listModels(token, project);
+            valid = models.data.some(model => model.id === modelId) || await isValidModel(modelId, token, project);
+        } catch {
+            this.#modelAccess.delete(account);
+            throw new Error('MODEL_METADATA_UNAVAILABLE: Could not verify selected account model access.');
+        }
+        // The user may disable/remove the account while metadata is in flight.
+        if (!this.#accounts.includes(account) || account.enabled === false || account.isInvalid) {
+            this.#modelAccess.delete(account);
+            throw new Error('MODEL_METADATA_UNAVAILABLE: Selected account is no longer available.');
+        }
+        const ids = new Set(models.data.map(model => model.id));
+        if (valid) ids.add(modelId);
+        this.#modelAccess.set(account, { ids, models: models.data, checkedAt: Date.now() });
+        if (!valid) {
+            throw new Error(`invalid_request_error: Model ${modelId} is not available to the selected account.`);
+        }
+    }
+
+    #accountsForModel(modelId) {
+        if (!modelId) return this.#accounts;
+        const now = Date.now();
+        return this.#accounts.filter(account => {
+            if (account.enabled === false || account.isInvalid) return false;
+            const snapshot = this.#modelAccess.get(account);
+            const age = snapshot ? now - snapshot.checkedAt : Infinity;
+            return age >= 0 && age < MODEL_VALIDATION_CACHE_TTL_MS && snapshot.ids.has(modelId);
+        });
+    }
+
+    #clearModelAccess(email = null) {
+        for (const account of this.#modelAccess.keys()) {
+            if (email === null || account.email === email) this.#modelAccess.delete(account);
+        }
     }
 
     /**
@@ -118,7 +235,8 @@ export class AccountManager {
      * @returns {boolean} True if all accounts are rate-limited
      */
     isAllRateLimited(modelId = null) {
-        return checkAllRateLimited(this.#accounts, modelId);
+        const accounts = this.#accountsForModel(modelId);
+        return accounts.length > 0 && checkAllRateLimited(accounts, modelId);
     }
 
     /**
@@ -127,7 +245,7 @@ export class AccountManager {
      * @returns {Array<Object>} Array of available account objects
      */
     getAvailableAccounts(modelId = null) {
-        return getAvailable(this.#accounts, modelId);
+        return getAvailable(this.#accountsForModel(modelId), modelId);
     }
 
     /**
@@ -182,13 +300,18 @@ export class AccountManager {
             throw new Error('AccountManager not initialized. Call initialize() first.');
         }
 
-        const result = this.#strategy.selectAccount(this.#accounts, modelId, {
-            currentIndex: this.#currentIndex,
+        const candidates = this.#accountsForModel(modelId);
+        const currentAccount = this.#accounts[this.#currentIndex];
+        const candidateIndex = candidates.indexOf(currentAccount);
+        const result = this.#strategy.selectAccount(candidates, modelId, {
+            currentIndex: candidateIndex >= 0 ? candidateIndex : 0,
             onSave: () => this.saveToDisk(),
             ...options
         });
 
-        this.#currentIndex = result.index;
+        // Strategies index the eligible subset; persisted indexes always refer
+        // to the original account list, including excluded accounts.
+        if (result.account) this.#currentIndex = this.#accounts.indexOf(result.account);
         return { account: result.account, waitMs: result.waitMs || 0 };
     }
 
@@ -315,7 +438,8 @@ export class AccountManager {
      * @returns {number} Wait time in milliseconds
      */
     getMinWaitTimeMs(modelId = null) {
-        return getMinWait(this.#accounts, modelId);
+        const accounts = this.#accountsForModel(modelId);
+        return accounts.length > 0 ? getMinWait(accounts, modelId) : 0;
     }
 
     /**
@@ -401,6 +525,7 @@ export class AccountManager {
      * @param {string|null} email - Email to clear cache for, or null to clear all
      */
     clearProjectCache(email = null) {
+        this.#clearModelAccess(email);
         clearProject(this.#projectCache, email);
     }
 
@@ -409,6 +534,7 @@ export class AccountManager {
      * @param {string|null} email - Email to clear cache for, or null to clear all
      */
     clearTokenCache(email = null) {
+        this.#clearModelAccess(email);
         clearToken(this.#tokenCache, email);
     }
 

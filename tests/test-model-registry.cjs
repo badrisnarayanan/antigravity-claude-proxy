@@ -11,6 +11,7 @@
  */
 
 const CODENAME = 'fixture-codename-model';
+const NON_AGENT = 'gemini-4-non-agent-fixture';
 
 // Shape mirrors a real fetchAvailableModels response (trimmed)
 const FIXTURE = {
@@ -28,6 +29,11 @@ const FIXTURE = {
             displayName: 'Gemini 2.5 Pro', supportsThinking: true,
             apiProvider: 'API_PROVIDER_GOOGLE_GEMINI'
         },
+        [NON_AGENT]: {
+            displayName: 'Synthetic non-agent fixture', supportsThinking: true,
+            apiProvider: 'API_PROVIDER_GOOGLE_GEMINI',
+            quotaInfo: { remainingFraction: 1 }
+        },
         [CODENAME]: {
             displayName: 'Fixture Codename Model', supportsThinking: true, maxOutputTokens: 65536,
             apiProvider: 'API_PROVIDER_GOOGLE_GEMINI', modelProvider: 'MODEL_PROVIDER_GOOGLE',
@@ -44,7 +50,9 @@ const FIXTURE = {
     },
     agentModelSorts: [{
         displayName: 'Recommended',
-        groups: [{ modelIds: [CODENAME, 'claude-sonnet-5-5-low', 'gpt-oss-120b-medium'] }]
+        // The old Gemini id is still explicitly available to this account,
+        // even though listModels suppresses old generations in the menu.
+        groups: [{ modelIds: [CODENAME, 'claude-sonnet-5-5-low', 'gemini-2.5-pro', 'gpt-oss-120b-medium'] }]
     }],
     tieredModelIds: { flash: ['gemini-3.8-flash-tiered'], pro: ['gemini-3.8-flash-tiered'] }
 };
@@ -81,7 +89,9 @@ async function runTests() {
     console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
     let fetchMode = 'ok';
+    let fetchCalls = 0;
     globalThis.fetch = async () => {
+        fetchCalls++;
         if (fetchMode === 'fail') return jsonResponse({ error: 'unavailable' }, 503);
         return jsonResponse(FIXTURE);
     };
@@ -94,10 +104,12 @@ async function runTests() {
     const { getModelFamily, isThinkingModel, GEMINI_MAX_OUTPUT_TOKENS } = await import('../src/constants.js');
     const { clearModelRegistry, getRegisteredModel } = await import('../src/cloudcode/model-registry.js');
     const { listModels, isValidModel, getModelQuotas } = await import('../src/cloudcode/model-api.js');
+    const { clearMetadataCache } = await import('../src/cloudcode/metadata-cache.js');
     const { buildCloudCodeRequest, buildHeaders } = await import('../src/cloudcode/request-builder.js');
     const { convertAnthropicToGoogle } = await import('../src/format/request-converter.js');
     const { streamSSEResponse } = await import('../src/cloudcode/sse-streamer.js');
     const { getCachedSignatureFamily } = await import('../src/format/signature-cache.js');
+    clearMetadataCache();
 
     let passed = 0;
     let failed = 0;
@@ -132,8 +144,9 @@ async function runTests() {
         assertEqual(getModelFamily('gemini-3.8-flash-tiered'), 'gemini');
         assertEqual(isThinkingModel('gemini-3.8-flash-tiered'), true);
         assertEqual(getModelFamily('claude-sonnet-5-5-low'), 'claude');
-        assertEqual(isThinkingModel('claude-sonnet-5-5-low'), false, 'Claude thinking is name-based');
+        assertEqual(isThinkingModel('claude-sonnet-5-5-low'), true, 'Claude 5.5 tiers support thinking');
         assertEqual(isThinkingModel('claude-opus-4-6-thinking'), true);
+        assertEqual(isThinkingModel('claude-sonnet-4-6'), false, 'Legacy non-thinking Claude remains unchanged');
     });
 
     // --- Listing ---
@@ -146,7 +159,7 @@ async function runTests() {
     });
 
     await test('/v1/models hides internal, non-agent, other-provider and old Gemini ids', () => {
-        for (const hidden of ['tab_flash_lite_preview', 'chat_23310', 'gpt-oss-120b-medium', 'gemini-2.5-pro']) {
+        for (const hidden of ['tab_flash_lite_preview', 'chat_23310', 'gpt-oss-120b-medium', 'gemini-2.5-pro', NON_AGENT]) {
             if (listedIds.includes(hidden)) throw new Error(`${hidden} should not be listed`);
         }
     });
@@ -173,7 +186,7 @@ async function runTests() {
 
     // --- Validation / error handling ---
 
-    await test('isValidModel accepts listed and hidden-but-supported ids', async () => {
+    await test('isValidModel accepts current and menu-hidden legacy ids explicitly offered to the account', async () => {
         assertEqual(await isValidModel(CODENAME, 'fake-token'), true);
         assertEqual(await isValidModel('gemini-3.8-flash-tiered', 'fake-token'), true);
         assertEqual(await isValidModel('gemini-2.5-pro', 'fake-token'), true);
@@ -185,18 +198,39 @@ async function runTests() {
         assertEqual(await isValidModel('gpt-oss-120b-medium', 'fake-token'), false);
     });
 
+    await test('A supported family in the wider models map does not grant agent access', async () => {
+        assertEqual(await isValidModel(NON_AGENT, 'fake-token'), false);
+        const quotas = await getModelQuotas('fake-token');
+        assertEqual(quotas[NON_AGENT], undefined, 'Non-agent model must not be quota-tracked');
+    });
+
     await test('Quotas include the codename model', async () => {
         const quotas = await getModelQuotas('fake-token');
         assertEqual(quotas[CODENAME].remainingFraction, 0.5);
         if (quotas['gpt-oss-120b-medium']) throw new Error('gpt-oss should not be quota-tracked');
     });
 
-    await test('Backend fetch failure surfaces as an error from listModels', async () => {
+    await test('A warm account catalog is reused during a backend outage', async () => {
+        const callsBefore = fetchCalls;
+        fetchMode = 'fail';
+        try {
+            const cachedListing = await listModels('fake-token');
+            assertEqual(cachedListing.data.map(m => m.id).sort(), listedIds);
+            assertEqual(await isValidModel(CODENAME, 'fake-token'), true);
+            assertEqual(fetchCalls, callsBefore, 'An unexpired account cache must avoid another metadata request');
+        } finally {
+            fetchMode = 'ok';
+        }
+    });
+
+    await test('An uncached account surfaces backend failure instead of borrowing the warm catalog', async () => {
+        const callsBefore = fetchCalls;
         fetchMode = 'fail';
         try {
             let threw = false;
-            try { await listModels('fake-token'); } catch { threw = true; }
-            assertEqual(threw, true, 'listModels should throw when all endpoints fail');
+            try { await listModels('fake-uncached-account-token'); } catch { threw = true; }
+            assertEqual(threw, true, 'listModels should throw when all endpoints fail for an uncached account');
+            assertEqual(fetchCalls > callsBefore, true, 'The failure case must actually reach the mocked backend');
         } finally {
             fetchMode = 'ok';
         }

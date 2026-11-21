@@ -8,7 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
+import { sendMessage, sendMessageStream, getModelQuotas, getSubscriptionTier } from './cloudcode/index.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -166,6 +166,14 @@ function parseError(error) {
         statusCode = 400;
         const msgMatch = error.message.match(/"message":"([^"]+)"/);
         if (msgMatch) errorMessage = msgMatch[1];
+    } else if (error.message === 'No accounts available') {
+        errorType = 'api_error';
+        statusCode = 503;
+        errorMessage = 'No enabled, valid accounts are available.';
+    } else if (error.message.includes('MODEL_METADATA_UNAVAILABLE')) {
+        errorType = 'api_error';
+        statusCode = 503;
+        errorMessage = 'Model access could not be verified. Retry the metadata lookup before generating.';
     } else if (error.message.includes('All endpoints failed')) {
         errorType = 'api_error';
         statusCode = 503;
@@ -368,9 +376,8 @@ app.get('/account-limits', async (req, res) => {
                     const quotas = await getModelQuotas(token, subscription.projectId);
 
                     account.subscription = {
-                        tier: subscription.tier,
-                        projectId: subscription.projectId,
-                        detectedAt: Date.now()
+                        ...subscription,
+                        detectedAt: subscription.detectedAt || new Date().toISOString()
                     };
                     account.quota = {
                         models: quotas,
@@ -641,22 +648,11 @@ app.post('/refresh-token', async (req, res) => {
 app.get('/v1/models', async (req, res) => {
     try {
         await ensureInitialized();
-        const { account } = accountManager.selectAccount();
-        if (!account) {
-            return res.status(503).json({
-                type: 'error',
-                error: {
-                    type: 'api_error',
-                    message: 'No accounts available'
-                }
-            });
-        }
-        const token = await accountManager.getTokenForAccount(account);
-        const models = await listModels(token);
+        const models = await accountManager.prepareModelAccess();
         res.json(models);
     } catch (error) {
         logger.error('[API] Error listing models:', error);
-        res.status(500).json({
+        res.status(503).json({
             type: 'error',
             error: {
                 type: 'api_error',
@@ -722,16 +718,9 @@ app.post('/v1/messages', async (req, res) => {
 
         const modelId = requestedModel;
 
-        const { account: validationAccount } = accountManager.selectAccount();
-        if (validationAccount) {
-            const token = await accountManager.getTokenForAccount(validationAccount);
-            const projectId = validationAccount.subscription?.projectId || null;
-            const valid = await isValidModel(modelId, token, projectId);
-
-            if (!valid) {
-                throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
-            }
-        }
+        // Validate against every healthy account's real catalog, not whichever
+        // account happens to be first (a restricted Pro trial must not mask Ultra).
+        await accountManager.prepareModelAccess(modelId);
 
         // Optimistic Retry: If ALL accounts are rate-limited for this model, reset them to force a fresh check.
         // If we have some available accounts, we try them first.

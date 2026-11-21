@@ -58,6 +58,9 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
     const maxAttempts = Math.max(MAX_RETRIES, accountManager.getAccountCount() + 1);
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Revalidate account eligibility after long waits as well as on entry.
+        await accountManager.prepareModelAccess?.(model);
+
         // Clear any expired rate limits before picking
         accountManager.clearExpiredLimits();
 
@@ -140,6 +143,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             // Get token and project for this account
             const token = await accountManager.getTokenForAccount(account);
             const project = await accountManager.getProjectForAccount(account, token);
+            await accountManager.assertModelAccessForAccount?.(account, model, token, project);
             const payload = buildCloudCodeRequest(anthropicRequest, project, account.email);
 
             logger.debug(`[CloudCode] Starting stream for model: ${model}`);

@@ -19,15 +19,16 @@ import { config } from '../config.js';
  *   4. OS-specific detection (macOS plist / Windows exe)
  *   5. Hardcoded fallback
  *
- * The Cloud Code backend gates newer models (e.g. gemini-4-argon-*) on the
+ * The Cloud Code backend gates newer models (e.g. gemini-4-neon-*) on the
  * User-Agent: it must use the Antigravity Hub format ("antigravity/hub/<version>")
  * with a recent enough version, so an outdated fallback can hide models that the
  * real Antigravity client lists.
  */
 
 // Fallback for User-Agent version (ideVersion in product.json), used only when
-// no installed Antigravity version is detected
-const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.32.0';
+// no installed Antigravity version is detected. Tracks the published Neon App
+// release: https://antigravity.google/docs/changelog (v2.34.0, 2026-11-20).
+const FALLBACK_USER_AGENT_VERSION = process.env.FALLBACK_ANTIGRAVITY_VERSION || '2.34.0';
 
 // Detected versions must be above this to be used (older installs are ignored)
 const MIN_DETECTED_USER_AGENT_VERSION = '2.0.3';
@@ -223,7 +224,7 @@ export function resolveUserAgentVersion({ productVersion, localVersion } = {}) {
 /**
  * Generate a simplified User-Agent string used by the Antigravity binary.
  * Format: "antigravity/hub/version os/arch" (Antigravity 2.x Hub family; the
- * backend hides newer models such as gemini-4-argon-* from the legacy
+ * backend hides newer models such as gemini-4-neon-* from the legacy
  * "antigravity/version os/arch" format)
  * @returns {string} The User-Agent string
  */

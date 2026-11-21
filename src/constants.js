@@ -202,7 +202,7 @@ export const STRATEGY_LABELS = {
     'hybrid': 'Hybrid (Smart Distribution)'
 };
 
-// Gemini-specific limits (Gemini 3.8 / Gemini 4 Argon support up to 65536 output tokens)
+// Gemini-specific output limit used by the request converter
 export const GEMINI_MAX_OUTPUT_TOKENS = 65536;
 
 // Gemini signature handling
@@ -237,7 +237,14 @@ export function getModelFamily(modelName) {
  */
 export function isThinkingModel(modelName) {
     const lower = (modelName || '').toLowerCase();
-    // Claude thinking models have "thinking" in the name
+    // Honor capability metadata for the selected variant, including future suffixes.
+    const metadata = getRegisteredModel(modelName);
+    if (metadata && /^claude-(?:opus|sonnet)-5-5-/.test(lower)) {
+        return metadata.supportsThinking || metadata.supportsAdaptiveThinking;
+    }
+    // Claude 5.5 known ids support thinking even before discovery warms the registry.
+    if (/^claude-(?:opus|sonnet)-5-5-(?:low|medium|high|max)$/.test(lower)) return true;
+    // Legacy Claude thinking models have "thinking" in the name
     if (lower.includes('claude') && lower.includes('thinking')) return true;
     // Gemini thinking models: explicit "thinking" in name, OR gemini version 3+
     if (lower.includes('gemini')) {
@@ -294,8 +301,8 @@ export const MODEL_FALLBACK_MAP = {
 export const BUILTIN_MODEL_MAPPINGS = {
     'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
     'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
-    'claude-opus-5-5': 'claude-opus-4-6-thinking',
-    'claude-sonnet-5-5': 'claude-sonnet-4-6',
+    'claude-opus-5-5': 'claude-opus-5-5-medium',
+    'claude-sonnet-5-5': 'claude-sonnet-5-5-medium',
     'claude-haiku-5-5': 'claude-sonnet-4-6',
     'claude-opus-5': 'claude-opus-4-6-thinking',
     'claude-sonnet-5': 'claude-sonnet-4-6'
