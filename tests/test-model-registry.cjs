@@ -132,7 +132,7 @@ async function runTests() {
         assertEqual(getModelFamily('gemini-3.8-flash-tiered'), 'gemini');
         assertEqual(isThinkingModel('gemini-3.8-flash-tiered'), true);
         assertEqual(getModelFamily('claude-sonnet-5-5-low'), 'claude');
-        assertEqual(isThinkingModel('claude-sonnet-5-5-low'), false, 'Claude thinking is name-based');
+        assertEqual(isThinkingModel('claude-sonnet-5-5-low'), true, 'Claude 5.5 tiers support thinking');
         assertEqual(isThinkingModel('claude-opus-4-6-thinking'), true);
     });
 
