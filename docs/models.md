@@ -36,7 +36,7 @@ For reference only, current official documentation gives these examples:
 | Surface/model | Example ID pattern | Documented levels |
 | --- | --- | --- |
 | Gemini Neon / Hydrogen | `gemini-4-{name}-{level}` | `low`, `medium`, `high`, `xhigh` (UI Extra) |
-| Gemini Carbon / 3.8 Flash | `gemini-4-carbon-{level}` / `gemini-3.8-flash-{level}` | `low`, `medium`, `high` |
+| Gemini Carbon / Argon / 3.8 Flash | `gemini-4-{carbon,argon}-{level}` / `gemini-3.8-flash-{level}` | `low`, `medium`, `high` |
 | **Enterprise** Claude Sonnet / Opus 5.5 | `claude-{name}-5-5-{level}` | `low`, `medium` (default), `high`, `max` |
 
 The Enterprise Claude table is not a guarantee that consumer Pro, trial Pro,
@@ -61,10 +61,13 @@ Sources: [consumer models](https://antigravity.google/docs/models),
 
 `models[id].disabled`, disabled placeholders, and `deprecatedModelIds` are
 excluded from listings, quota rows and request validation. The proxy does not
-follow `newModelId` to another model automatically. If an old Argon entry remains
-in `models` but is marked deprecated/disabled, it cannot be selected or invoked.
-Models absent after the cache refresh are likewise rejected, including requests
-from clients that saved an old ID.
+follow `newModelId` to another model automatically. There is no model-family
+retirement blacklist. In particular, Argon is not globally retired or blocked by
+this proxy: enabled Argon IDs offered to an account remain listed and valid.
+Only an explicit backend disabled/deprecated flag, absence from the account
+catalog, or an unavailable agent roster excludes a model. Models absent after
+the cache refresh are likewise rejected, including requests from clients that
+saved an old ID.
 
 If `agentModelSorts` / `tieredModelIds` are supplied, only their exact agent IDs
 are eligible. This also prevents tiers that exist in a broader metadata map but

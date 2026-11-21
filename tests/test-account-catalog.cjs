@@ -93,17 +93,30 @@ test('malformed metadata never grants permission', async () => {
     await assert.rejects(api.isValidModel(CLAUDE, 'fixture-token'), /Invalid model metadata/);
 });
 
-test('disabled and deprecated Argon are absent from listing, validation and quotas', async () => {
-    const old = 'gemini-4-argon-high';
+test('disabled and deprecated synthetic models are absent from listing, validation and quotas', async () => {
+    const old = 'gemini-fixture-retired-high'; // Synthetic ID, not a claimed real retirement.
     const data = catalog([FLASH, CLAUDE, old]);
     data.models[CLAUDE].disabled = true;
-    data.deprecatedModelIds = { [old]: { newModelId: 'gemini-4-neon-high' } };
+    data.deprecatedModelIds = { [old]: { newModelId: 'gemini-fixture-replacement-high' } };
     globalThis.fetch = async () => response(data);
     assert.deepEqual((await api.listModels('fixture-token')).data.map(m => m.id), [FLASH]);
     assert.equal(await api.isValidModel(old, 'fixture-token'), false);
     assert.equal(await api.isValidModel(CLAUDE, 'fixture-token'), false);
     assert.deepEqual(Object.keys(await api.getModelQuotas('fixture-token')), [FLASH]);
-    assert.equal(await api.isValidModel('gemini-4-neon-high', 'fixture-token'), false, 'never silently replace deprecated model');
+    assert.equal(await api.isValidModel('gemini-fixture-replacement-high', 'fixture-token'), false, 'never silently replace deprecated model');
+});
+
+test('enabled Argon variants remain listed, validated and quota-tracked for an eligible account', async () => {
+    const ids = ['gemini-4-argon-low', 'gemini-4-argon-medium', 'gemini-4-argon-high'];
+    const data = catalog(ids);
+    data.agentModelSorts = [{ groups: [{ modelIds: ids }] }];
+    globalThis.fetch = async url => {
+        assert.match(url, /:fetchAvailableModels$/);
+        return response(data);
+    };
+    assert.deepEqual((await api.listModels('fixture-ultra')).data.map(m => m.id), ids);
+    for (const id of ids) assert.equal(await api.isValidModel(id, 'fixture-ultra'), true);
+    assert.deepEqual(Object.keys(await api.getModelQuotas('fixture-ultra')), ids);
 });
 
 test('agent roster excludes unsupported tiers present in the wider models map', async () => {

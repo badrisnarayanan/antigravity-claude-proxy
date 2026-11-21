@@ -19,6 +19,7 @@ const CLAUDE_VARIANTS = ['opus', 'sonnet'].flatMap(family =>
 const GEMINI_VARIANTS = [
     ...['low', 'medium', 'high', 'xhigh'].map(level => `gemini-4-neon-${level}`),
     ...['low', 'medium', 'high'].map(level => `gemini-4-carbon-${level}`),
+    ...['low', 'medium', 'high'].map(level => `gemini-4-argon-${level}`),
     ...['low', 'medium', 'high', 'xhigh'].map(level => `gemini-4-hydrogen-${level}`),
     ...['low', 'medium', 'high'].map(level => `gemini-3.8-flash-${level}`)
 ];
@@ -96,15 +97,15 @@ test('legacy non-thinking Claude and unsupported Claude tier names are unchanged
 });
 
 test('listing and validation follow the backend when an older model disappears', async () => {
-    let models = Object.fromEntries([...CLAUDE_VARIANTS, ...GEMINI_VARIANTS, 'gemini-4-argon-medium']
+    let models = Object.fromEntries([...CLAUDE_VARIANTS, ...GEMINI_VARIANTS, 'gemini-fixture-old-medium']
         .map(id => [id, { displayName: id, supportsThinking: true }]));
     globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ models }) });
-    assert.ok((await listModels('fake-token')).data.some(m => m.id === 'gemini-4-argon-medium'));
-    delete models['gemini-4-argon-medium'];
+    assert.ok((await listModels('fake-token')).data.some(m => m.id === 'gemini-fixture-old-medium'));
+    delete models['gemini-fixture-old-medium'];
     clearMetadataCache();
     const listing = await listModels('fake-token');
     assert.deepEqual(listing.data.map(m => m.id).sort(), [...CLAUDE_VARIANTS, ...GEMINI_VARIANTS].sort());
-    assert.equal(await isValidModel('gemini-4-argon-medium', 'fake-token'), false);
+    assert.equal(await isValidModel('gemini-fixture-old-medium', 'fake-token'), false);
     for (const id of [...CLAUDE_VARIANTS, ...GEMINI_VARIANTS]) {
         assert.equal(await isValidModel(id, 'fake-token'), true);
     }
