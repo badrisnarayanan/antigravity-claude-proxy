@@ -704,7 +704,8 @@ app.post('/v1/messages', async (req, res) => {
             thinking,
             top_p,
             top_k,
-            temperature
+            temperature,
+            stop_sequences
         } = req.body;
 
         // Resolve model mapping if configured
@@ -766,7 +767,8 @@ app.post('/v1/messages', async (req, res) => {
             thinking,
             top_p,
             top_k,
-            temperature
+            temperature,
+            stop_sequences
         };
 
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
