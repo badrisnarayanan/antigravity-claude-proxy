@@ -292,13 +292,19 @@ export const MODEL_FALLBACK_MAP = {
 
 // Built-in model aliases mapped to canonical backend models
 export const BUILTIN_MODEL_MAPPINGS = {
-    'claude-3-5-sonnet-20241022': 'claude-sonnet-4-6',
-    'claude-3-7-sonnet-20250219': 'claude-sonnet-4-6',
-    'claude-opus-5-5': 'claude-opus-4-6-thinking',
-    'claude-sonnet-5-5': 'claude-sonnet-4-6',
-    'claude-haiku-5-5': 'claude-sonnet-4-6',
-    'claude-opus-5': 'claude-opus-4-6-thinking',
-    'claude-sonnet-5': 'claude-sonnet-4-6'
+    'claude-3-5-sonnet-20241022': 'claude-sonnet-5-5-medium',
+    'claude-3-7-sonnet-20250219': 'claude-sonnet-5-5-medium',
+    'claude-opus-5-5': 'claude-opus-5-5-medium',
+    'claude-opus-5-5[1m]': 'claude-opus-5-5-medium',
+    'claude-sonnet-5-5': 'claude-sonnet-5-5-medium',
+    'claude-sonnet-5-5[1m]': 'claude-sonnet-5-5-medium',
+    'claude-haiku-5-5': 'claude-sonnet-5-5-low',
+    'claude-opus-5': 'claude-opus-5-5-medium',
+    'claude-opus-5[1m]': 'claude-opus-5-5-medium',
+    'claude-sonnet-5': 'claude-sonnet-5-5-low',
+    'claude-sonnet-5[1m]': 'claude-sonnet-5-5-low',
+    'claude-fable-5-2': 'claude-opus-5-5-high',
+    'claude-fable-5-2[1m]': 'claude-opus-5-5-high'
 };
 
 export const TEST_MODELS = {
