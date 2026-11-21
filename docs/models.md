@@ -1,70 +1,88 @@
 # Available Models
 
-## Claude Models
+## Account access, without generation probes
 
-Cloud Code exposes Claude 5.5 thinking levels as distinct model IDs:
+`/v1/models` is the union of the enabled, healthy accounts' actual Cloud Code
+catalogs. A request is eligible only for an account whose own metadata offers
+that exact model ID. A restricted Pro account cannot borrow an Ultra account's
+cached permissions. Selection strategies are unchanged; eligibility is checked
+before selection and again for the selected account/project before generation.
 
-| Model | Model IDs | Thinking levels |
+Subscription labels come from active `paidTier` / `currentTier` metadata.
+`allowedTiers` describes onboarding/upgrade choices, not purchased access.
+Unknown metadata stays unknown. In particular, `paidTier: g1-pro-tier` does not
+prove whether Pro is paid, a trial, a device offer, or a family entitlement: the
+response has no reliable payment/trial field. `paymentStatus` and `trialStatus`
+therefore remain `unknown`; model availability is determined by the account
+catalog instead of guessing permissions from the word Pro.
+
+Metadata lookups use `loadCodeAssist` and `fetchAvailableModels`, never a test
+prompt. Subscription display and project discovery share their metadata lookup;
+model listing, validation and quotas also share one lookup per token/project.
+The in-memory cache lasts five minutes, deduplicates concurrent requests and is
+bounded. Failures are cached for ten seconds to avoid retry storms. Empty model
+lists are authoritative; failed/malformed lookups do not grant access.
+
+## Thinking levels are specific to the account and model
+
+Use complete IDs returned by `/v1/models`; no missing variants are synthesized.
+When Cloud Code supplies `groupedModels.supportedThinkingLevels`, the listing
+can include `thinking_level: { id, display_name }` for matching exact model IDs.
+Suffixes and display labels are kept as returned. `xhigh`, `max`, and the UI
+label Extra must not be universally substituted for one another.
+
+For reference only, current official documentation gives these examples:
+
+| Surface/model | Example ID pattern | Documented levels |
 | --- | --- | --- |
-| Claude Sonnet 5.5 | `claude-sonnet-5-5-{level}` | `low`, `medium` (default), `high`, `max` |
-| Claude Opus 5.5 | `claude-opus-5-5-{level}` | `low`, `medium` (default), `high`, `max` |
+| Gemini Neon / Hydrogen | `gemini-4-{name}-{level}` | `low`, `medium`, `high`, `xhigh` (UI Extra) |
+| Gemini Carbon / 3.8 Flash | `gemini-4-carbon-{level}` / `gemini-3.8-flash-{level}` | `low`, `medium`, `high` |
+| **Enterprise** Claude Sonnet / Opus 5.5 | `claude-{name}-5-5-{level}` | `low`, `medium` (default), `high`, `max` |
 
-Use a complete ID, for example `claude-sonnet-5-5-high`. The built-in aliases
-`claude-sonnet-5-5` and `claude-opus-5-5` resolve to their respective `medium`
-variants, not to Claude 4.6. Explicit tier IDs are forwarded unchanged, with
-Claude thinking, interleaved-thinking headers and tool support enabled.
+The Enterprise Claude table is not a guarantee that consumer Pro, trial Pro,
+or even another backend exposes the same variants. Only that account's
+returned, enabled agent models are selectable. Orchestrator is a planner/executor
+agent mode and is outside these single-model examples.
 
-The suffix selects the backend's effort variant. It is not a fixed token budget:
-this proxy retains its existing Claude thinking-budget behavior (32,000 tokens
-by default, or the client's explicit `thinking.budget_tokens`). It does not
-invent a different budget for each level.
+The built-in aliases `claude-sonnet-5-5` and `claude-opus-5-5` resolve to their
+own `medium` variants, not to 4.6. If that variant is unavailable, the request is
+rejected instead of silently changing generation. Supported explicit tier IDs
+pass through unchanged with Claude thinking/tool handling. Suffix selection is
+separate from the existing thinking-token budget (32,000 by default or the
+client's explicit `thinking.budget_tokens`); this change does not invent budget
+values or translate effort levels between models.
 
-Legacy `claude-sonnet-4-6-thinking`, `claude-opus-4-6-thinking` and
-`claude-sonnet-4-6` remain usable when returned by the backend. Model visibility
-and entitlement depend on the account; aliases do not grant access or fall back
-to a different generation if 5.5 is unavailable.
+Sources: [consumer models](https://antigravity.google/docs/models),
+[Enterprise model IDs/levels](https://antigravity.google/docs/enterprise),
+[`/effort`](https://antigravity.google/docs/cli/commands/effort/), and the
+[public loadCodeAssist response types](https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/code_assist/types.ts).
 
-## Gemini Models
+## Disabled and retired models
 
-| Model | Model IDs | Thinking levels |
-| --- | --- | --- |
-| Gemini 4 Neon | `gemini-4-neon-{level}` | `low`, `medium`, `high`, `xhigh` |
-| Gemini 4 Carbon | `gemini-4-carbon-{level}` | `low`, `medium`, `high` |
-| Gemini 4 Hydrogen | `gemini-4-hydrogen-{level}` | `low`, `medium`, `high`, `xhigh` |
-| Gemini 3.8 Flash | `gemini-3.8-flash-{level}` | `low`, `medium`, `high` |
+`models[id].disabled`, disabled placeholders, and `deprecatedModelIds` are
+excluded from listings, quota rows and request validation. The proxy does not
+follow `newModelId` to another model automatically. If an old Argon entry remains
+in `models` but is marked deprecated/disabled, it cannot be selected or invoked.
+Models absent after the cache refresh are likewise rejected, including requests
+from clients that saved an old ID.
 
-The Antigravity UI calls `xhigh` **Extra**. Claude's `max` and Gemini's `xhigh`
-are different suffixes; use only a variant present in your account's model list.
-The proxy forwards exact IDs without remapping their levels. Orchestrator is a
-planner/executor agent mode and is outside these single-model examples.
+If `agentModelSorts` / `tieredModelIds` are supplied, only their exact agent IDs
+are eligible. This also prevents tiers that exist in a broader metadata map but
+are not offered to this account from appearing as choices. Older responses
+without those roster fields retain name/provider-based classification.
 
-These ID/level examples were checked against the official
-[model documentation](https://antigravity.google/docs/models),
-[enterprise model table](https://antigravity.google/docs/enterprise), and
-[`/effort` reference](https://antigravity.google/docs/cli/commands/effort/).
-They are not a static allowlist or a guarantee of account access.
+The model list comes from Cloud Code, not from the reference table above.
+Codename IDs without `gemini`/`claude` are recognized only through backend
+provider metadata and the agent roster; internal/tab-completion models stay
+excluded. Gemini generations below 3.5 are hidden from the menu, but can still
+be requested explicitly if the account actually lists them as selectable.
 
 ```bash
 curl http://localhost:8080/v1/models
 ```
 
-`/v1/models` hides Gemini generations below 3.5 (`2.5-*`, `3-flash`, `3.1-*`) and the
-unversioned duplicate aliases `gemini-pro-agent` / `gemini-3-flash-agent`. Hidden ids
-still work if configured explicitly (e.g. `ANTHROPIC_MODEL=gemini-3.1-pro-low`).
+## Client version and custom aliases
 
-Gemini models include full thinking support with `thoughtSignature` handling for multi-turn conversations.
-
-## New / Codename Models
-
-The model list comes from Cloud Code's `fetchAvailableModels`, not from a hardcoded list.
-A model shows up in `/v1/models` as soon as the backend returns it for your account. Models that disappear from
-the backend list also disappear on the next model-list refresh; older examples
-such as Argon are not hardcoded as available or silently redirected to a replacement.
-
-- **Codename ids:** ids without `gemini`/`claude` in the name are classified by the backend's
-  `apiProvider` and `supportsThinking` metadata. They are only accepted when the backend lists
-  them as agent models (`agentModelSorts` / `tieredModelIds`). Internal models (`tab_*`, `chat_*`)
-  and other providers stay hidden.
 - **Client version gating:** the backend hides newer models unless the User-Agent uses the
   Antigravity Hub format (`antigravity/hub/<version> <os>/<arch>`) with a recent version. The
   version is detected from the installed Antigravity app; if none is found, the fallback is

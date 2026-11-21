@@ -94,6 +94,7 @@ async function runTests() {
     const { getModelFamily, isThinkingModel, GEMINI_MAX_OUTPUT_TOKENS } = await import('../src/constants.js');
     const { clearModelRegistry, getRegisteredModel } = await import('../src/cloudcode/model-registry.js');
     const { listModels, isValidModel, getModelQuotas } = await import('../src/cloudcode/model-api.js');
+    const { clearMetadataCache } = await import('../src/cloudcode/metadata-cache.js');
     const { buildCloudCodeRequest, buildHeaders } = await import('../src/cloudcode/request-builder.js');
     const { convertAnthropicToGoogle } = await import('../src/format/request-converter.js');
     const { streamSSEResponse } = await import('../src/cloudcode/sse-streamer.js');
@@ -173,10 +174,10 @@ async function runTests() {
 
     // --- Validation / error handling ---
 
-    await test('isValidModel accepts listed and hidden-but-supported ids', async () => {
+    await test('isValidModel accepts only the selectable agent catalog', async () => {
         assertEqual(await isValidModel(CODENAME, 'fake-token'), true);
         assertEqual(await isValidModel('gemini-3.8-flash-tiered', 'fake-token'), true);
-        assertEqual(await isValidModel('gemini-2.5-pro', 'fake-token'), true);
+        assertEqual(await isValidModel('gemini-2.5-pro', 'fake-token'), false);
     });
 
     await test('isValidModel rejects ids the backend does not list', async () => {
@@ -193,12 +194,14 @@ async function runTests() {
 
     await test('Backend fetch failure surfaces as an error from listModels', async () => {
         fetchMode = 'fail';
+        clearMetadataCache();
         try {
             let threw = false;
             try { await listModels('fake-token'); } catch { threw = true; }
             assertEqual(threw, true, 'listModels should throw when all endpoints fail');
         } finally {
             fetchMode = 'ok';
+            clearMetadataCache();
         }
     });
 

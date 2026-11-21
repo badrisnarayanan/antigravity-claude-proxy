@@ -7,17 +7,15 @@
 import {
     ANTIGRAVITY_DB_PATH,
     TOKEN_REFRESH_INTERVAL_MS,
-    LOAD_CODE_ASSIST_ENDPOINTS,
-    LOAD_CODE_ASSIST_HEADERS,
-    CLIENT_METADATA,
     DEFAULT_PROJECT_ID
 } from '../constants.js';
 import { refreshAccessToken, parseRefreshParts, formatRefreshParts } from '../auth/oauth.js';
 import { getAuthStatus } from '../auth/database.js';
 import { logger } from '../utils/logger.js';
-import { isNetworkError, throttledFetch } from '../utils/helpers.js';
+import { isNetworkError } from '../utils/helpers.js';
 import { onboardUser, getDefaultTierId } from './onboarding.js';
-import { parseTierId } from '../cloudcode/model-api.js';
+import { extractSubscriptionFromResponse } from '../cloudcode/subscription.js';
+import { loadCodeAssistMetadata } from '../cloudcode/metadata-api.js';
 
 // Track accounts currently fetching subscription to avoid duplicate calls
 const subscriptionFetchInProgress = new Set();
@@ -118,6 +116,20 @@ export async function getTokenForAccount(account, tokenCache, onInvalid, onSave)
 }
 
 /**
+ * Resolve the project already known to the inference path, without discovery,
+ * onboarding, or network requests. Subscription metadata can be stale and is
+ * deliberately not an inference-project source.
+ */
+export function knownProjectForAccount(account, projectCache = null) {
+    const cached = projectCache?.get(account.email);
+    if (cached) return cached;
+    const managedProject = typeof account.refreshToken === 'string'
+        ? parseRefreshParts(account.refreshToken).managedProjectId : null;
+    if (managedProject) return managedProject;
+    return account.projectId || null;
+}
+
+/**
  * Get project ID for an account
  * Aligned with opencode-antigravity-auth: parses refresh token for stored project IDs
  *
@@ -128,34 +140,20 @@ export async function getTokenForAccount(account, tokenCache, onInvalid, onSave)
  * @returns {Promise<string>} Project ID
  */
 export async function getProjectForAccount(account, token, projectCache, onSave = null) {
-    // Check cache first
-    const cached = projectCache.get(account.email);
-    if (cached) {
-        return cached;
-    }
-
-    // Parse refresh token to get stored project IDs (aligned with opencode-antigravity-auth)
-    const parts = account.refreshToken ? parseRefreshParts(account.refreshToken) : { refreshToken: null, projectId: undefined, managedProjectId: undefined };
-
-    // If we have a managedProjectId in the refresh token, use it
-    if (parts.managedProjectId) {
-        projectCache.set(account.email, parts.managedProjectId);
-        // If subscription is missing/unknown, fetch it now (blocking)
-        if (!account.subscription || account.subscription.tier === 'unknown') {
-            await fetchAndSaveSubscription(token, account, onSave);
+    const knownProject = knownProjectForAccount(account, projectCache);
+    if (knownProject) {
+        if (!projectCache.get(account.email)) {
+            projectCache.set(account.email, knownProject);
+            if (!account.subscription || account.subscription.tier === 'unknown') {
+                await fetchAndSaveSubscription(token, account, onSave);
+            }
         }
-        return parts.managedProjectId;
+        return knownProject;
     }
 
-    // Legacy: check account.projectId for backward compatibility
-    if (account.projectId) {
-        projectCache.set(account.email, account.projectId);
-        // If subscription is missing/unknown, fetch it now (blocking)
-        if (!account.subscription || account.subscription.tier === 'unknown') {
-            await fetchAndSaveSubscription(token, account, onSave);
-        }
-        return account.projectId;
-    }
+    // Preserve the original project hint for explicit discovery below.
+    const parts = account.refreshToken ? parseRefreshParts(account.refreshToken)
+        : { refreshToken: null, projectId: undefined, managedProjectId: undefined };
 
     // Discover managed project, passing projectId for metadata.duetProject
     // Reference: opencode-antigravity-auth - discoverProject handles fallback internally
@@ -221,56 +219,14 @@ export async function discoverProject(token, projectId = undefined) {
     let gotSuccessfulResponse = false;
     let loadCodeAssistData = null;
 
-    const metadata = { ...CLIENT_METADATA };
-    if (projectId) {
-        metadata.duetProject = projectId;
-    }
-
-    for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
-        try {
-            const response = await throttledFetch(`${endpoint}/v1internal:loadCodeAssist`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    ...LOAD_CODE_ASSIST_HEADERS
-                },
-                body: JSON.stringify({ metadata, mode: 1 })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                lastError = `${response.status} - ${errorText}`;
-                logger.debug(`[AccountManager] loadCodeAssist failed at ${endpoint}: ${lastError}`);
-                continue;
-            }
-
-            const data = await response.json();
-            gotSuccessfulResponse = true;
-            loadCodeAssistData = data;
-
-            logger.debug(`[AccountManager] loadCodeAssist response from ${endpoint}:`, JSON.stringify(data));
-
-            // Extract subscription tier from response
-            const subscription = extractSubscriptionFromResponse(data);
-
-            if (typeof data.cloudaicompanionProject === 'string') {
-                logger.success(`[AccountManager] Discovered project: ${data.cloudaicompanionProject}`);
-                return { project: data.cloudaicompanionProject, subscription };
-            }
-            if (data.cloudaicompanionProject?.id) {
-                logger.success(`[AccountManager] Discovered project: ${data.cloudaicompanionProject.id}`);
-                return { project: data.cloudaicompanionProject.id, subscription };
-            }
-
-            // No project found - log tier data and try to onboard the user
-            logger.info(`[AccountManager] No project in loadCodeAssist response, attempting onboardUser...`);
-            logger.debug(`[AccountManager] Tier data for onboarding: paidTier=${JSON.stringify(data.paidTier)}, currentTier=${JSON.stringify(data.currentTier)}, allowedTiers=${JSON.stringify(data.allowedTiers?.map(t => ({ id: t?.id, isDefault: t?.isDefault })))}`);
-            break;
-        } catch (error) {
-            lastError = error.message;
-            logger.debug(`[AccountManager] loadCodeAssist error at ${endpoint}:`, error.message);
-        }
+    try {
+        const data = await loadCodeAssistMetadata(token, projectId);
+        gotSuccessfulResponse = true;
+        loadCodeAssistData = data;
+        const subscription = extractSubscriptionFromResponse(data);
+        if (subscription.projectId) return { project: subscription.projectId, subscription };
+    } catch (error) {
+        lastError = error.message;
     }
 
     // If we got a successful response but no project, try onboarding
@@ -308,39 +264,6 @@ export async function discoverProject(token, projectId = undefined) {
         return { project: projectId, subscription: null };
     }
     return { project: DEFAULT_PROJECT_ID, subscription: null };
-}
-
-/**
- * Extract subscription tier from loadCodeAssist response
- *
- * @param {Object} data - loadCodeAssist response data
- * @returns {{tier: string, projectId: string|null, detectedAt: string}|null} Subscription info
- */
-function extractSubscriptionFromResponse(data) {
-    if (!data) return null;
-
-    // Priority: paidTier > currentTier (consistent with model-api.js)
-    let tier = 'free';
-    let cloudProject = null;
-
-    if (data.paidTier?.id) {
-        tier = parseTierId(data.paidTier.id);
-    } else if (data.currentTier?.id) {
-        tier = parseTierId(data.currentTier.id);
-    }
-
-    // Get project ID
-    if (typeof data.cloudaicompanionProject === 'string') {
-        cloudProject = data.cloudaicompanionProject;
-    } else if (data.cloudaicompanionProject?.id) {
-        cloudProject = data.cloudaicompanionProject.id;
-    }
-
-    return {
-        tier,
-        projectId: cloudProject,
-        detectedAt: new Date().toISOString()
-    };
 }
 
 /**

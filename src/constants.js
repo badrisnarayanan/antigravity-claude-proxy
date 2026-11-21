@@ -237,7 +237,12 @@ export function getModelFamily(modelName) {
  */
 export function isThinkingModel(modelName) {
     const lower = (modelName || '').toLowerCase();
-    // Claude 5.5 exposes thinking levels in the model id, without a "thinking" suffix.
+    // Honor capability metadata for the selected variant, including future suffixes.
+    const metadata = getRegisteredModel(modelName);
+    if (metadata && /^claude-(?:opus|sonnet)-5-5-/.test(lower)) {
+        return metadata.supportsThinking || metadata.supportsAdaptiveThinking;
+    }
+    // Claude 5.5 known ids support thinking even before discovery warms the registry.
     if (/^claude-(?:opus|sonnet)-5-5-(?:low|medium|high|max)$/.test(lower)) return true;
     // Legacy Claude thinking models have "thinking" in the name
     if (lower.includes('claude') && lower.includes('thinking')) return true;

@@ -7,22 +7,15 @@
 import {
     ANTIGRAVITY_ENDPOINT_FALLBACKS,
     ANTIGRAVITY_HEADERS,
-    LOAD_CODE_ASSIST_ENDPOINTS,
-    LOAD_CODE_ASSIST_HEADERS,
-    CLIENT_METADATA,
-    getModelFamily,
-    MODEL_VALIDATION_CACHE_TTL_MS
+    getModelFamily
 } from '../constants.js';
 import { logger } from '../utils/logger.js';
-import { throttledFetch } from '../utils/helpers.js';
-import { recordModels } from './model-registry.js';
-
-// Model validation cache
-const modelCache = {
-    validModels: new Set(),
-    lastFetched: 0,
-    fetchPromise: null  // Prevents concurrent fetches
-};
+import { metadataJSON } from './metadata-http.js';
+import { recordModels, collectAgentModelIds } from './model-registry.js';
+import { cachedMetadata } from './metadata-cache.js';
+import { extractSubscriptionFromResponse } from './subscription.js';
+import { loadCodeAssistMetadata } from './metadata-api.js';
+export { parseTierId } from './subscription.js';
 
 /**
  * Check if a model is supported (Claude or Gemini, by name or backend provider)
@@ -53,7 +46,7 @@ function isOldGemini(modelId) {
 
 /**
  * Whether a model id is a backend placeholder for a model the account can't
- * use (e.g. 'gemini-4-argon-disabled' on free-tier accounts), hidden from the
+ * use (an id ending in '-disabled'), hidden from the
  * /v1/models listing since requests to it can't succeed.
  * @param {string} modelId
  * @returns {boolean}
@@ -69,36 +62,50 @@ function isDisabledPlaceholder(modelId) {
  * @param {string} token - OAuth access token
  * @returns {Promise<{object: string, data: Array<{id: string, object: string, created: number, owned_by: string, description: string}>}>} List of available models
  */
-export async function listModels(token) {
-    const data = await fetchAvailableModels(token);
-    if (!data || !data.models) {
-        return { object: 'list', data: [] };
+/** Selectable variants from this account's metadata, never synthesized tiers. */
+function selectableEntries(data) {
+    if (!data || !data.models || typeof data.models !== 'object' || Array.isArray(data.models)) {
+        throw new Error('Invalid model metadata response');
     }
-
     recordModels(data);
-    const supportedEntries = Object.entries(data.models).filter(([modelId]) => isSupportedModel(modelId));
+    const hasAgentCatalog = Array.isArray(data.agentModelSorts)
+        || (data.tieredModelIds && typeof data.tieredModelIds === 'object');
+    const agentIds = collectAgentModelIds(data);
+    const retired = data.deprecatedModelIds;
+    const deprecatedIds = new Set(Array.isArray(retired) ? retired : Object.keys(retired || {}));
+    return Object.entries(data.models).filter(([id, model]) => isSupportedModel(id)
+        && model && typeof model === 'object' && model.disabled !== true
+        && !deprecatedIds.has(id) && !isDisabledPlaceholder(id)
+        && (!hasAgentCatalog || agentIds.has(id)));
+}
 
-    // Warm the model validation cache with every supported id, unfiltered -
-    // isValidModel() (the actual request-time gate) must keep accepting an
-    // id a client already has configured even if it's hidden from the
-    // listing below.
-    modelCache.validModels = new Set(supportedEntries.map(([modelId]) => modelId));
-    modelCache.lastFetched = Date.now();
+/** Match labels only to exact IDs already returned in models; never add variants. */
+function thinkingLevelMetadata(data, id) {
+    for (const [base, group] of Object.entries(data.groupedModels || {})) {
+        for (const level of group?.supportedThinkingLevels || []) {
+            const suffix = level?.thinkingSuffix;
+            if (typeof suffix !== 'string' || !suffix) continue;
+            if (id === base + suffix || id === `${base}-${suffix}`) {
+                return { id: suffix, display_name: level.thinkingDisplayName || suffix };
+            }
+        }
+    }
+    return undefined;
+}
 
-    const modelList = supportedEntries
-        .filter(([modelId]) => !isOldGemini(modelId) && !isDisabledPlaceholder(modelId))
-        .map(([modelId, modelData]) => ({
-            id: modelId,
+export async function listModels(token, projectId = null) {
+    const data = await fetchAvailableModels(token, projectId);
+    const modelList = selectableEntries(data)
+        .filter(([id]) => !isOldGemini(id))
+        .map(([id, metadata]) => ({
+            id,
             object: 'model',
             created: Math.floor(Date.now() / 1000),
             owned_by: 'anthropic',
-            description: modelData.displayName || modelId
+            description: metadata.displayName || id,
+            ...(thinkingLevelMetadata(data, id) ? { thinking_level: thinkingLevelMetadata(data, id) } : {})
         }));
-
-    return {
-        object: 'list',
-        data: modelList
-    };
+    return { object: 'list', data: modelList };
 }
 
 /**
@@ -110,6 +117,15 @@ export async function listModels(token) {
  * @returns {Promise<Object>} Raw response from fetchAvailableModels API
  */
 export async function fetchAvailableModels(token, projectId = null) {
+    return cachedMetadata('models', token, projectId, async () => {
+        const data = await requestAvailableModels(token, projectId);
+        // An empty, valid account catalog is authoritative. A malformed one isn't.
+        selectableEntries(data);
+        return data;
+    });
+}
+
+async function requestAvailableModels(token, projectId) {
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -122,14 +138,14 @@ export async function fetchAvailableModels(token, projectId = null) {
     for (const endpoint of ANTIGRAVITY_ENDPOINT_FALLBACKS) {
         try {
             const url = `${endpoint}/v1internal:fetchAvailableModels`;
-            const response = await throttledFetch(url, {
+            const response = await metadataJSON(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body)
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
+                const errorText = response.data;
                 logger.warn(`[CloudCode] fetchAvailableModels error at ${endpoint}: ${response.status}`);
                 // Detect permanent ToS ban — no point trying other endpoints
                 if (response.status === 403) {
@@ -141,7 +157,7 @@ export async function fetchAvailableModels(token, projectId = null) {
                 continue;
             }
 
-            return await response.json();
+            return response.data;
         } catch (error) {
             logger.warn(`[CloudCode] fetchAvailableModels failed at ${endpoint}:`, error.message);
         }
@@ -164,9 +180,7 @@ export async function getModelQuotas(token, projectId = null) {
     recordModels(data);
 
     const quotas = {};
-    for (const [modelId, modelData] of Object.entries(data.models)) {
-        // Only include Claude and Gemini models
-        if (!isSupportedModel(modelId)) continue;
+    for (const [modelId, modelData] of selectableEntries(data)) {
 
         if (modelData.quotaInfo) {
             quotas[modelId] = {
@@ -181,31 +195,6 @@ export async function getModelQuotas(token, projectId = null) {
 }
 
 /**
- * Parse tier ID string to determine subscription level
- * @param {string} tierId - The tier ID from the API
- * @returns {'free' | 'pro' | 'ultra' | 'unknown'} The subscription tier
- */
-export function parseTierId(tierId) {
-    if (!tierId) return 'unknown';
-    const lower = tierId.toLowerCase();
-
-    if (lower.includes('ultra')) {
-        return 'ultra';
-    }
-    if (lower === 'standard-tier') {
-        // standard-tier = "Gemini Code Assist" (paid, project-based)
-        return 'pro';
-    }
-    if (lower.includes('pro') || lower.includes('premium')) {
-        return 'pro';
-    }
-    if (lower === 'free-tier' || lower.includes('free')) {
-        return 'free';
-    }
-    return 'unknown';
-}
-
-/**
  * Get subscription tier for an account
  * Calls loadCodeAssist API to discover project ID and subscription tier
  *
@@ -213,166 +202,16 @@ export function parseTierId(tierId) {
  * @returns {Promise<{tier: string, projectId: string|null}>} Subscription tier (free/pro/ultra) and project ID
  */
 export async function getSubscriptionTier(token) {
-    const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...LOAD_CODE_ASSIST_HEADERS
-    };
-
-    for (const endpoint of LOAD_CODE_ASSIST_ENDPOINTS) {
-        try {
-            const url = `${endpoint}/v1internal:loadCodeAssist`;
-            const response = await throttledFetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    metadata: CLIENT_METADATA,
-                    mode: 1
-                })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => '');
-                logger.warn(`[CloudCode] loadCodeAssist error at ${endpoint}: ${response.status}`);
-                // Detect permanent ToS ban — no point trying other endpoints
-                if (response.status === 403) {
-                    const lower = (errorText || '').toLowerCase();
-                    if (lower.includes('has been disabled') && lower.includes('violation of terms of service')) {
-                        throw new Error(`ACCOUNT_BANNED: ${errorText}`);
-                    }
-                }
-                continue;
-            }
-
-            const data = await response.json();
-
-            // Debug: Log all tier-related fields from the response
-            logger.debug(`[CloudCode] loadCodeAssist tier data: paidTier=${JSON.stringify(data.paidTier)}, currentTier=${JSON.stringify(data.currentTier)}, allowedTiers=${JSON.stringify(data.allowedTiers?.map(t => ({ id: t?.id, isDefault: t?.isDefault })))}`);
-
-            // Extract project ID
-            let projectId = null;
-            if (typeof data.cloudaicompanionProject === 'string') {
-                projectId = data.cloudaicompanionProject;
-            } else if (data.cloudaicompanionProject?.id) {
-                projectId = data.cloudaicompanionProject.id;
-            }
-
-            // Extract subscription tier
-            // Priority: paidTier > currentTier > allowedTiers
-            // - paidTier.id: "g1-pro-tier", "g1-ultra-tier" (Google One subscription)
-            // - currentTier.id: "standard-tier" (pro), "free-tier" (free)
-            // - allowedTiers: fallback when currentTier is missing
-            // Note: paidTier is sometimes missing from the response even for Pro accounts
-            let tier = 'unknown';
-            let tierId = null;
-            let tierSource = null;
-
-            // 1. Check paidTier first (Google One AI subscription - most reliable)
-            if (data.paidTier?.id) {
-                tierId = data.paidTier.id;
-                tier = parseTierId(tierId);
-                tierSource = 'paidTier';
-            }
-
-            // 2. Fall back to currentTier if paidTier didn't give us a tier
-            if (tier === 'unknown' && data.currentTier?.id) {
-                tierId = data.currentTier.id;
-                tier = parseTierId(tierId);
-                tierSource = 'currentTier';
-            }
-
-            // 3. Fall back to allowedTiers (find the default or first non-free tier)
-            if (tier === 'unknown' && Array.isArray(data.allowedTiers) && data.allowedTiers.length > 0) {
-                // First look for the default tier
-                let defaultTier = data.allowedTiers.find(t => t?.isDefault);
-                if (!defaultTier) {
-                    defaultTier = data.allowedTiers[0];
-                }
-                if (defaultTier?.id) {
-                    tierId = defaultTier.id;
-                    tier = parseTierId(tierId);
-                    tierSource = 'allowedTiers';
-                }
-            }
-
-            logger.debug(`[CloudCode] Subscription detected: ${tier} (tierId: ${tierId}, source: ${tierSource}), Project: ${projectId}`);
-
-            return { tier, projectId };
-        } catch (error) {
-            logger.warn(`[CloudCode] loadCodeAssist failed at ${endpoint}:`, error.message);
-        }
-    }
-
-    // Fallback: return default values if all endpoints fail
-    logger.warn('[CloudCode] Failed to detect subscription tier from all endpoints. Defaulting to free.');
-    return { tier: 'free', projectId: null };
-}
-
-/**
- * Populate the model validation cache
- * @param {string} token - OAuth access token
- * @param {string} [projectId] - Optional project ID
- * @returns {Promise<void>}
- */
-async function populateModelCache(token, projectId = null) {
-    const now = Date.now();
-
-    // Check if cache is fresh
-    if (modelCache.validModels.size > 0 && (now - modelCache.lastFetched) < MODEL_VALIDATION_CACHE_TTL_MS) {
-        return;
-    }
-
-    // If already fetching, wait for it
-    if (modelCache.fetchPromise) {
-        await modelCache.fetchPromise;
-        return;
-    }
-
-    // Start fetch
-    modelCache.fetchPromise = (async () => {
-        try {
-            const data = await fetchAvailableModels(token, projectId);
-            if (data && data.models) {
-                recordModels(data);
-                const validIds = Object.keys(data.models).filter(modelId => isSupportedModel(modelId));
-                modelCache.validModels = new Set(validIds);
-                modelCache.lastFetched = Date.now();
-                logger.debug(`[CloudCode] Model cache populated with ${validIds.length} models`);
-            }
-        } catch (error) {
-            logger.warn(`[CloudCode] Failed to populate model cache: ${error.message}`);
-            // Don't throw - validation should degrade gracefully
-        } finally {
-            modelCache.fetchPromise = null;
-        }
-    })();
-
-    await modelCache.fetchPromise;
-}
-
-/**
- * Check if a model ID is valid (exists in the available models list)
- * Uses a cached model list with TTL-based refresh
- * @param {string} modelId - Model ID to validate
- * @param {string} token - OAuth access token for cache population
- * @param {string} [projectId] - Optional project ID
- * @returns {Promise<boolean>} True if model is valid
- */
-export async function isValidModel(modelId, token, projectId = null) {
     try {
-        // Populate cache if needed
-        await populateModelCache(token, projectId);
-
-        // If cache is populated, validate against it
-        if (modelCache.validModels.size > 0) {
-            return modelCache.validModels.has(modelId);
-        }
-
-        // Cache empty (fetch failed) - fail open, let API validate
-        return true;
-    } catch (error) {
-        logger.debug(`[CloudCode] Model validation error: ${error.message}`);
-        // Fail open - let the API validate
-        return true;
+        return extractSubscriptionFromResponse(await loadCodeAssistMetadata(token));
+    } catch {
+        logger.warn('[CloudCode] Subscription metadata unavailable; entitlement remains unknown.');
+        return extractSubscriptionFromResponse(null);
     }
+}
+
+/** Check only the exact variant this account's catalog offers. Fail closed. */
+export async function isValidModel(modelId, token, projectId = null) {
+    const data = await fetchAvailableModels(token, projectId);
+    return selectableEntries(data).some(([id]) => id === modelId);
 }

@@ -29,11 +29,12 @@ const baseRequest = {
         type: 'object', properties: { city: { type: 'string' } }, required: ['city']
     } }]
 };
-let constants, buildCloudCodeRequest, buildHeaders, listModels, isValidModel;
+let constants, buildCloudCodeRequest, buildHeaders, listModels, isValidModel, clearMetadataCache;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
     constants = await import('../src/constants.js');
+    ({ clearMetadataCache } = await import('../src/cloudcode/metadata-cache.js'));
     ({ buildCloudCodeRequest, buildHeaders } = await import('../src/cloudcode/request-builder.js'));
     ({ listModels, isValidModel } = await import('../src/cloudcode/model-api.js'));
 });
@@ -100,6 +101,7 @@ test('listing and validation follow the backend when an older model disappears',
     globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ models }) });
     assert.ok((await listModels('fake-token')).data.some(m => m.id === 'gemini-4-argon-medium'));
     delete models['gemini-4-argon-medium'];
+    clearMetadataCache();
     const listing = await listModels('fake-token');
     assert.deepEqual(listing.data.map(m => m.id).sort(), [...CLAUDE_VARIANTS, ...GEMINI_VARIANTS].sort());
     assert.equal(await isValidModel('gemini-4-argon-medium', 'fake-token'), false);

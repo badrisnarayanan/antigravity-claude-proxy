@@ -38,6 +38,9 @@ const tests = [
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },
     { name: 'Model Registry & Routing', file: 'test-model-registry.cjs' },
     { name: 'Current Model Tiers (Offline)', file: 'test-current-model-tiers.cjs' },
+    { name: 'Account Catalog Isolation (Offline)', file: 'test-account-catalog.cjs' },
+    { name: 'Subscription Metadata (Offline)', file: 'test-subscription-metadata.cjs' },
+    { name: 'Account Model Access (Offline)', file: 'test-account-model-access.cjs' },
     { name: 'Version Detection', file: 'test-version-detection.js' },
     { name: 'Usage Stats & Model Tracking', file: 'test-usage-stats.js' }
 ];
