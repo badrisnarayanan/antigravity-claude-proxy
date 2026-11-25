@@ -31,6 +31,7 @@ const tests = [
     { name: 'Empty Response Retry', file: 'test-empty-response-retry.cjs' },
     { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
     { name: 'Billing Header Stripping', file: 'test-billing-header.cjs' },
+    { name: 'Gemini Tool Choice', file: 'test-gemini-tool-choice.cjs' },
     { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'System Prompt Placement', file: 'test-system-prompt-placement.cjs' },
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
