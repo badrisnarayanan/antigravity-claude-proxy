@@ -93,6 +93,7 @@ The proxy supports `http_proxy`, `HTTP_PROXY`, `https_proxy`, and `HTTPS_PROXY` 
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
 - **Max Accounts**: Set `maxAccounts` (1-100) to limit the number of Google accounts. Default: 10.
 - **Quota Threshold**: Set `globalQuotaThreshold` (0-0.99) to switch accounts before quota drops below a minimum level. Supports per-account and per-model overrides.
+- **Extra Stop Sequences**: Set `extraStopSequences` (array of strings, default `[]`) to append proxy-level stop sequences to every request (deduplicated with client `stop_sequences` and capped at 5 total, client entries first). Example: `["\nuser\n<system-reminder>"]` — some Gemini models occasionally write a made-up next user turn after their own text in Claude Code sessions.
 - **Endpoint Fallback**: Automatic 403/404 endpoint fallback for API compatibility.
 
 Refer to `config.example.json` for a complete list of fields and documentation.

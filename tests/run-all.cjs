@@ -34,6 +34,7 @@ const tests = [
     { name: 'Gemini Tool Choice', file: 'test-gemini-tool-choice.cjs' },
     { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'System Prompt Placement', file: 'test-system-prompt-placement.cjs' },
+    { name: 'Stop Sequences', file: 'test-stop-sequences.cjs' },
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
     { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },

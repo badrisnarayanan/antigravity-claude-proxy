@@ -22,7 +22,42 @@ import {
     cleanCacheControl,
     clampGeminiThinkingBudget
 } from './thinking-utils.js';
+import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+
+// Gemini accepts at most 5 stop sequences in generationConfig.stopSequences.
+const MAX_STOP_SEQUENCES = 5;
+
+/**
+ * Merge client stop_sequences with configured extraStopSequences.
+ * Client entries come first; empty strings and duplicates are removed;
+ * the merged list is capped at MAX_STOP_SEQUENCES.
+ *
+ * @param {Array<string>} [clientStops] - Client-supplied stop_sequences
+ * @param {Array<string>} [extraStops] - Configured extraStopSequences
+ * @returns {Array<string>} Effective stop sequences
+ */
+function mergeStopSequences(clientStops, extraStops) {
+    const merged = [];
+    const seen = new Set();
+
+    for (const list of [clientStops, extraStops]) {
+        if (!Array.isArray(list)) continue;
+        for (const seq of list) {
+            if (typeof seq !== 'string' || seq.length === 0 || seen.has(seq)) continue;
+            seen.add(seq);
+            merged.push(seq);
+        }
+    }
+
+    if (merged.length > MAX_STOP_SEQUENCES) {
+        const dropped = merged.slice(MAX_STOP_SEQUENCES);
+        logger.warn(`[RequestConverter] Capping stopSequences at ${MAX_STOP_SEQUENCES}, dropping ${dropped.length} sequence(s): ${JSON.stringify(dropped)}`);
+        return merged.slice(0, MAX_STOP_SEQUENCES);
+    }
+
+    return merged;
+}
 
 // Claude Code injects a billing pseudo-header as a system prompt block, e.g.
 // "x-anthropic-billing-header: cc_version=2.1.274.834; cc_entrypoint=sdk-cli;".
@@ -166,8 +201,9 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     if (top_k !== undefined) {
         googleRequest.generationConfig.topK = top_k;
     }
-    if (stop_sequences && stop_sequences.length > 0) {
-        googleRequest.generationConfig.stopSequences = stop_sequences;
+    const effectiveStopSequences = mergeStopSequences(stop_sequences, config.extraStopSequences);
+    if (effectiveStopSequences.length > 0) {
+        googleRequest.generationConfig.stopSequences = effectiveStopSequences;
     }
 
     // Enable thinking for thinking models (Claude and Gemini 3+)
