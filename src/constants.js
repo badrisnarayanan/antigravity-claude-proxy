@@ -281,7 +281,9 @@ export const OAUTH_REDIRECT_URI = `http://localhost:${OAUTH_CONFIG.callbackPort}
 // Reference: GitHub issue #76, CLIProxyAPI, gcli2api
 export const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.**Absolute paths only****Proactiveness**`;
 
-// Model fallback mapping - maps primary model to fallback when quota exhausted
+// Model fallback mapping - maps primary model to fallback when quota exhausted.
+// Only used while its target is still offered; otherwise getFallbackModel()
+// (src/fallback-config.js) derives one from the live model list.
 export const MODEL_FALLBACK_MAP = {
     'gemini-3.1-pro-high': 'claude-opus-4-6-thinking',
     'gemini-3.1-pro-low': 'claude-sonnet-4-6',
@@ -290,7 +292,9 @@ export const MODEL_FALLBACK_MAP = {
     'claude-sonnet-4-6': 'gemini-3-flash'
 };
 
-// Built-in model aliases mapped to canonical backend models
+// Static alias table, used ONLY when the live model list can't be fetched.
+// Normally aliases resolve against the account's live list
+// (src/cloudcode/model-resolver.js), so this table going stale is harmless.
 export const BUILTIN_MODEL_MAPPINGS = {
     'claude-3-5-sonnet-20241022': 'claude-sonnet-5-5-medium',
     'claude-3-7-sonnet-20250219': 'claude-sonnet-5-5-medium',
@@ -318,11 +322,13 @@ export const DEFAULT_PRESETS = [
         config: {
             ANTHROPIC_AUTH_TOKEN: 'test',
             ANTHROPIC_BASE_URL: 'http://localhost:8080',
-            ANTHROPIC_MODEL: 'claude-opus-4-6-thinking',
-            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-6-thinking',
-            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6',
-            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-sonnet-4-6',
-            CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-4-6',
+            // Claude Code model names; resolved to the newest model the
+            // account offers (see src/cloudcode/model-resolver.js)
+            ANTHROPIC_MODEL: 'claude-opus-5-5',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5',
+            CLAUDE_CODE_SUBAGENT_MODEL: 'claude-sonnet-5-5',
             ENABLE_EXPERIMENTAL_MCP_CLI: 'true'
         }
     },

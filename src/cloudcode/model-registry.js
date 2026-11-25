@@ -11,6 +11,7 @@
  */
 
 const registry = new Map();
+let defaultAgentModelId = null;
 
 /**
  * Map a Cloud Code apiProvider value to a model family.
@@ -65,6 +66,9 @@ function hasFamilyInName(modelId) {
 export function recordModels(data) {
     if (!data || !data.models) return;
     const agentIds = collectAgentModelIds(data);
+    if (typeof data.defaultAgentModelId === 'string' && data.models[data.defaultAgentModelId]) {
+        defaultAgentModelId = data.defaultAgentModelId;
+    }
 
     for (const [modelId, modelData] of Object.entries(data.models)) {
         const family = familyFromProvider(modelData?.apiProvider);
@@ -74,7 +78,8 @@ export function recordModels(data) {
             family,
             supportsThinking: modelData?.supportsThinking === true,
             maxOutputTokens: modelData?.maxOutputTokens ?? null,
-            displayName: modelData?.displayName || null
+            displayName: modelData?.displayName || null,
+            disabled: modelData?.disabled === true
         });
     }
 }
@@ -88,6 +93,29 @@ export function getRegisteredModel(modelId) {
     return registry.get(modelId);
 }
 
+/**
+ * Ids of every recorded model the backend reports as usable (placeholders for
+ * models the account can't use, `*-disabled` / `disabled: true`, excluded).
+ * @returns {Set<string>}
+ */
+export function getRegisteredModelIds() {
+    const ids = new Set();
+    for (const [modelId, meta] of registry) {
+        if (!meta.disabled && !modelId.endsWith('-disabled')) ids.add(modelId);
+    }
+    return ids;
+}
+
+/**
+ * The backend's default agent model (fetchAvailableModels.defaultAgentModelId),
+ * e.g. 'gemini-4-hydrogen-high'. Null until a model list has been fetched.
+ * @returns {string|null}
+ */
+export function getDefaultAgentModelId() {
+    return defaultAgentModelId;
+}
+
 export function clearModelRegistry() {
     registry.clear();
+    defaultAgentModelId = null;
 }
