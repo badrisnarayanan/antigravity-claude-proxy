@@ -256,6 +256,26 @@ export function convertAnthropicToGoogle(anthropicRequest) {
         googleRequest.tools = [{ functionDeclarations }];
         logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
 
+        // Gemini: preserve Anthropic tool selection semantics.
+        if (isGeminiModel) {
+            const choice = anthropicRequest.tool_choice;
+            const type = typeof choice === 'string' ? choice : choice?.type;
+            let functionCallingConfig;
+            if (type === 'tool' && choice.name) {
+                const name = String(choice.name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+                functionCallingConfig = { mode: 'ANY', allowedFunctionNames: [name] };
+            } else if (type === 'any' || type === 'required') {
+                functionCallingConfig = { mode: 'ANY' };
+            } else if (type === 'none') {
+                functionCallingConfig = { mode: 'NONE' };
+            } else if (type === 'auto') {
+                functionCallingConfig = { mode: 'AUTO' };
+            }
+            if (functionCallingConfig) {
+                googleRequest.toolConfig = { functionCallingConfig };
+            }
+        }
+
         // For Claude models, set functionCallingConfig.mode = "VALIDATED"
         // This ensures strict parameter validation (matches opencode-antigravity-auth)
         if (isClaudeModel) {
