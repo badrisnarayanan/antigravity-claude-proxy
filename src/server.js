@@ -8,7 +8,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel } from './cloudcode/index.js';
+import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
+import { resolveModelAlias } from './cloudcode/model-resolver.js';
 import { mountWebUI } from './webui/index.js';
 import { config } from './config.js';
 
@@ -715,19 +716,32 @@ app.post('/v1/messages', async (req, res) => {
             const targetModel = modelMapping[requestedModel].mapping;
             logger.info(`[Server] Mapping model ${requestedModel} -> ${targetModel}`);
             requestedModel = targetModel;
-        } else if (BUILTIN_MODEL_MAPPINGS[requestedModel]) {
-            const targetModel = BUILTIN_MODEL_MAPPINGS[requestedModel];
-            logger.info(`[Server] Built-in mapping model ${requestedModel} -> ${targetModel}`);
-            requestedModel = targetModel;
+        }
+
+        const { account: validationAccount } = accountManager.selectAccount();
+        let validationToken = null;
+        let validationProjectId = null;
+        let availableModels = null;
+        if (validationAccount) {
+            validationToken = await accountManager.getTokenForAccount(validationAccount);
+            validationProjectId = validationAccount.subscription?.projectId || null;
+            availableModels = await getAvailableModelIds(validationToken, validationProjectId);
+        }
+
+        // Resolve client aliases (claude-sonnet-5, claude-opus-5-5[1m], ...) and
+        // retired ids against the models the account offers right now, falling
+        // back to the static table only when the live list is unavailable.
+        const resolved = resolveModelAlias(requestedModel, availableModels, BUILTIN_MODEL_MAPPINGS);
+        if (resolved.model !== requestedModel) {
+            const how = resolved.source === 'live' ? 'live catalog' : resolved.source === 'static' ? 'built-in table' : 'exact';
+            logger.info(`[Server] Resolved model ${requestedModel} -> ${resolved.model} (${how})`);
+            requestedModel = resolved.model;
         }
 
         const modelId = requestedModel;
 
-        const { account: validationAccount } = accountManager.selectAccount();
         if (validationAccount) {
-            const token = await accountManager.getTokenForAccount(validationAccount);
-            const projectId = validationAccount.subscription?.projectId || null;
-            const valid = await isValidModel(modelId, token, projectId);
+            const valid = await isValidModel(modelId, validationToken, validationProjectId);
 
             if (!valid) {
                 throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);

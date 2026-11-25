@@ -376,3 +376,20 @@ export async function isValidModel(modelId, token, projectId = null) {
         return true;
     }
 }
+
+/**
+ * Get the model ids the backend currently offers (cached, same TTL as
+ * validation). Used to resolve client aliases like `claude-sonnet-5` to a
+ * model that actually exists.
+ * @param {string} token - OAuth access token for cache population
+ * @param {string} [projectId] - Optional project ID
+ * @returns {Promise<Set<string>>} Available ids, empty if the list couldn't be fetched
+ */
+export async function getAvailableModelIds(token, projectId = null) {
+    try {
+        await populateModelCache(token, projectId);
+    } catch (error) {
+        logger.debug(`[CloudCode] Could not load available models: ${error.message}`);
+    }
+    return new Set([...modelCache.validModels].filter(id => !isDisabledPlaceholder(id)));
+}

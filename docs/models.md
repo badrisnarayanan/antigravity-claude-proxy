@@ -2,11 +2,33 @@
 
 ## Claude Models
 
-| Model ID                     | Description                              |
-| ----------------------------- | ---------------------------------------- |
-| `claude-sonnet-4-6-thinking`  | Claude Sonnet 4.6 with extended thinking |
-| `claude-opus-4-6-thinking`    | Claude Opus 4.6 with extended thinking   |
-| `claude-sonnet-4-6`           | Claude Sonnet 4.6 without thinking       |
+Which Claude models you get depends on your plan, and Google renames them from time to time.
+Check `curl http://localhost:8080/v1/models` for your account's exact ids. As of November 2026:
+
+| Plan             | Claude ids                                                        |
+| ---------------- | ----------------------------------------------------------------- |
+| Google AI Pro / Ultra | `claude-opus-5-5-{low,medium,high}`, `claude-sonnet-5-5-{low,medium,high}` |
+| Free             | `claude-opus-4-6-thinking`, `claude-sonnet-4-6` (access ends Nov 30, 2026) |
+
+### Claude Code model names resolve automatically
+
+Claude Code sends its own model names (`claude-opus-5-5`, `claude-sonnet-5`, `claude-haiku-5-5`,
+`claude-fable-5-2`, with or without `[1m]`). These aren't backend ids, so the proxy resolves them
+against your account's live model list:
+
+| Requested name     | Resolves to                                 |
+| ------------------ | ------------------------------------------- |
+| `claude-opus-*`    | newest Opus, `medium` effort                |
+| `claude-sonnet-*`  | newest Sonnet, `medium` effort              |
+| `claude-sonnet-5`  | newest Sonnet, `low` effort (Auto Mode's safety classifier) |
+| `claude-haiku-*`   | newest Sonnet, `low` effort (no Haiku on the backend) |
+| `claude-fable-*`   | newest Opus, `high` effort (no Fable on the backend) |
+
+"Newest" means the highest version the account offers. If that effort isn't offered, the closest
+one is used (e.g. `claude-opus-4-6-thinking` on free accounts). A backend id your account no longer
+offers (e.g. `claude-sonnet-4-6` after an upgrade) resolves the same way, so old configs keep
+working. A `modelMapping` entry in `config.json` still takes priority, and an id the account
+offers as-is is never rewritten. If the live list can't be fetched, a built-in table is used.
 
 ## Gemini Models
 
