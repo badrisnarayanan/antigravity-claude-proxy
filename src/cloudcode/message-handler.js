@@ -18,7 +18,7 @@ import {
     BACKOFF_BY_ERROR_TYPE,
     isThinkingModel
 } from '../constants.js';
-import { convertGoogleToAnthropic } from '../format/index.js';
+import { convertGoogleToAnthropic, resolveGroundingMetadataUrls } from '../format/index.js';
 import { isRateLimitError, isAuthError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
 import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
@@ -329,6 +329,11 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                     // Non-thinking models use regular JSON
                     const data = await response.json();
                     logger.debug('[CloudCode] Response received');
+                    // Resolve grounding redirect URLs if Google Search grounding was used
+                    const firstCand = (data.response || data)?.candidates?.[0];
+                    if (firstCand?.groundingMetadata) {
+                        firstCand.groundingMetadata = await resolveGroundingMetadataUrls(firstCand.groundingMetadata);
+                    }
                     // Clear rate limit state on success
                     clearRateLimitState(account.email, model);
                     accountManager.notifySuccess(account, model);

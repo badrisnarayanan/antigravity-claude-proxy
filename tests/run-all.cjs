@@ -32,6 +32,7 @@ const tests = [
     { name: 'Schema Sanitizer', file: 'test-schema-sanitizer.cjs' },
     { name: 'Billing Header Stripping', file: 'test-billing-header.cjs' },
     { name: 'Gemini Tool Choice', file: 'test-gemini-tool-choice.cjs' },
+    { name: 'Web Search Grounding', file: 'test-web-search.cjs' },
     { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'System Prompt Placement', file: 'test-system-prompt-placement.cjs' },
     { name: 'Stop Sequences', file: 'test-stop-sequences.cjs' },

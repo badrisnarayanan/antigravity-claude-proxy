@@ -9,6 +9,11 @@ import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
 import { EmptyResponseError } from '../errors.js';
 import { cacheSignature, cacheThinkingSignature } from '../format/signature-cache.js';
+import {
+    mergeGroundingMetadata,
+    resolveGroundingMetadataUrls,
+    buildWebSearchBlocks
+} from '../format/response-converter.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -28,6 +33,7 @@ export async function* streamSSEResponse(response, originalModel) {
     let outputTokens = 0;
     let cacheReadTokens = 0;
     let stopReason = null;
+    let groundingMetadata = null;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -249,6 +255,11 @@ export async function* streamSSEResponse(response, originalModel) {
                     }
                 }
 
+                // Merge progressive Google Search grounding metadata when present
+                if (firstCandidate.groundingMetadata) {
+                    groundingMetadata = mergeGroundingMetadata(groundingMetadata, firstCandidate.groundingMetadata);
+                }
+
                 // Check finish reason (only if not already set by tool_use)
                 if (firstCandidate.finishReason && !stopReason) {
                     if (firstCandidate.finishReason === 'MAX_TOKENS') {
@@ -279,6 +290,42 @@ export async function* streamSSEResponse(response, originalModel) {
                 };
             }
             yield { type: 'content_block_stop', index: blockIndex };
+            blockIndex++;
+            currentBlockType = null;
+        }
+
+        // Emit Anthropic server_tool_use + web_search_tool_result blocks for Google Search grounding
+        if (groundingMetadata) {
+            const resolved = await resolveGroundingMetadataUrls(groundingMetadata);
+            const [serverToolUse, toolResult] = buildWebSearchBlocks(resolved);
+            if (serverToolUse && toolResult) {
+                yield {
+                    type: 'content_block_start',
+                    index: blockIndex,
+                    content_block: {
+                        ...serverToolUse,
+                        input: {}
+                    }
+                };
+                yield {
+                    type: 'content_block_delta',
+                    index: blockIndex,
+                    delta: {
+                        type: 'input_json_delta',
+                        partial_json: JSON.stringify(serverToolUse.input)
+                    }
+                };
+                yield { type: 'content_block_stop', index: blockIndex };
+                blockIndex++;
+
+                yield {
+                    type: 'content_block_start',
+                    index: blockIndex,
+                    content_block: toolResult
+                };
+                yield { type: 'content_block_stop', index: blockIndex };
+                blockIndex++;
+            }
         }
     }
 
