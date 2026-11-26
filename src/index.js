@@ -148,6 +148,9 @@ ${environmentSection}
   `);
 
     logger.success(`Server started successfully on port ${PORT}`);
+    if (!['127.0.0.1', 'localhost', '::1'].includes(HOST) && !config.webuiPassword) {
+        logger.warn('[Security] No WebUI password set: the WebUI only answers this machine. Set WEBUI_PASSWORD to use it from other devices. The /v1 API is not affected.');
+    }
     if (isDebug) {
         logger.warn('Running in DEVELOPER mode - verbose logs enabled');
     }

@@ -16,7 +16,8 @@ import path from 'path';
 import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS } from '../constants.js';
-import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset } from '../utils/claude-config.js';
+import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset, sanitizeClaudeConfigUpdate, sanitizeClaudeEnv } from '../utils/claude-config.js';
+import { safeEqual } from '../utils/request-guard.js';
 import { readServerPresets, saveServerPreset, updateServerPreset, deleteServerPreset } from '../utils/server-presets.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
@@ -124,7 +125,7 @@ function createAuthMiddleware() {
 
         if (isProtected) {
             const providedPassword = req.headers['x-webui-password'] || req.query.password;
-            if (providedPassword !== password) {
+            if (!safeEqual(String(providedPassword ?? ''), password)) {
                 return res.status(401).json({ status: 'error', error: 'Unauthorized: Password required' });
             }
         }
@@ -716,15 +717,23 @@ export function mountWebUI(app, dirname, accountManager) {
      */
     app.post('/api/claude/config', async (req, res) => {
         try {
-            const updates = req.body;
-            if (!updates || typeof updates !== 'object') {
+            const body = req.body;
+            if (!body || typeof body !== 'object' || Array.isArray(body)) {
                 return res.status(400).json({ status: 'error', error: 'Invalid config updates' });
+            }
+
+            // Only allow-listed env vars can be changed from the WebUI; hooks,
+            // apiKeyHelper and other keys that run commands are left as they are.
+            const { updates, ignored } = sanitizeClaudeConfigUpdate(body);
+            if (ignored.length > 0) {
+                logger.warn(`[WebUI] Ignored Claude config keys the WebUI may not change: ${ignored.join(', ')}`);
             }
 
             const newConfig = await updateClaudeConfig(updates);
             res.json({
                 status: 'ok',
                 config: newConfig,
+                ignored,
                 message: 'Claude configuration updated'
             });
         } catch (error) {
@@ -879,7 +888,12 @@ export function mountWebUI(app, dirname, accountManager) {
                 return res.status(400).json({ status: 'error', error: 'Config object is required' });
             }
 
-            const presets = await savePreset(name.trim(), presetConfig);
+            const { env: cleanPresetConfig, ignored } = sanitizeClaudeEnv(presetConfig);
+            if (ignored.length > 0) {
+                logger.warn(`[WebUI] Ignored preset keys the WebUI may not set: ${ignored.join(', ')}`);
+            }
+
+            const presets = await savePreset(name.trim(), cleanPresetConfig);
             res.json({ status: 'ok', presets, message: `Preset "${name}" saved` });
         } catch (error) {
             res.status(500).json({ status: 'error', error: error.message });

@@ -13,7 +13,9 @@ The proxy supports the following environment variables:
 | `HTTP_PROXY` | Route outbound requests through a proxy | - |
 | `HTTPS_PROXY` | Same as HTTP_PROXY (for HTTPS requests) | - |
 | `API_KEY` | Protect `/v1/*` API endpoints | - |
-| `WEBUI_PASSWORD` | Password-protect the web dashboard | - |
+| `WEBUI_PASSWORD` | Password-protect the web dashboard. Without it, the WebUI and its admin endpoints only answer requests from this machine (the `/v1` API is not affected) | - |
+| `ALLOWED_HOSTS` | Comma-separated hostnames the WebUI answers to besides `localhost` and IP addresses (e.g. `proxy.lan`) | - |
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the WebUI API from another site | - |
 | `DEBUG` | Enable debug logging (`true`/`false`) | `false` |
 | `DEV_MODE` | Enable developer mode (`true`/`false`) | `false` |
 | `FALLBACK` | Enable model fallback (`true`/`false`) | `false` |

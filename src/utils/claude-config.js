@@ -57,6 +57,79 @@ export async function readClaudeConfig() {
 }
 
 /**
+ * Environment variables the WebUI may write into Claude Code's settings.json.
+ *
+ * settings.json can also hold hooks, apiKeyHelper, statusLine and env vars
+ * such as CLAUDE_CODE_SHELL_PREFIX or NODE_OPTIONS, all of which make
+ * Claude Code run commands. The WebUI only ever needs the proxy connection
+ * and model variables, so anything else sent to the API is ignored and the
+ * existing value on disk is kept.
+ */
+export const ALLOWED_CLAUDE_ENV_KEYS = new Set([
+    'ANTHROPIC_BASE_URL',
+    'ANTHROPIC_AUTH_TOKEN',
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_MODEL',
+    'ANTHROPIC_SMALL_FAST_MODEL',
+    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    'CLAUDE_CODE_SUBAGENT_MODEL',
+    'CLAUDE_CODE_MAX_OUTPUT_TOKENS',
+    'MAX_THINKING_TOKENS',
+    'API_TIMEOUT_MS',
+    'ENABLE_EXPERIMENTAL_MCP_CLI',
+    'DISABLE_TELEMETRY',
+    'DISABLE_ERROR_REPORTING',
+    'DISABLE_NON_ESSENTIAL_MODEL_CALLS',
+    'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'
+]);
+
+/**
+ * Keep only allow-listed env vars with string (or number/boolean) values.
+ * @param {Object} env
+ * @returns {{env: Object, ignored: string[]}}
+ */
+export function sanitizeClaudeEnv(env) {
+    const clean = {};
+    const ignored = [];
+    if (!isObject(env)) return { env: clean, ignored };
+    for (const [key, value] of Object.entries(env)) {
+        if (!ALLOWED_CLAUDE_ENV_KEYS.has(key)) {
+            ignored.push(key);
+            continue;
+        }
+        if (typeof value === 'string') {
+            clean[key] = value;
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+            clean[key] = String(value);
+        } else {
+            ignored.push(key);
+        }
+    }
+    return { env: clean, ignored };
+}
+
+/**
+ * Reduce a WebUI update to the parts it is allowed to change: allow-listed
+ * keys under `env`. Every other top-level key (hooks, apiKeyHelper,
+ * permissions, statusLine, ...) is dropped, so the value on disk is kept.
+ * @param {Object} updates - Body sent to POST /api/claude/config
+ * @returns {{updates: Object, ignored: string[]}}
+ */
+export function sanitizeClaudeConfigUpdate(updates) {
+    const ignored = [];
+    if (!isObject(updates)) return { updates: {}, ignored };
+    for (const key of Object.keys(updates)) {
+        if (key !== 'env') ignored.push(key);
+    }
+    if (!('env' in updates)) return { updates: {}, ignored };
+    const { env, ignored: ignoredEnv } = sanitizeClaudeEnv(updates.env);
+    ignored.push(...ignoredEnv.map(k => `env.${k}`));
+    return { updates: { env }, ignored };
+}
+
+/**
  * Update the global Claude CLI configuration
  * Performs a deep merge with existing configuration to avoid losing other settings.
  *

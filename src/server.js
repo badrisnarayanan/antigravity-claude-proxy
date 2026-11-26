@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
 import { mountWebUI } from './webui/index.js';
+import { createRequestGuard, isAdminPath, toList } from './utils/request-guard.js';
 import { config } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,7 +76,33 @@ async function ensureInitialized() {
 }
 
 // Middleware
-app.use(cors());
+// Block DNS rebinding, cross-origin browser requests and (without a WebUI
+// password) access from other machines on the WebUI and admin endpoints.
+// The /v1 API is not touched by the guard.
+app.use(createRequestGuard({ getConfig: () => config, logger }));
+
+// CORS: the /v1 API stays open as before. The WebUI and admin endpoints only
+// allow origins listed in config.corsOrigins / CORS_ORIGINS; the WebUI is
+// served from this server, so it never needs CORS itself.
+const openCors = cors();
+const adminCors = cors({
+    origin: (origin, callback) => {
+        const allowed = [...toList(config.corsOrigins), ...toList(process.env.CORS_ORIGINS)]
+            .map(o => o.replace(/\/+$/, '').toLowerCase());
+        callback(null, Boolean(origin) && allowed.includes(origin.toLowerCase()));
+    }
+});
+app.use((req, res, next) => (isAdminPath(req.path) ? adminCors : openCors)(req, res, next));
+
+// CORS is off unless origins are listed in config.corsOrigins / CORS_ORIGINS.
+// The WebUI is served from this server, so it never needs CORS.
+app.use(cors({
+    origin: (origin, callback) => {
+        const allowed = [...toList(config.corsOrigins), ...toList(process.env.CORS_ORIGINS)]
+            .map(o => o.replace(/\/+$/, '').toLowerCase());
+        callback(null, Boolean(origin) && allowed.includes(origin.toLowerCase()));
+    }
+}));
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
 // Express 5 leaves req.body undefined when no body was parsed (Express 4 set {}).
 // Keep the old behavior so handlers can destructure req.body safely.
