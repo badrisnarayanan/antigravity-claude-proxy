@@ -24,6 +24,7 @@ import {
 } from './thinking-utils.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { geminiOutputSchema } from './structured-output.js';
 import { restoreTrailingTextSignatures } from './signature-cache.js';
 
 // Gemini accepts at most 5 stop sequences in generationConfig.stopSequences.
@@ -194,6 +195,12 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     // Filter unsigned thinking blocks for Claude models
     if (isClaudeModel) {
         googleRequest.contents = filterUnsignedThinkingBlocks(googleRequest.contents);
+    }
+
+    const outputSchema = geminiOutputSchema(anthropicRequest);
+    if (outputSchema) {
+        googleRequest.generationConfig.responseMimeType = 'application/json';
+        googleRequest.generationConfig.responseSchema = outputSchema;
     }
 
     // Generation config

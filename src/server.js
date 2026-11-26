@@ -20,6 +20,7 @@ import { forceRefresh } from './auth/token-extractor.js';
 import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearAllSignatureCaches } from './format/signature-cache.js';
+import { geminiOutputSchema, assertGeminiStructuredResponse } from './format/structured-output.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
@@ -733,7 +734,8 @@ app.post('/v1/messages', async (req, res) => {
             top_p,
             top_k,
             temperature,
-            stop_sequences
+            stop_sequences,
+            output_config
         } = req.body;
 
         // Resolve model mapping if configured
@@ -809,9 +811,12 @@ app.post('/v1/messages', async (req, res) => {
             top_p,
             top_k,
             temperature,
-            stop_sequences
+            stop_sequences,
+            output_config
         };
 
+        // Reject unsupported output formats before making a backend request.
+        geminiOutputSchema(request);
         logger.info(`[API] Request for model: ${request.model}, stream: ${!!stream}`);
 
         // Debug: Log message structure to diagnose tool_use/tool_result ordering
@@ -890,6 +895,7 @@ app.post('/v1/messages', async (req, res) => {
 
         } else {
             const response = await sendMessage(request, accountManager, FALLBACK_ENABLED);
+            assertGeminiStructuredResponse(request, response);
             usageStats.track(response?.model || modelId);
             res.json(response);
         }
