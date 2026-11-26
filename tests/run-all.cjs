@@ -37,6 +37,7 @@ const tests = [
     { name: 'Identity Scrubbing', file: 'test-identity-scrub.cjs' },
     { name: 'System Prompt Placement', file: 'test-system-prompt-placement.cjs' },
     { name: 'Stop Sequences', file: 'test-stop-sequences.cjs' },
+    { name: 'Stream Response', file: 'test-stream-response.cjs' },
     { name: 'Request Guard', file: 'test-request-guard.cjs' },
     { name: 'Outbound Proxy Support', file: 'test-proxy-support.cjs' },
     { name: 'Model Alias Resolver', file: 'test-model-resolver.cjs' },

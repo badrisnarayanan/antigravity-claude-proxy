@@ -17,7 +17,9 @@ import { config } from './config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { forceRefresh } from './auth/token-extractor.js';
-import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS } from './constants.js';
+import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS, STREAM_HEADER_GRACE_MS, STREAM_PING_INTERVAL_MS } from './constants.js';
+import { ClientDisconnectedError } from './errors.js';
+import { firstEvent, writeEvents } from './utils/stream-response.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearAllSignatureCaches } from './format/signature-cache.js';
 import { geminiOutputSchema, assertGeminiStructuredResponse } from './format/structured-output.js';
@@ -831,42 +833,39 @@ app.post('/v1/messages', async (req, res) => {
         }
 
         if (stream) {
-            // Handle streaming response
-            // Do NOT flush headers immediately. We need to wait for the first chunk
-            // to ensure we don't send a 200 OK if the upstream fails immediately (e.g. 429/503).
+            // Handle streaming response. Headers wait for the first upstream
+            // event so an immediate failure (429, 503, 400) keeps its HTTP
+            // status; a slow first event gets headers and pings instead (see
+            // utils/stream-response.js).
+            const started = Date.now();
+            const clientGone = new AbortController();
+            const onClose = () => {
+                if (!res.writableFinished) clientGone.abort(new ClientDisconnectedError());
+            };
+            res.on('close', onClose);
+            let slowStart = false;
 
             try {
-                const generator = sendMessageStream(request, accountManager, FALLBACK_ENABLED);
-                
-                // BUFFERING STRATEGY:
-                // Pull the first event *before* sending headers. 
-                // If this throws, we can safely send a 4xx/5xx error JSON.
-                const firstResult = await generator.next();
+                const generator = sendMessageStream(request, accountManager, FALLBACK_ENABLED, { signal: clientGone.signal });
+                const firstResult = await firstEvent(res, generator, {
+                    graceMs: STREAM_HEADER_GRACE_MS,
+                    pingMs: STREAM_PING_INTERVAL_MS,
+                    onSlowStart: () => {
+                        slowStart = true;
+                        logger.info(`[API] No upstream event for ${modelId} after ${STREAM_HEADER_GRACE_MS}ms; sending headers and pings`);
+                    }
+                });
+                if (slowStart) logger.info(`[API] First upstream event for ${modelId} after ${Date.now() - started}ms`);
 
-                // If we get here, the stream started successfully.
                 usageStats.track(modelId);
-                res.status(200);
-                res.setHeader('Content-Type', 'text/event-stream');
-                res.setHeader('Cache-Control', 'no-cache');
-                res.setHeader('Connection', 'keep-alive');
-                res.setHeader('X-Accel-Buffering', 'no');
-                res.flushHeaders();
-
-                // If the generator isn't done, send the first chunk
-                if (!firstResult.done) {
-                    res.write(`event: ${firstResult.value.type}\ndata: ${JSON.stringify(firstResult.value)}\n\n`);
-                    if (res.flush) res.flush();
-                }
-
-                // Continue with the rest of the stream
-                for await (const event of generator) {
-                    res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-                    if (res.flush) res.flush();
-                }
-                
-                res.end();
+                await writeEvents(res, generator, firstResult);
 
             } catch (error) {
+                if (clientGone.signal.aborted) {
+                    logger.info(`[API] Client disconnected from ${modelId} stream after ${Date.now() - started}ms; upstream request cancelled`);
+                    return;
+                }
+
                 // If we haven't sent headers yet, we can send a proper error status
                 if (!res.headersSent) {
                     logger.error('[API] Initial stream error:', error);
@@ -881,8 +880,8 @@ app.post('/v1/messages', async (req, res) => {
                     });
                 }
                 
-                // If headers were already sent (should only happen if error occurs mid-stream),
-                // we have to fallback to SSE error event
+                // Headers already sent: mid-stream error, or an error after a
+                // slow start. Report it as an SSE error event.
                 logger.error('[API] Mid-stream error:', error);
                 const { errorType, errorMessage } = parseError(error);
 
@@ -891,6 +890,8 @@ app.post('/v1/messages', async (req, res) => {
                     error: { type: errorType, message: errorMessage }
                 })}\n\n`);
                 res.end();
+            } finally {
+                res.off('close', onClose);
             }
 
         } else {
