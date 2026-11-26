@@ -12,7 +12,8 @@
  * bounded by an LRU cap so memory and on-disk size stay bounded over months of use.
  *
  * Also caches thinking block signatures with model family for cross-model
- * compatibility checking.
+ * compatibility checking, and Gemini signatures that arrive on the final text
+ * part of a reply (keyed to the conversation history and the reply text).
  *
  * Persistence: JSON file, atomic tmp+rename writes, mode 0600, debounced
  * async writes (plus a periodic safety flush and synchronous flush on SIGTERM/SIGINT/
@@ -23,14 +24,17 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { MIN_SIGNATURE_LENGTH } from '../constants.js';
+import crypto from 'node:crypto';
+import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
 
 const toolSignatureCache = new Map();      // toolUseId -> signature (insertion-ordered LRU)
 const thinkingSignatureCache = new Map();   // signature -> modelFamily (insertion-ordered LRU)
+const textSignatureCache = new Map();       // history+text key -> signature (insertion-ordered LRU)
 
 const STORE_VERSION = 1;
 const DEFAULT_MAX_TOOL_SIGNATURES = 20_000;
 const DEFAULT_MAX_THINKING_SIGNATURES = 10_000;
+const DEFAULT_MAX_TEXT_SIGNATURES = 10_000;
 const FLUSH_DEBOUNCE_MS = 5000;
 const PERIODIC_FLUSH_MS = 30_000;
 const MAX_SILENT_STORE_ERRORS = 20;
@@ -44,6 +48,7 @@ function parsePositiveIntEnv(name, fallback) {
 
 const maxToolSignatures = parsePositiveIntEnv('ANTIGRAVITY_SIGNATURE_CACHE_MAX_TOOL', DEFAULT_MAX_TOOL_SIGNATURES);
 const maxThinkingSignatures = parsePositiveIntEnv('ANTIGRAVITY_SIGNATURE_CACHE_MAX_THINK', DEFAULT_MAX_THINKING_SIGNATURES);
+const maxTextSignatures = parsePositiveIntEnv('ANTIGRAVITY_SIGNATURE_CACHE_MAX_TEXT', DEFAULT_MAX_TEXT_SIGNATURES);
 
 function lruSet(map, key, value, maxEntries) {
     if (map.has(key)) {
@@ -112,6 +117,15 @@ function loadFromDisk() {
                 }
             }
         }
+        if (parsed.text && typeof parsed.text === 'object') {
+            const entries = Object.entries(parsed.text);
+            if (entries.length > maxTextSignatures) prunedOnLoad = true;
+            for (const [key, sig] of entries) {
+                if (typeof key === 'string' && typeof sig === 'string') {
+                    lruSet(textSignatureCache, key, sig, maxTextSignatures);
+                }
+            }
+        }
         if (prunedOnLoad) {
             scheduleFlush();
         }
@@ -128,6 +142,7 @@ function serializeStore() {
         version: STORE_VERSION,
         tool: Object.fromEntries(toolSignatureCache),
         think: Object.fromEntries(thinkingSignatureCache),
+        text: Object.fromEntries(textSignatureCache),
     });
 }
 
@@ -267,6 +282,106 @@ export function getCachedSignatureFamily(signature) {
     return lruGet(thinkingSignatureCache, signature);
 }
 
+// ---------------------------------------------------------------------------
+// Trailing text signatures
+//
+// Gemini 3.8 / Gemini 4 often put the reply's thoughtSignature on the last
+// text part (the chunk with finishReason STOP) instead of on a thought part.
+// Anthropic clients have nowhere to keep it, so it is cached here, keyed to the
+// model, system prompt, prior history and exact reply text, and put back on
+// that assistant turn's last text part when the next request replays it.
+// Like the tool cache this has no TTL: once restored, a signature stays in
+// the replayed history so the upstream implicit-cache prefix stays stable.
+// ---------------------------------------------------------------------------
+
+function stableSerialize(value) {
+    if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+    if (value && typeof value === 'object') {
+        const keys = Object.keys(value).filter(key => key !== 'cache_control').sort();
+        return `{${keys.map(key => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value) ?? 'null';
+}
+
+function sha256(text) {
+    return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+// Running hash over the history, so restoring every turn of a long
+// conversation costs one pass over it instead of one pass per turn.
+function extendHistoryHash(prevHash, message) {
+    return sha256(`${prevHash}\n${stableSerialize(message)}`);
+}
+
+function textSignatureKey(model, system, historyHash, text) {
+    return sha256(stableSerialize([model, system ?? null, historyHash, text]));
+}
+
+function assistantText(content) {
+    if (typeof content === 'string') return content;
+    if (!Array.isArray(content)) return '';
+    return content.filter(block => block?.type === 'text').map(block => block.text || '').join('');
+}
+
+/**
+ * Cache a Gemini signature that arrived on a reply's final text part.
+ * @param {string} model - The request model
+ * @param {{messages?: Array, system?: any}} context - The request that produced the reply
+ * @param {string} text - The full reply text
+ * @param {string} signature - The thoughtSignature
+ */
+export function cacheTrailingTextSignature(model, context, text, signature) {
+    if (!model || getModelFamily(model) !== 'gemini') return;
+    if (!text || !signature || signature.length < MIN_SIGNATURE_LENGTH) return;
+    let historyHash = '';
+    for (const message of context?.messages || []) {
+        historyHash = extendHistoryHash(historyHash, message);
+    }
+    const key = textSignatureKey(model, context?.system, historyHash, text);
+    const prev = textSignatureCache.get(key);
+    lruSet(textSignatureCache, key, signature, maxTextSignatures);
+    if (prev === signature) return;
+    scheduleFlush();
+}
+
+/**
+ * Put cached trailing signatures back on the assistant turns they came from.
+ * @param {Array} messages - Messages to restore (same order as contextMessages)
+ * @param {string} model - The request model
+ * @param {any} system - The request system prompt
+ * @param {Array} [contextMessages] - Raw request messages used for the history key
+ * @returns {Array} messages, or a copy with thoughtSignature set on matching text blocks
+ */
+export function restoreTrailingTextSignatures(messages, model, system, contextMessages = messages) {
+    if (!Array.isArray(messages) || !model || textSignatureCache.size === 0) return messages;
+    let changed = false;
+    let historyHash = '';
+    const restored = messages.map((message, index) => {
+        const prefixHash = historyHash;
+        historyHash = extendHistoryHash(historyHash, contextMessages[index]);
+        if (message?.role !== 'assistant') return message;
+        const text = assistantText(message.content);
+        if (!text) return message;
+
+        const signature = lruGet(textSignatureCache, textSignatureKey(model, system, prefixHash, text));
+        if (!signature) return message;
+
+        changed = true;
+        if (typeof message.content === 'string') {
+            return { ...message, content: [{ type: 'text', text: message.content, thoughtSignature: signature }] };
+        }
+        const blocks = [...message.content];
+        for (let i = blocks.length - 1; i >= 0; i--) {
+            if (blocks[i]?.type === 'text') {
+                blocks[i] = { ...blocks[i], thoughtSignature: signature };
+                break;
+            }
+        }
+        return { ...message, content: blocks };
+    });
+    return changed ? restored : messages;
+}
+
 /**
  * Clear all entries from the thinking signature cache.
  * Used for testing cold cache scenarios.
@@ -293,11 +408,12 @@ export async function flushSignatureStore() {
 }
 
 /**
- * Clear both signature caches and delete the persisted store.
+ * Clear all signature caches and delete the persisted store.
  */
 export function clearAllSignatureCaches() {
     toolSignatureCache.clear();
     thinkingSignatureCache.clear();
+    textSignatureCache.clear();
     if (flushTimer) {
         clearTimeout(flushTimer);
         flushTimer = null;

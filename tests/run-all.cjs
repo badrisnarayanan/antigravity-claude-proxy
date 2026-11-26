@@ -21,6 +21,7 @@ const tests = [
     { name: 'Signature Cache', file: 'test-signature-cache.cjs' },
     { name: 'Cache Control Stripping', file: 'test-cache-control.cjs' },
     { name: 'Thinking Signatures', file: 'test-thinking-signatures.cjs' },
+    { name: 'Trailing Gemini Text Signatures (Unit)', file: 'test-trailing-thought-signature.cjs' },
     { name: 'Multi-turn Tools (Non-Streaming)', file: 'test-multiturn-thinking-tools.cjs' },
     { name: 'Multi-turn Tools (Streaming)', file: 'test-multiturn-thinking-tools-streaming.cjs' },
     { name: 'Interleaved Thinking', file: 'test-interleaved-thinking.cjs' },

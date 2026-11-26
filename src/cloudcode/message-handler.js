@@ -319,7 +319,10 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
 
                     // For thinking models, parse SSE and accumulate all parts
                     if (isThinking) {
-                        const result = await parseThinkingSSEResponse(response, anthropicRequest.model);
+                        const result = await parseThinkingSSEResponse(response, anthropicRequest.model, {
+                            messages: anthropicRequest.messages || [],
+                            system: anthropicRequest.system
+                        });
                         // Clear rate limit state on success
                         clearRateLimitState(account.email, model);
                         accountManager.notifySuccess(account, model);
@@ -332,7 +335,10 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                     // Clear rate limit state on success
                     clearRateLimitState(account.email, model);
                     accountManager.notifySuccess(account, model);
-                    return convertGoogleToAnthropic(data, anthropicRequest.model);
+                    return convertGoogleToAnthropic(data, anthropicRequest.model, {
+                        messages: anthropicRequest.messages || [],
+                        system: anthropicRequest.system
+                    });
 
                 } catch (endpointError) {
                     if (isRateLimitError(endpointError)) {
