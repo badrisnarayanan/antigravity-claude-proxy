@@ -78,7 +78,7 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
             }
 
             if (accountManager.isAllRateLimited(model)) {
-                const minWaitMs = accountManager.getMinWaitTimeMs(model);
+                const minWaitMs = Math.max(accountManager.getMinWaitTimeMs(model), 1000);
                 const resetTime = new Date(Date.now() + minWaitMs).toISOString();
 
                 // If wait time is too long (> 2 minutes), try fallback first, then throw error
