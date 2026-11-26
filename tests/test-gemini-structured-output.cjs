@@ -15,7 +15,15 @@ async function main() {
     assert.deepEqual(buildCloudCodeRequest(req,'test-project','test@example.invalid').request.generationConfig.responseSchema,cfg.responseSchema);
     for(const r of [base,{...base,output_config:{effort:'low'}},{...base,output_config:{format:null}},{...req,model:'claude-sonnet-4-6'}]) assert.equal(geminiOutputSchema(r),undefined);
     for(const s of [{...schema,anyOf:[schema]},{type:'object',properties:{x:{$ref:'#/$defs/x'}},$defs:{x:{type:'string'}}},{...schema,properties:{value:{type:['string','null']}}},{...schema,properties:{value:{type:'string',minLength:2}}}]) assert.throws(()=>convertAnthropicToGoogle({...base,output_config:{format:{type:'json_schema',schema:s}}}),/invalid_request_error: output_config/);
-    assert.throws(()=>geminiOutputSchema({...req,stream:true}),/invalid_request_error: output_config/);
+    // Streaming (Claude Code side queries): translatable schemas are applied, others are dropped, never a 400.
+    const hookSchema={type:'object',properties:{ok:{type:'boolean'},reason:{type:'string'},impossible:{type:'boolean'}},required:['ok','reason'],additionalProperties:false};
+    const hookReq={...base,stream:true,output_config:{effort:'high',format:{type:'json_schema',schema:hookSchema}}};
+    assert.deepEqual(convertAnthropicToGoogle(hookReq).generationConfig.responseSchema,{type:'OBJECT',properties:{ok:{type:'BOOLEAN'},reason:{type:'STRING'},impossible:{type:'BOOLEAN'}},required:['ok','reason']});
+    assert.deepEqual(geminiOutputSchema({...req,stream:true}),cfg.responseSchema);
+    const badStream={...base,stream:true,output_config:{format:{type:'json_schema',schema:{...schema,anyOf:[schema]}}}};
+    assert.equal(geminiOutputSchema(badStream),undefined);
+    assert.equal(convertAnthropicToGoogle(badStream).generationConfig.responseSchema,undefined);
+    assert.equal(geminiOutputSchema({...req,stream:true,tools:[{name:'x'}]}),undefined);
     assert.throws(()=>geminiOutputSchema({...req,tools:[{name:'x'}]}),/invalid_request_error: output_config/);
     const response=text=>({stop_reason:'end_turn',content:[{type:'text',text}]});
     assert.doesNotThrow(()=>assertGeminiStructuredResponse(req,response('{"value":"ok","list":[1,2]}')));

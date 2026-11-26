@@ -5,6 +5,7 @@
  * via an explicit invalid_request_error.
  */
 import { getModelFamily } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 const TYPES = new Set(['object', 'array', 'string', 'number', 'integer', 'boolean']);
 const KEYS = new Set(['type', 'description', 'title', 'properties', 'required', 'items', 'enum', 'additionalProperties']);
@@ -41,12 +42,31 @@ function translate(schema, depth = 0) {
     return out;
 }
 
+const warnedStreamReasons = new Set();
+
+function strictOutputSchema(request, format) {
+    if (format.type !== 'json_schema') unsupported('unknown format');
+    if (request.tools?.length) unsupported('native tools with structured output not verified');
+    return translate(format.schema);
+}
+
 export function geminiOutputSchema(request) {
     const format = request.output_config?.format;
     if (getModelFamily(request.model || '') !== 'gemini' || format == null) return undefined;
-    if (format.type !== 'json_schema') unsupported('unknown format');
-    if (request.stream || request.tools?.length) unsupported('streaming or native tools with structured output not verified');
-    return translate(format.schema);
+    if (!request.stream) return strictOutputSchema(request, format);
+    // Streaming: Claude Code sends output_config.format on streamed side queries
+    // (prompt hooks, classifiers) to the small/fast model, which many users map
+    // to Gemini. Apply the schema when it translates; otherwise keep the previous
+    // behaviour (drop the format) instead of failing those requests with a 400.
+    try {
+        return strictOutputSchema(request, format);
+    } catch (error) {
+        if (!warnedStreamReasons.has(error.message)) {
+            warnedStreamReasons.add(error.message);
+            logger.warn(`[StructuredOutput] Ignoring output_config.format on streaming Gemini request: ${error.message}`);
+        }
+        return undefined;
+    }
 }
 
 function matches(value, schema) {
