@@ -213,6 +213,8 @@ function sanitizeTextBlock(block) {
 
     const sanitized = { type: 'text' };
     if (block.text !== undefined) sanitized.text = block.text;
+    // Preserve a restored trailing Gemini signature
+    if (block.thoughtSignature !== undefined) sanitized.thoughtSignature = block.thoughtSignature;
     return sanitized;
 }
 

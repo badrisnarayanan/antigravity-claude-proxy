@@ -142,6 +142,9 @@ export function convertAnthropicToGoogle(anthropicRequest) {
     const restoredMessages = isGeminiModel
         ? restoreTrailingTextSignatures(messages, modelName, system, requestMessages)
         : messages;
+    if (restoredMessages !== messages) {
+        logger.debug('[RequestConverter] Restored trailing Gemini text signature(s) on replayed assistant turns');
+    }
     let processedMessages = restoredMessages;
 
     if (isGeminiModel && isThinking && needsThinkingRecovery(restoredMessages)) {

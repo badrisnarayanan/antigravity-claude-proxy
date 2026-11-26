@@ -307,10 +307,18 @@ function sha256(text) {
     return crypto.createHash('sha256').update(text).digest('hex');
 }
 
+// Clients replay the same turn in different shapes: Claude Code sends the
+// newest turn as [{ type: 'text', text, cache_control }] and the same turn as a
+// plain string once the cache marker moves on. Key on one shape.
+function normalizeForKey(message) {
+    if (!message || typeof message.content !== 'string') return message;
+    return { ...message, content: [{ type: 'text', text: message.content }] };
+}
+
 // Running hash over the history, so restoring every turn of a long
 // conversation costs one pass over it instead of one pass per turn.
 function extendHistoryHash(prevHash, message) {
-    return sha256(`${prevHash}\n${stableSerialize(message)}`);
+    return sha256(`${prevHash}\n${stableSerialize(normalizeForKey(message))}`);
 }
 
 function textSignatureKey(model, system, historyHash, text) {

@@ -27,6 +27,7 @@ The proxy supports the following environment variables:
 | `ANTIGRAVITY_SIGNATURE_STORE` | Path to the persisted thought-signature cache file | `~/.config/antigravity-proxy/signature-store.json` |
 | `ANTIGRAVITY_SIGNATURE_CACHE_MAX_TOOL` | Maximum LRU entries kept in the tool signature cache | `20000` |
 | `ANTIGRAVITY_SIGNATURE_CACHE_MAX_THINK` | Maximum LRU entries kept in the thinking-family signature cache | `10000` |
+| `ANTIGRAVITY_SIGNATURE_CACHE_MAX_TEXT` | Maximum LRU entries kept for Gemini signatures that arrive on a reply's final text part | `10000` |
 | `ANTIGRAVITY_DISABLE_THINKING_RECOVERY` | Set to `1` to skip synthetic tool-loop recovery message injection on Gemini models | `0` |
 
 ### Setting Environment Variables
