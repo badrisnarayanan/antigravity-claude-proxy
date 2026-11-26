@@ -2,6 +2,8 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { config } from '../config.js';
+import { fetch as undiciFetch } from 'undici';
+import { getProxyDispatcher } from './proxy.js';
 
 /**
  * Shared Utility Functions
@@ -85,6 +87,12 @@ export async function throttledFetch(url, options) {
         if (delayMs > 0) {
             await sleep(delayMs);
         }
+    }
+    const dispatcher = getProxyDispatcher();
+    if (dispatcher) {
+        // Use undici's own fetch so the proxy dispatcher is honoured whatever undici
+        // version Node bundles for the built-in fetch (see src/utils/proxy.js).
+        return undiciFetch(url, { ...options, dispatcher });
     }
     return fetch(url, options);
 }

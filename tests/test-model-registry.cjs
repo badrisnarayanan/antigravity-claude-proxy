@@ -80,6 +80,12 @@ async function runTests() {
     console.log('║           MODEL REGISTRY & ROUTING TEST SUITE                ║');
     console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
+    // The mock below replaces the global fetch; with a proxy configured, requests
+    // would go through undici's own fetch instead (src/utils/proxy.js), so clear it.
+    for (const name of ['http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY']) {
+        delete process.env[name];
+    }
+
     let fetchMode = 'ok';
     globalThis.fetch = async () => {
         if (fetchMode === 'fail') return jsonResponse({ error: 'unavailable' }, 503);

@@ -11,7 +11,8 @@ The proxy supports the following environment variables:
 | `PORT` | Server port | `8080` |
 | `HOST` | Bind address | `0.0.0.0` |
 | `HTTP_PROXY` | Route outbound requests through a proxy | - |
-| `HTTPS_PROXY` | Same as HTTP_PROXY (for HTTPS requests) | - |
+| `HTTPS_PROXY` | Proxy for HTTPS requests (all Google API calls); falls back to `HTTP_PROXY` | - |
+| `NO_PROXY` | Comma-separated hosts that skip the proxy (e.g. `localhost,.internal.corp`) | - |
 | `API_KEY` | Protect `/v1/*` API endpoints | - |
 | `WEBUI_PASSWORD` | Password-protect the web dashboard. Without it, the WebUI and its admin endpoints only answer requests from this machine (the `/v1` API is not affected) | - |
 | `ALLOWED_HOSTS` | Comma-separated hostnames the WebUI answers to besides `localhost` and IP addresses (e.g. `proxy.lan`) | - |
