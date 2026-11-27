@@ -19,7 +19,7 @@ import {
     BACKOFF_BY_ERROR_TYPE
 } from '../constants.js';
 import { isRateLimitError, isAuthError, isEmptyResponseError, isAccountForbiddenError, AccountForbiddenError } from '../errors.js';
-import { formatDuration, sleep, isNetworkError, throttledFetch } from '../utils/helpers.js';
+import { formatDuration, sleep, isNetworkError, describeNetworkError, throttledFetch } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 import { parseResetTime } from './rate-limit-parser.js';
 import { buildCloudCodeRequest, buildHeaders } from './request-builder.js';
@@ -59,8 +59,13 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
     // Ensure we try at least as many times as there are accounts to cycle through everyone
     const maxAttempts = Math.max(MAX_RETRIES, accountManager.getAccountCount() + 1);
 
+    // Set when the latest attempt failed with a network error, so we can report that
+    // instead of a generic "Max retries exceeded" (#384)
+    let lastNetworkError = null;
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         signal?.throwIfAborted();
+        lastNetworkError = null;
         // Clear any expired rate limits before picking
         accountManager.clearExpiredLimits();
 
@@ -478,24 +483,24 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             }
 
             if (isNetworkError(error)) {
-                accountManager.notifyFailure(account, model);
-
-                // Track network errors for extended cooldown
-                // Note: markRateLimited already increments consecutiveFailures internally
-                const currentFailures = accountManager.getConsecutiveFailures(account.email);
-                if (currentFailures + 1 >= MAX_CONSECUTIVE_FAILURES) {
-                    logger.warn(`[CloudCode] Account ${account.email} has ${currentFailures + 1} consecutive network failures, applying extended cooldown (${formatDuration(EXTENDED_COOLDOWN_MS)})`);
-                    accountManager.markRateLimited(account.email, EXTENDED_COOLDOWN_MS, model);
-                } else {
-                    accountManager.incrementConsecutiveFailures(account.email);
-                    logger.warn(`[CloudCode] Network error for ${account.email} (stream) (${currentFailures + 1}/${MAX_CONSECUTIVE_FAILURES}), trying next account... (${error.message})`);
-                }
+                // A timeout, reset or DNS failure says nothing about this account's quota,
+                // so don't rate-limit the account or lower its health score. Counting these
+                // as failures used to put every account on cooldown and report a fake
+                // "quota exhausted" error when the network was the problem (#384).
+                lastNetworkError = error;
+                logger.warn(`[CloudCode] Network error for ${account.email} (stream) (attempt ${attempt + 1}/${maxAttempts}), retrying... (${describeNetworkError(error)})`);
                 await sleep(1000);
                 continue;
             }
 
             throw error;
         }
+    }
+
+    // Every attempt ended in a network error: say so. Another model goes to the same
+    // Google servers, so falling back wouldn't help.
+    if (lastNetworkError) {
+        throw new Error(`Network error: could not reach Google Cloud Code (${describeNetworkError(lastNetworkError)}). Check your internet connection or proxy settings.`);
     }
 
     // All retries exhausted - try fallback model if enabled

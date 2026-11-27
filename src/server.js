@@ -216,7 +216,11 @@ function parseError(error) {
     let statusCode = 500;
     let errorMessage = error.message;
 
-    if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
+    if (error.message.startsWith('Network error:')) {
+        // Couldn't reach Google at all (#384). Not a quota problem, so don't say it is.
+        errorType = 'api_error';
+        statusCode = 503;
+    } else if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
         errorType = 'authentication_error';
         statusCode = 401;
         errorMessage = 'Authentication failed. Make sure Antigravity is running with a valid token.';

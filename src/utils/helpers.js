@@ -57,21 +57,72 @@ export function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Error codes Node and undici use when the connection itself fails (#384)
+const NETWORK_ERROR_CODES = new Set([
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ECONNABORTED',
+    'ETIMEDOUT',
+    'ENETUNREACH',
+    'ENETDOWN',
+    'EHOSTUNREACH',
+    'EHOSTDOWN',
+    'EAI_AGAIN',
+    'ENOTFOUND',
+    'EPIPE',
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+    'UND_ERR_BODY_TIMEOUT',
+    'UND_ERR_SOCKET',
+    'UND_ERR_CLOSED'
+]);
+
 /**
  * Check if an error is a network error (transient)
+ * Looks at the message and at the error codes on the error and its causes, since
+ * fetch only says "fetch failed" and keeps the real reason (e.g. ETIMEDOUT) in error.cause.
  * @param {Error} error - The error to check
  * @returns {boolean} True if it is a network error
  */
 export function isNetworkError(error) {
-    const msg = error.message.toLowerCase();
-    return (
+    if (!error) return false;
+    const msg = String(error.message || '').toLowerCase();
+    if (
         msg.includes('fetch failed') ||
         msg.includes('network error') ||
         msg.includes('econnreset') ||
         msg.includes('etimedout') ||
         msg.includes('socket hang up') ||
         msg.includes('timeout')
-    );
+    ) {
+        return true;
+    }
+    // Walk error.cause (and AggregateError.errors, used when every address failed)
+    const seen = new Set();
+    const queue = [error];
+    while (queue.length > 0) {
+        const err = queue.shift();
+        if (!err || typeof err !== 'object' || seen.has(err)) continue;
+        seen.add(err);
+        if (err.code && NETWORK_ERROR_CODES.has(err.code)) return true;
+        if (err.cause) queue.push(err.cause);
+        if (Array.isArray(err.errors)) queue.push(...err.errors);
+    }
+    return false;
+}
+
+/**
+ * Short description of a network error, including the underlying cause
+ * (fetch's own message is only "fetch failed")
+ * @param {Error} error - The error
+ * @returns {string} e.g. "fetch failed (UND_ERR_CONNECT_TIMEOUT: Connect Timeout Error)"
+ */
+export function describeNetworkError(error) {
+    const message = error?.message || String(error);
+    const cause = error?.cause;
+    if (!cause || typeof cause !== 'object') return message;
+    const detail = [cause.code, cause.message].filter(Boolean).join(': ');
+    return detail && detail !== message ? `${message} (${detail})` : message;
 }
 
 /**

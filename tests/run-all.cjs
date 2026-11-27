@@ -51,7 +51,8 @@ const tests = [
     { name: 'Model Registry & Routing', file: 'test-model-registry.cjs' },
     { name: 'Version Detection', file: 'test-version-detection.js' },
     { name: 'Usage Stats & Model Tracking', file: 'test-usage-stats.js' },
-    { name: 'CLI Launch (#409)', file: 'test-cli-launch.cjs' }
+    { name: 'CLI Launch (#409)', file: 'test-cli-launch.cjs' },
+    { name: 'Network Errors & DNS Order (#384)', file: 'test-network-errors.cjs' }
 ];
 
 async function runTest(test) {

@@ -5,6 +5,8 @@
 
 // Initialize proxy support BEFORE any other imports that may use fetch
 import './utils/proxy.js';
+// Prefer IPv4 for outbound requests unless the user chose otherwise (#384)
+import './utils/dns-order.js';
 
 import app, { accountManager, warmUp } from './server.js';
 import { DEFAULT_PORT } from './constants.js';

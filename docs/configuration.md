@@ -13,6 +13,7 @@ The proxy supports the following environment variables:
 | `HTTP_PROXY` | Route outbound requests through a proxy | - |
 | `HTTPS_PROXY` | Proxy for HTTPS requests (all Google API calls); falls back to `HTTP_PROXY` | - |
 | `NO_PROXY` | Comma-separated hosts that skip the proxy (e.g. `localhost,.internal.corp`) | - |
+| `DNS_RESULT_ORDER` | Which address to try first when a host has both IPv4 and IPv6: `ipv4first`, `ipv6first` or `verbatim`. IPv4 first avoids timeouts on networks with broken IPv6. An explicit `--dns-result-order` in `NODE_OPTIONS` also wins over the default | `ipv4first` |
 | `API_KEY` | Protect `/v1/*` API endpoints | - |
 | `WEBUI_PASSWORD` | Password-protect the web dashboard. Without it, the WebUI and its admin endpoints only answer requests from this machine (the `/v1` API is not affected) | - |
 | `ALLOWED_HOSTS` | Comma-separated hostnames the WebUI answers to besides `localhost` and IP addresses (e.g. `proxy.lan`) | - |
