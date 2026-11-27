@@ -22,6 +22,7 @@ import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS } from './constants.js';
 import { AccountManager } from './account-manager/index.js';
 import { clearAllSignatureCaches } from './format/signature-cache.js';
 import { geminiOutputSchema, assertGeminiStructuredResponse } from './format/structured-output.js';
+import { routeWebSearchModel } from './format/web-search.js';
 import { formatDuration } from './utils/helpers.js';
 import { logger } from './utils/logger.js';
 import usageStats from './modules/usage-stats.js';
@@ -811,6 +812,15 @@ app.post('/v1/messages', async (req, res) => {
             const how = resolved.source === 'live' ? 'live catalog' : resolved.source === 'static' ? 'built-in table' : 'exact';
             logger.info(`[Server] Resolved model ${requestedModel} -> ${resolved.model} (${how})`);
             requestedModel = resolved.model;
+        }
+
+        // Google Search grounding only works on Gemini models: a request that
+        // only asks for a web search (Claude Code's WebSearch tool) runs on a
+        // Gemini model when another model was picked.
+        const searchModel = routeWebSearchModel(requestedModel, { tools, tool_choice }, availableModels);
+        if (searchModel !== requestedModel) {
+            logger.info(`[Server] Web search request: running on ${searchModel} instead of ${requestedModel}`);
+            requestedModel = searchModel;
         }
 
         const modelId = requestedModel;

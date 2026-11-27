@@ -220,7 +220,36 @@ async function runTests() {
         console.log('PASS: parseThinkingSSEResponse merges groundingMetadata canonically');
     }
 
-    console.log('All 8 web search tests passed');
+    // 9. Web-search-only requests on a Claude model are routed to a Gemini model
+    {
+        const { routeWebSearchModel, pickWebSearchModel } = await import('../src/format/web-search.js');
+        const available = new Set([
+            'claude-sonnet-4-6', 'claude-opus-4-6-thinking', 'gemini-3.5-flash-lite',
+            'gemini-3.8-flash-high', 'gemini-3.8-flash-low', 'gemini-4-hydrogen-low'
+        ]);
+        const ws = { type: 'web_search_20250305', name: 'web_search' };
+        const weather = { name: 'get_weather', input_schema: { type: 'object' } };
+
+        assert.equal(pickWebSearchModel(available), 'gemini-3.8-flash-low');
+        assert.equal(pickWebSearchModel(new Set(['gemini-4-hydrogen-high', 'gemini-3.5-flash-lite'])), 'gemini-4-hydrogen-high');
+        assert.equal(pickWebSearchModel(new Set(['claude-sonnet-4-6'])), null);
+
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws] }, available), 'gemini-3.8-flash-low');
+        assert.equal(
+            routeWebSearchModel('claude-sonnet-4-6', { tools: [ws, weather], tool_choice: { type: 'tool', name: 'web_search' } }, available),
+            'gemini-3.8-flash-low'
+        );
+        // Mixed tools without forcing web_search, no tools, a Gemini model, or no Gemini model: unchanged
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws, weather] }, available), 'claude-sonnet-4-6');
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [weather] }, available), 'claude-sonnet-4-6');
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', {}, available), 'claude-sonnet-4-6');
+        assert.equal(routeWebSearchModel('gemini-4-hydrogen-low', { tools: [ws] }, available), 'gemini-4-hydrogen-low');
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws] }, new Set(['claude-sonnet-4-6'])), 'claude-sonnet-4-6');
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws] }, null), 'claude-sonnet-4-6');
+        console.log('PASS: web-search-only requests on Claude models route to a Gemini model');
+    }
+
+    console.log('All 9 web search tests passed');
 }
 
 runTests().catch(err => {

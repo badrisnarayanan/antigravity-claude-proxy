@@ -73,3 +73,7 @@ A model shows up in `/v1/models` as soon as the backend returns it for your acco
 > `gemini-4-argon-medium` and `gemini-4-argon-high` for eligible accounts (e.g. Google AI Ultra).
 > The bare id `gemini-4-argon` is the Gemini API name and returns `404 NOT_FOUND` on this backend.
 > No id is hardcoded: check `curl http://localhost:8080/v1/models` for what your account gets.
+
+## Web Search (Claude Code's WebSearch tool)
+
+Anthropic's server-side `web_search` tool runs on Google Search grounding. Grounding only works on Gemini models, so when a request only asks for a web search (as Claude Code's WebSearch tool does) and the picked model is a Claude model, the proxy runs that one request on a Gemini model the account offers (a Flash model at low effort when there is one) and logs `Web search request: running on <gemini model> instead of <model>`. Your conversation itself stays on the model you picked. `allowed_domains` and `blocked_domains` are passed to the model as instructions, not as a hard filter.

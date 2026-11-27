@@ -25,6 +25,7 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { geminiOutputSchema } from './structured-output.js';
+import { isWebSearchTool, usesGoogleSearchGrounding } from './web-search.js';
 import { restoreTrailingTextSignatures } from './signature-cache.js';
 
 // Gemini accepts at most 5 stop sequences in generationConfig.stopSequences.
@@ -276,17 +277,12 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
     // Convert tools to Google format
     if (tools && tools.length > 0) {
-        const isWebSearchTool = (tool) =>
-            typeof tool?.type === 'string' && tool.type.startsWith('web_search');
-
         const webSearchTools = tools.filter(isWebSearchTool);
         const clientTools = tools.filter(tool => !isWebSearchTool(tool));
-        const webSearchNames = new Set(webSearchTools.map(t => t.name || 'web_search'));
         const choice = anthropicRequest.tool_choice;
         const choiceType = typeof choice === 'string' ? choice : choice?.type;
-        const forcesWebSearch = choiceType === 'tool' && webSearchNames.has(choice?.name);
 
-        if (webSearchTools.length > 0 && (clientTools.length === 0 || forcesWebSearch)) {
+        if (usesGoogleSearchGrounding(tools, choice)) {
             // Map Anthropic server-side web_search tool (e.g. web_search_20250305)
             // to Google Search grounding. Cloud Code rejects mixing googleSearch
             // with functionDeclarations, so only enable it when no client tools
