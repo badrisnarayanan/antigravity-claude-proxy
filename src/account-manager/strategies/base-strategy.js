@@ -5,7 +5,7 @@
  * All strategies must implement the selectAccount method.
  */
 
-import { isAccountCoolingDown } from '../rate-limits.js';
+import { isAccountCoolingDown, accountOffersModel } from '../rate-limits.js';
 
 /**
  * @typedef {Object} SelectionResult
@@ -24,6 +24,16 @@ export class BaseStrategy {
             throw new Error('BaseStrategy is abstract and cannot be instantiated directly');
         }
         this.config = config;
+        this.allAccounts = null;
+    }
+
+    /**
+     * Give the strategy the full account list, so isAccountUsable() can tell
+     * whether some other account offers a model this one lacks (#420).
+     * @param {Array} accounts - All accounts
+     */
+    setAllAccounts(accounts) {
+        this.allAccounts = accounts;
     }
 
     /**
@@ -81,6 +91,9 @@ export class BaseStrategy {
 
         // Check if account is cooling down (matches opencode-antigravity-auth)
         if (isAccountCoolingDown(account)) return false;
+
+        // Skip accounts whose tier doesn't offer this model
+        if (!accountOffersModel(this.allAccounts || [account], account, modelId)) return false;
 
         // Check model-specific rate limit
         if (modelId && account.modelRateLimits && account.modelRateLimits[modelId]) {

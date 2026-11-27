@@ -10,6 +10,7 @@ import { loadAccounts, loadDefaultAccount, saveAccounts } from './storage.js';
 import {
     isAllRateLimited as checkAllRateLimited,
     getAvailableAccounts as getAvailable,
+    anyAccountOffersModel as anyOffers,
     getInvalidAccounts as getInvalid,
     clearExpiredLimits as clearLimits,
     resetAllRateLimits as resetLimits,
@@ -122,6 +123,15 @@ export class AccountManager {
     }
 
     /**
+     * Whether any enabled, valid account lists the model in its last quota fetch.
+     * @param {string} modelId - Model ID
+     * @returns {boolean}
+     */
+    anyAccountOffers(modelId) {
+        return anyOffers(this.#accounts, modelId);
+    }
+
+    /**
      * Get list of available (non-rate-limited, non-invalid) accounts
      * @param {string} [modelId] - Optional model ID
      * @returns {Array<Object>} Array of available account objects
@@ -182,6 +192,7 @@ export class AccountManager {
             throw new Error('AccountManager not initialized. Call initialize() first.');
         }
 
+        this.#strategy.setAllAccounts?.(this.#accounts);
         const result = this.#strategy.selectAccount(this.#accounts, modelId, {
             currentIndex: this.#currentIndex,
             onSave: () => this.saveToDisk(),

@@ -10,6 +10,49 @@ import { formatDuration } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 
 /**
+ * Whether an account's quota data lists a model.
+ * @param {Object} account
+ * @returns {boolean} True if the account has a non-empty model list
+ */
+function hasModelList(account) {
+    const models = account?.quota?.models;
+    return Boolean(models && Object.keys(models).length > 0);
+}
+
+/**
+ * Whether an account can serve a model, judged by the model list from its last
+ * quota fetch. Accounts on different tiers offer different models, so a model
+ * must not be routed to an account whose tier does not have it (#420).
+ *
+ * Fails open: an account with no quota data is assumed able to serve the
+ * model, and so is every account when none of them lists it (a model granted
+ * since the last quota fetch, or quota never fetched).
+ *
+ * @param {Array} accounts - All accounts
+ * @param {Object} account - The account to check
+ * @param {string|null} modelId - The requested model
+ * @returns {boolean}
+ */
+export function accountOffersModel(accounts, account, modelId) {
+    if (!modelId || !account) return true;
+    if (!hasModelList(account) || modelId in account.quota.models) return true;
+    return !(accounts || []).some(acc => acc && acc.enabled !== false && !acc.isInvalid
+        && hasModelList(acc) && modelId in acc.quota.models);
+}
+
+/**
+ * Whether any enabled, valid account lists the model in its last quota fetch.
+ * @param {Array} accounts - All accounts
+ * @param {string} modelId - Model ID
+ * @returns {boolean}
+ */
+export function anyAccountOffersModel(accounts, modelId) {
+    if (!modelId) return false;
+    return (accounts || []).some(acc => acc && acc.enabled !== false && !acc.isInvalid
+        && hasModelList(acc) && modelId in acc.quota.models);
+}
+
+/**
  * Check if all accounts are rate-limited for a specific model
  *
  * @param {Array} accounts - Array of account objects
@@ -23,6 +66,7 @@ export function isAllRateLimited(accounts, modelId) {
     return accounts.every(acc => {
         if (acc.isInvalid) return true; // Invalid accounts count as unavailable
         if (acc.enabled === false) return true; // Disabled accounts count as unavailable
+        if (!accountOffersModel(accounts, acc, modelId)) return true; // Tier doesn't offer this model
         const modelLimits = acc.modelRateLimits || {};
         const limit = modelLimits[modelId];
         return limit && limit.isRateLimited && limit.resetTime > Date.now();
@@ -42,6 +86,9 @@ export function getAvailableAccounts(accounts, modelId = null) {
 
         // WebUI: Skip disabled accounts
         if (acc.enabled === false) return false;
+
+        // Skip accounts whose tier doesn't offer this model
+        if (!accountOffersModel(accounts, acc, modelId)) return false;
 
         if (modelId && acc.modelRateLimits && acc.modelRateLimits[modelId]) {
             const limit = acc.modelRateLimits[modelId];

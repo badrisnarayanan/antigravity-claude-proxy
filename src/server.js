@@ -828,7 +828,11 @@ app.post('/v1/messages', async (req, res) => {
         const modelId = requestedModel;
 
         if (validationAccount) {
-            const valid = await isValidModel(modelId, validationToken, validationProjectId);
+            // The validation cache holds one account's model list, and tiers differ:
+            // a model any account offers is valid, and routing then picks an
+            // account that has it (#420).
+            const valid = accountManager.anyAccountOffers(modelId)
+                || await isValidModel(modelId, validationToken, validationProjectId);
 
             if (!valid) {
                 throw new Error(`invalid_request_error: Invalid model: ${modelId}. Use /v1/models to see available models.`);
