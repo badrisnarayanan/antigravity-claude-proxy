@@ -238,6 +238,24 @@ async function runTests() {
         assert(am.calls.some(([n]) => n === 'notifySuccess'), 'expected notifySuccess');
     });
 
+    console.log('\n── Error replies ─────────────────────────────────────────────');
+
+    await test('a token refresh that cannot reach Google replies 503 "Network error"', async () => {
+        const os = require('os');
+        const fs = require('fs');
+        const path = require('path');
+        const home = fs.mkdtempSync(path.join(os.tmpdir(), 'neterr-home-'));
+        process.env.HOME = home;
+        process.env.USERPROFILE = home;
+        const { parseError } = await import('../src/server.js');
+        const r = parseError(new Error('AUTH_NETWORK_ERROR: fetch failed'));
+        assert(r.statusCode === 503, `status ${r.statusCode}`);
+        assert(r.errorType === 'api_error', r.errorType);
+        assert(r.errorMessage.startsWith('Network error:') && r.errorMessage.includes('fetch failed'), r.errorMessage);
+        const q = parseError(new Error('Network error: could not reach Google Cloud Code (fetch failed). Check your internet connection or proxy settings.'));
+        assert(q.statusCode === 503, `status ${q.statusCode}`);
+    });
+
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed > 0 ? 1 : 0);
 }

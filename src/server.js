@@ -211,7 +211,7 @@ mountWebUI(app, __dirname, accountManager);
 /**
  * Parse error message to extract error type, status code, and user-friendly message
  */
-function parseError(error) {
+export function parseError(error) {
     let errorType = 'api_error';
     let statusCode = 500;
     let errorMessage = error.message;
@@ -220,6 +220,12 @@ function parseError(error) {
         // Couldn't reach Google at all (#384). Not a quota problem, so don't say it is.
         errorType = 'api_error';
         statusCode = 503;
+    } else if (error.message.startsWith('AUTH_NETWORK_ERROR:')) {
+        // The token refresh before the request couldn't reach Google (#384)
+        errorType = 'api_error';
+        statusCode = 503;
+        const detail = error.message.slice('AUTH_NETWORK_ERROR:'.length).trim();
+        errorMessage = `Network error: could not reach Google to refresh the account token (${detail}). Check your internet connection or proxy settings.`;
     } else if (error.message.includes('401') || error.message.includes('UNAUTHENTICATED')) {
         errorType = 'authentication_error';
         statusCode = 401;
