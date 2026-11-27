@@ -31,9 +31,11 @@ export function usesGoogleSearchGrounding(tools, toolChoice) {
     if (!Array.isArray(tools) || tools.length === 0) return false;
     const webSearchTools = tools.filter(isWebSearchTool);
     if (webSearchTools.length === 0) return false;
+    const choiceType = typeof toolChoice === 'string' ? toolChoice : toolChoice?.type;
+    // tool_choice none: the client asked for no tool use at all, web search included
+    if (choiceType === 'none') return false;
     const clientTools = tools.filter(tool => !isWebSearchTool(tool));
     if (clientTools.length === 0) return true;
-    const choiceType = typeof toolChoice === 'string' ? toolChoice : toolChoice?.type;
     const webSearchNames = new Set(webSearchTools.map(t => t.name || 'web_search'));
     return choiceType === 'tool' && webSearchNames.has(toolChoice?.name);
 }

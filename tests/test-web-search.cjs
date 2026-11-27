@@ -246,6 +246,17 @@ async function runTests() {
         assert.equal(routeWebSearchModel('gemini-4-hydrogen-low', { tools: [ws] }, available), 'gemini-4-hydrogen-low');
         assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws] }, new Set(['claude-sonnet-4-6'])), 'claude-sonnet-4-6');
         assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws] }, null), 'claude-sonnet-4-6');
+        // tool_choice none: no web search, so no reroute and no grounding
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws], tool_choice: { type: 'none' } }, available), 'claude-sonnet-4-6');
+        assert.equal(routeWebSearchModel('claude-sonnet-4-6', { tools: [ws], tool_choice: 'none' }, available), 'claude-sonnet-4-6');
+        const noneReq = convertAnthropicToGoogle({
+            model: 'gemini-3.8-flash-low',
+            messages: [{ role: 'user', content: 'Answer without searching' }],
+            max_tokens: 1024,
+            tools: [ws],
+            tool_choice: { type: 'none' }
+        });
+        assert.equal(noneReq.tools, undefined);
         console.log('PASS: web-search-only requests on Claude models route to a Gemini model');
     }
 
