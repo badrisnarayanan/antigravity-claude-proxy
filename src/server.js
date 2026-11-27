@@ -10,6 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
+import { createAccountQuotaReporter } from './cloudcode/quota-summary.js';
 import { mountWebUI } from './webui/index.js';
 import { createRequestGuard, isAdminPath, toList } from './utils/request-guard.js';
 import { config } from './config.js';
@@ -46,6 +47,9 @@ app.disable('x-powered-by');
 
 // Initialize account manager (will be fully initialized on first request or startup)
 export const accountManager = new AccountManager();
+
+// Per-account 5-hour and weekly quota for GET /v1/account-quotas (cached 60 s per account)
+const accountQuotaReporter = createAccountQuotaReporter({ accountManager });
 
 // Track initialization status
 let isInitialized = false;
@@ -685,6 +689,27 @@ app.get('/v1/models', async (req, res) => {
         res.json(models);
     } catch (error) {
         logger.error('[API] Error listing models:', error);
+        res.status(500).json({
+            type: 'error',
+            error: {
+                type: 'api_error',
+                message: error.message
+            }
+        });
+    }
+});
+
+/**
+ * Account quotas endpoint - the 5-hour and weekly window of each quota group
+ * for every account. Under /v1, so the API key protects it. Each account's
+ * result is cached for 60 s; one account's failure does not fail the reply.
+ */
+app.get('/v1/account-quotas', async (req, res) => {
+    try {
+        await ensureInitialized();
+        res.json(await accountQuotaReporter.getAccountQuotas());
+    } catch (error) {
+        logger.error('[API] Error fetching account quotas:', error);
         res.status(500).json({
             type: 'error',
             error: {

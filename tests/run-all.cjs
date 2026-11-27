@@ -41,6 +41,7 @@ const tests = [
     { name: 'Outbound Proxy Support', file: 'test-proxy-support.cjs' },
     { name: 'Model Alias Resolver', file: 'test-model-resolver.cjs' },
     { name: 'Streaming Whitespace', file: 'test-streaming-whitespace.cjs' },
+    { name: 'Account Quotas', file: 'test-account-quotas.cjs' },
     { name: '403 Account Rotation (Unit)', file: 'test-403-account-rotation.cjs' },
     { name: '403 Account Rotation (Integration)', file: 'test-403-integration.cjs' },
     { name: 'Model Registry & Routing', file: 'test-model-registry.cjs' },
