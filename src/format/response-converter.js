@@ -251,15 +251,14 @@ export function convertGoogleToAnthropic(googleResponse, model, requestContext =
         anthropicContent.splice(insertIdx, 0, ...webSearchBlocks);
     }
 
-    // Determine stop reason
+    // Determine stop reason. Gemini reports finishReason STOP even when the reply
+    // is a function call, so tool calls must win over STOP (same as sse-streamer).
     const finishReason = firstCandidate.finishReason;
     let stopReason = 'end_turn';
-    if (finishReason === 'STOP') {
-        stopReason = 'end_turn';
+    if (hasToolCalls || finishReason === 'TOOL_USE') {
+        stopReason = 'tool_use';
     } else if (finishReason === 'MAX_TOKENS') {
         stopReason = 'max_tokens';
-    } else if (finishReason === 'TOOL_USE' || hasToolCalls) {
-        stopReason = 'tool_use';
     }
 
     // Extract usage metadata
