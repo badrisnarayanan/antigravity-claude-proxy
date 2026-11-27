@@ -17,7 +17,7 @@ import express from 'express';
 import { getPublicConfig, saveConfig, config } from '../config.js';
 import { DEFAULT_PORT, ACCOUNT_CONFIG_PATH, MAX_ACCOUNTS, DEFAULT_PRESETS } from '../constants.js';
 import { readClaudeConfig, updateClaudeConfig, replaceClaudeConfig, getClaudeConfigPath, readPresets, savePreset, deletePreset, sanitizeClaudeConfigUpdate, sanitizeClaudeEnv } from '../utils/claude-config.js';
-import { safeEqual } from '../utils/request-guard.js';
+import { safeEqual, normalizeRequestPath } from '../utils/request-guard.js';
 import { readServerPresets, saveServerPreset, updateServerPreset, deleteServerPreset } from '../utils/server-presets.js';
 import { logger } from '../utils/logger.js';
 import { getAuthorizationUrl, completeOAuthFlow, startCallbackServer } from '../auth/oauth.js';
@@ -118,10 +118,12 @@ function createAuthMiddleware() {
         if (!password) return next();
 
         // Determine if this path should be protected
-        const isApiRoute = req.path.startsWith('/api/');
-        const isAuthUrl = req.path === '/api/auth/url';
-        const isConfigGet = req.path === '/api/config' && req.method === 'GET';
-        const isProtected = (isApiRoute && !isAuthUrl && !isConfigGet) || req.path === '/account-limits' || req.path === '/health';
+        // Compare the path Express routes on (case and a trailing slash don't matter)
+        const reqPath = normalizeRequestPath(req.path);
+        const isApiRoute = reqPath.startsWith('/api/');
+        const isAuthUrl = reqPath === '/api/auth/url';
+        const isConfigGet = reqPath === '/api/config' && req.method === 'GET';
+        const isProtected = (isApiRoute && !isAuthUrl && !isConfigGet) || reqPath === '/account-limits' || reqPath === '/health';
 
         if (isProtected) {
             const providedPassword = req.headers['x-webui-password'] || req.query.password;

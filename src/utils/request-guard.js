@@ -29,11 +29,26 @@ const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
  * The Anthropic-compatible /v1 API is not included (it has its own API key).
  */
 export function isAdminPath(reqPath) {
-    return reqPath.startsWith('/api/') ||
-        reqPath === '/account-limits' ||
-        reqPath === '/refresh-token' ||
-        reqPath === '/health' ||
-        reqPath.startsWith('/test/');
+    const p = normalizeRequestPath(reqPath);
+    return p.startsWith('/api/') ||
+        p === '/account-limits' ||
+        p === '/refresh-token' ||
+        p === '/health' ||
+        p.startsWith('/test/');
+}
+
+/**
+ * The form of a request path that Express routes on. Express matches routes
+ * case-insensitively and ignores a trailing slash, so /API/accounts and
+ * /account-limits/ reach the same handlers as /api/accounts and
+ * /account-limits. Path checks must compare this form, or such a path skips them.
+ * @param {string} reqPath
+ * @returns {string}
+ */
+export function normalizeRequestPath(reqPath) {
+    const lower = String(reqPath || '').toLowerCase();
+    const trimmed = lower.replace(/\/+$/, '');
+    return trimmed || '/';
 }
 
 /**

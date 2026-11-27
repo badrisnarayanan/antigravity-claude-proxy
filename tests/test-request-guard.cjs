@@ -162,6 +162,56 @@ async function runTests() {
         }
     });
 
+    test('Admin paths match whatever the case or a trailing slash (Express routes them the same)', () => {
+        for (const p of ['/API/accounts', '/Api/config', '/api/accounts/', '/ACCOUNT-LIMITS', '/account-limits/',
+            '/HEALTH', '/health/', '/Refresh-Token', '/TEST/x']) {
+            assert(guard.isAdminPath(p), p);
+        }
+        for (const p of ['/v1/messages', '/V1/MESSAGES', '/', '/index.html', '/apix']) {
+            assert(!guard.isAdminPath(p), p);
+        }
+    });
+
+    test('Blocks cross-origin request to an upper-case admin path', () => {
+        assert(run({}, { origin: 'https://evil.example', path: '/API/accounts', method: 'GET' }) === 403);
+        assert(run({}, { origin: 'https://evil.example', path: '/account-limits/', method: 'GET' }) === 403);
+    });
+
+    // The guards must cover every spelling Express routes to the handler, on the real app
+    await (async () => {
+        const os = require('os');
+        const fs = require('fs');
+        const path = require('path');
+        const http = require('http');
+        const home = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-home-'));
+        process.env.HOME = home;
+        process.env.USERPROFILE = home;
+        const { default: app } = await import('../src/server.js');
+        const { config } = await import('../src/config.js');
+        const server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+        const port = server.address().port;
+        const get = (reqPath, headers = {}) => new Promise((resolve, reject) => {
+            http.get({ host: '127.0.0.1', port, path: reqPath, headers }, res => { res.resume(); resolve(res.statusCode); }).on('error', reject);
+        });
+        const savedPassword = config.webuiPassword;
+        try {
+            for (const p of ['/api/accounts', '/API/accounts', '/Api/Accounts', '/api/accounts/', '/account-limits/', '/HEALTH']) {
+                const status = await get(p, { origin: 'https://evil.example' });
+                if (status === 403) { console.log(`✓ App blocks cross-origin GET ${p}`); passed++; }
+                else { console.log(`✗ App blocks cross-origin GET ${p}`); console.log(`  Error: got ${status}`); failed++; }
+            }
+            config.webuiPassword = 'test-password';
+            for (const p of ['/api/accounts', '/API/accounts', '/account-limits/', '/HEALTH']) {
+                const status = await get(p);
+                if (status === 401) { console.log(`✓ App asks for the WebUI password on GET ${p}`); passed++; }
+                else { console.log(`✗ App asks for the WebUI password on GET ${p}`); console.log(`  Error: got ${status}`); failed++; }
+            }
+        } finally {
+            config.webuiPassword = savedPassword;
+            server.close();
+        }
+    })();
+
     console.log(`\nResults: ${passed} passed, ${failed} failed`);
     process.exit(failed > 0 ? 1 : 0);
 }
