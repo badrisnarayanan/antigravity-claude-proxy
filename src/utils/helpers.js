@@ -87,6 +87,9 @@ const NETWORK_ERROR_CODES = new Set([
 export function isNetworkError(error) {
     if (!error) return false;
     const msg = String(error.message || '').toLowerCase();
+    // Google answered with a 400: a bad request, not a network problem, even when
+    // its text happens to say "timeout" (e.g. a tool with a `timeout` parameter)
+    if (msg.startsWith('invalid_request_error')) return false;
     if (
         msg.includes('fetch failed') ||
         msg.includes('network error') ||

@@ -121,6 +121,11 @@ async function runTests() {
         assert(!isNetworkError(new Error('invalid_request_error: bad schema')));
     });
 
+    await test('does not call a 400 that mentions "timeout" a network error', () => {
+        // Claude Code's Bash tool has a `timeout` parameter, so schema errors can name it
+        assert(!isNetworkError(new Error('invalid_request_error: {"error":{"code":400,"message":"properties[timeout]: unsupported \'maximum\'"}}')));
+    });
+
     await test('handles null and errors without a message', () => {
         assert(!isNetworkError(null));
         assert(!isNetworkError({}));
@@ -236,6 +241,24 @@ async function runTests() {
         assert(text === 'hello', `unexpected reply: ${JSON.stringify(result)}`);
         assert(am.penalties().length === 0, JSON.stringify(am.penalties()));
         assert(am.calls.some(([n]) => n === 'notifySuccess'), 'expected notifySuccess');
+    });
+
+    await test('sendMessageStream: a 400 that mentions "timeout" fails at once, not as a network error', async () => {
+        const am = new MockAccountManager();
+        let fetches = 0;
+        const body = JSON.stringify({ error: { code: 400, status: 'INVALID_ARGUMENT', message: "properties[timeout]: unsupported 'maximum'" } });
+        global.fetch = async () => { fetches++; return new Response(body, { status: 400 }); };
+        let thrown;
+        try {
+            for await (const _ of sendMessageStream(request, am, true)) { /* drain */ }
+        } catch (e) {
+            thrown = e;
+        } finally {
+            global.fetch = realFetch;
+        }
+        assert(thrown, 'expected an error');
+        assert(thrown.message.startsWith('invalid_request_error'), thrown.message);
+        assert(fetches === 1, `expected 1 fetch, got ${fetches}`);
     });
 
     console.log('\n── Error replies ─────────────────────────────────────────────');
