@@ -47,10 +47,12 @@ import crypto from 'crypto';
  * @param {number} [anthropicRequest.max_tokens] - Maximum tokens to generate
  * @param {Object} [anthropicRequest.thinking] - Thinking configuration
  * @param {import('../account-manager/index.js').default} accountManager - The account manager instance
+ * @param {boolean} [fallbackEnabled] - Try the fallback model when every attempt fails
+ * @param {{ signal?: AbortSignal }} [options] - `signal` cancels the upstream request when the client disconnects
  * @yields {Object} Anthropic-format SSE events (message_start, content_block_start, content_block_delta, etc.)
  * @throws {Error} If max retries exceeded or no accounts available
  */
-export async function* sendMessageStream(anthropicRequest, accountManager, fallbackEnabled = false) {
+export async function* sendMessageStream(anthropicRequest, accountManager, fallbackEnabled = false, { signal } = {}) {
     const model = anthropicRequest.model;
 
     // Retry loop with account failover
@@ -58,6 +60,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
     const maxAttempts = Math.max(MAX_RETRIES, accountManager.getAccountCount() + 1);
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        signal?.throwIfAborted();
         // Clear any expired rate limits before picking
         accountManager.clearExpiredLimits();
 
@@ -88,7 +91,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                         if (fallbackModel) {
                             logger.warn(`[CloudCode] All accounts exhausted for ${model} (${formatDuration(minWaitMs)} wait). Attempting fallback to ${fallbackModel} (streaming)`);
                             const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
-                            yield* sendMessageStream(fallbackRequest, accountManager, false);
+                            yield* sendMessageStream(fallbackRequest, accountManager, false, { signal });
                             return;
                         }
                     }
@@ -157,7 +160,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                     const response = await throttledFetch(url, {
                         method: 'POST',
                         headers: buildHeaders(token, model, 'text/event-stream', payload.request.sessionId),
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal
                     });
 
                     if (!response.ok) {
@@ -349,7 +353,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             currentResponse = await throttledFetch(url, {
                                 method: 'POST',
                                 headers: buildHeaders(token, model, 'text/event-stream', payload.request.sessionId),
-                                body: JSON.stringify(payload)
+                                body: JSON.stringify(payload),
+                                signal
                             });
 
                             // Handle specific error codes on retry
@@ -382,7 +387,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                     currentResponse = await throttledFetch(url, {
                                         method: 'POST',
                                         headers: buildHeaders(token, model, 'text/event-stream'),
-                                        body: JSON.stringify(payload)
+                                        body: JSON.stringify(payload),
+                                        signal
                                     });
                                     if (currentResponse.ok) {
                                         continue;
@@ -395,6 +401,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                     }
 
                 } catch (endpointError) {
+                    if (signal?.aborted) throw signal.reason;
                     if (isRateLimitError(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
@@ -426,6 +433,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
             }
 
         } catch (error) {
+            if (signal?.aborted) throw signal.reason;
             if (isRateLimitError(error)) {
                 // Rate limited - already marked, notify strategy and continue to next account
                 accountManager.notifyRateLimit(account, model);
@@ -496,7 +504,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
         if (fallbackModel) {
             logger.warn(`[CloudCode] All retries exhausted for ${model}. Attempting fallback to ${fallbackModel} (streaming)`);
             const fallbackRequest = { ...anthropicRequest, model: fallbackModel };
-            yield* sendMessageStream(fallbackRequest, accountManager, false);
+            yield* sendMessageStream(fallbackRequest, accountManager, false, { signal });
             return;
         }
     }

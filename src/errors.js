@@ -184,6 +184,17 @@ export class AccountForbiddenError extends AntigravityError {
 }
 
 /**
+ * The client closed its connection, so the upstream request was cancelled.
+ * Never retried: nobody is waiting for the answer.
+ */
+export class ClientDisconnectedError extends AntigravityError {
+    constructor() {
+        super('Client disconnected', 'CLIENT_DISCONNECTED', false);
+        this.name = 'ClientDisconnectedError';
+    }
+}
+
+/**
  * Check if an error is an account forbidden error (403 VALIDATION_REQUIRED / PERMISSION_DENIED)
  * These errors indicate the account itself is blocked and need account rotation, not endpoint rotation.
  * @param {Error} error - Error to check
@@ -263,6 +274,7 @@ export default {
     NativeModuleError,
     EmptyResponseError,
     CapacityExhaustedError,
+    ClientDisconnectedError,
     isRateLimitError,
     isAuthError,
     isAccountForbiddenError,

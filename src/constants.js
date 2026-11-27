@@ -156,6 +156,11 @@ export const MAX_ACCOUNTS = config?.maxAccounts || 10; // From config or 10
 // Rate limit wait thresholds
 export const MAX_WAIT_BEFORE_ERROR_MS = config?.maxWaitBeforeErrorMs || 120000; // From config or 2 minutes
 
+// Streaming: how long to hold response headers for the first upstream event,
+// then how often to send an SSE ping until it comes (see utils/stream-response.js)
+export const STREAM_HEADER_GRACE_MS = config?.streamHeaderGraceMs || 10000; // 10 seconds
+export const STREAM_PING_INTERVAL_MS = config?.streamPingIntervalMs || 15000; // 15 seconds
+
 // Retry deduplication - prevents thundering herd on concurrent rate limits
 export const RATE_LIMIT_DEDUP_WINDOW_MS = config?.rateLimitDedupWindowMs || 2000; // 2 seconds
 export const RATE_LIMIT_STATE_RESET_MS = config?.rateLimitStateResetMs || 120000; // 2 minutes - reset consecutive429 after inactivity
