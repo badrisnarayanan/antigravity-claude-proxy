@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'fs';
 import { spawn, exec } from 'child_process';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -65,10 +66,15 @@ function getServicePid() {
  * Save PID to file
  */
 function savePid(pid) {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+  try {
+    if (!existsSync(CONFIG_DIR)) {
+      mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    writeFileSync(PID_FILE, pid.toString());
+  } catch (e) {
+    console.warn(`   Could not write PID file ${PID_FILE}: ${e.message}`);
+    console.warn('   acc stop and acc status may not find this proxy.');
   }
-  writeFileSync(PID_FILE, pid.toString());
 }
 
 /**
@@ -91,22 +97,65 @@ function getPort() {
   return process.env.PORT || 8080;
 }
 
-/**
- * Wait for service to be ready
- */
-async function waitForService(timeout = 10000, initialDelay = 1000) {
-  await new Promise(resolve => setTimeout(resolve, initialDelay));
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Host to probe when checking the port. The server binds 0.0.0.0 by default,
+ * which is reachable on 127.0.0.1.
+ */
+function getProbeHost() {
+  const host = process.env.HOST;
+  if (!host || host === '0.0.0.0' || host === '::') {
+    return '127.0.0.1';
+  }
+  return host;
+}
+
+/**
+ * Check whether something is accepting connections on the port
+ */
+function isPortInUse(port, timeout = 1000) {
+  return new Promise(resolve => {
+    const socket = net.connect({ port: Number(port), host: getProbeHost() });
+    const done = (inUse) => {
+      socket.destroy();
+      resolve(inUse);
+    };
+    socket.setTimeout(timeout, () => done(false));
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+  });
+}
+
+/**
+ * Wait until the server accepts connections on its port.
+ * Stops early if the server process exits, instead of waiting out the timeout (#409).
+ */
+async function waitForService(child, port, timeout = 15000) {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
-    if (isServiceRunning()) {
-      // Additional wait to ensure service is fully ready
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return true;
+    if (child.exited) {
+      return { ready: false, exited: true };
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    if (await isPortInUse(port)) {
+      return { ready: true };
+    }
+    await sleep(250);
   }
-  return false;
+  return { ready: false, exited: child.exited };
+}
+
+/**
+ * Print the port-in-use message
+ */
+function printPortInUse(port) {
+  console.error('');
+  console.error(`⚠️  Port ${port} is already in use`);
+  console.error('   Another program (maybe another copy of the proxy) is listening there.');
+  console.error(`   • If it is the proxy, its dashboard is at http://localhost:${port}`);
+  console.error('   • Otherwise stop that program, or pick another port with PORT');
+  console.error('     (for example PORT=8081 acc start)');
+  console.error('');
 }
 
 /**
@@ -149,8 +198,11 @@ async function startServer() {
 
   if (logMode) {
     // Foreground mode - show logs directly
-    const serverProcess = spawn('node', [serverScript, ...serverArgs], {
+    // process.execPath: the Node binary running this CLI. Plain 'node' can resolve
+    // to a version-manager shim (Volta, nvm-windows) that fails silently (#409).
+    const serverProcess = spawn(process.execPath, [serverScript, ...serverArgs], {
       stdio: 'inherit', // Show output in current terminal
+      windowsHide: true,
       env: { ...process.env, PORT: port.toString() }
     });
 
@@ -172,11 +224,26 @@ async function startServer() {
     return;
   }
 
-  // Background mode - detached process
-  const serverProcess = spawn('node', [serverScript, ...serverArgs], {
+  // Background mode - check the port first, since the detached server's own
+  // error output is not visible here
+  if (await isPortInUse(port)) {
+    printPortInUse(port);
+    process.exitCode = 1;
+    return;
+  }
+
+  // Background mode - detached process (process.execPath, see foreground note)
+  const serverProcess = spawn(process.execPath, [serverScript, ...serverArgs], {
     detached: true,
     stdio: 'ignore',
+    windowsHide: true,
     env: { ...process.env, PORT: port.toString() }
+  });
+
+  serverProcess.exited = false;
+  serverProcess.once('exit', (code, signal) => {
+    serverProcess.exited = true;
+    serverProcess.exitInfo = signal ? `signal ${signal}` : `exit code ${code}`;
   });
 
   serverProcess.on('error', (error) => {
@@ -191,7 +258,15 @@ async function startServer() {
   serverProcess.unref();
 
   // Wait for service to be ready
-  if (await waitForService()) {
+  const result = await waitForService(serverProcess, port);
+  if (result.exited) {
+    cleanupPidFile();
+    console.error('');
+    console.error(`⚠️  Proxy stopped right after launch (${serverProcess.exitInfo})`);
+    console.error('   Run acc start --log to see the error.');
+    console.error('');
+    process.exitCode = 1;
+  } else if (result.ready) {
     console.log('╭' + '─'.repeat(48) + '╮');
     console.log('│ ⚡ Proxy is now in orbit!                      │');
     console.log('╰' + '─'.repeat(48) + '╯');
@@ -210,7 +285,9 @@ async function startServer() {
     console.error('');
     console.error('⚠️  Proxy launched but health check timed out');
     console.log(`   Try: curl http://localhost:${port}/health`);
+    console.log('   Or run acc start --log to see its output.');
     console.error('');
+    process.exitCode = 1;
   }
 }
 
@@ -257,8 +334,13 @@ async function restartServer() {
       cleanupPidFile();
       console.log('   └─ Existing instance stopped');
       console.log('');
-      // Wait for process to fully terminate
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for the process to terminate and release the port
+      const port = getPort();
+      const deadline = Date.now() + 10000;
+      await sleep(500);
+      while (Date.now() < deadline && await isPortInUse(port)) {
+        await sleep(250);
+      }
     } catch {
       console.log('   └─ No previous instance found');
       console.log('');

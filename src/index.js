@@ -61,10 +61,24 @@ if (process.env.HOST) {
 const HOME_DIR = os.homedir();
 const CONFIG_DIR = path.join(HOME_DIR, '.antigravity-claude-proxy');
 
-const server = app.listen(PORT, HOST, () => {
+// Express 5 calls this callback with the error when listen fails (e.g. port in use),
+// so handle that here instead of crashing on a null server.address() (#409).
+const server = app.listen(PORT, HOST, (err) => {
+    if (err) {
+        if (err.code === 'EADDRINUSE') {
+            logger.error(`[Startup] Port ${PORT} is already in use. Another program (maybe another copy of the proxy) is listening there.`);
+            logger.error('[Startup] Stop it, or start on another port by setting PORT (for example PORT=8081).');
+        } else if (err.code === 'EACCES') {
+            logger.error(`[Startup] No permission to listen on ${HOST}:${PORT}. Try another port by setting PORT.`);
+        } else {
+            logger.error(`[Startup] Server failed to start: ${err.message}`);
+        }
+        process.exit(1);
+    }
+
     const address = server.address();
-    const boundHost = typeof address === 'string' ? address : address.address;
-    const boundPort = typeof address === 'string' ? null : address.port;
+    const boundHost = typeof address === 'string' ? address : (address?.address || HOST);
+    const boundPort = typeof address === 'string' ? null : (address?.port || PORT);
 
     // Load accounts now and start the background model-list refresh (#420)
     warmUp();

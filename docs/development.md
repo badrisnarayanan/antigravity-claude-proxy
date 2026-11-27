@@ -7,7 +7,7 @@ This project uses a local Tailwind CSS build system. CSS is pre-compiled and inc
 ### Quick Start
 
 ```bash
-git clone https://github.com/badri-s2001/antigravity-claude-proxy.git
+git clone https://github.com/badrisnarayanan/antigravity-claude-proxy.git
 cd antigravity-claude-proxy
 npm install  # Automatically builds CSS via prepare hook
 npm start    # Start server (no rebuild needed)
