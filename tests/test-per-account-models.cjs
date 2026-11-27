@@ -19,9 +19,12 @@ async function runTests() {
     const { StickyStrategy } = await import('../src/account-manager/strategies/sticky-strategy.js');
     const { RoundRobinStrategy } = await import('../src/account-manager/strategies/round-robin-strategy.js');
     const { HybridStrategy } = await import('../src/account-manager/strategies/hybrid-strategy.js');
+    const { ModelCatalogRefresher, refreshAccountQuota } = await import('../src/account-manager/model-catalog.js');
 
     let passed = 0;
     let failed = 0;
+    const asyncTests = [];
+    function atest(name, fn) { asyncTests.push([name, fn]); }
     function test(name, fn) {
         try {
             fn();
@@ -150,6 +153,118 @@ async function runTests() {
         const r = s.selectAccount(a, CARBON, { currentIndex: 1 });
         assert(r.account, 'expected an account');
     });
+
+    // ---- Background model-list refresh (no dashboard needed) ----
+
+    function fakeManager(accounts, opts = {}) {
+        const calls = { tokens: [], saves: 0, invalid: [] };
+        return {
+            calls,
+            getAllAccounts: () => accounts,
+            getTokenForAccount: async (acc) => {
+                calls.tokens.push(acc.email);
+                if (opts.tokenFails?.includes(acc.email)) throw new Error('token refresh failed');
+                return 'tok-' + acc.email;
+            },
+            saveToDisk: async () => { calls.saves++; },
+            markInvalid: (email) => { calls.invalid.push(email); const a = accounts.find(x => x.email === email); if (a) a.isInvalid = true; }
+        };
+    }
+    function fakeDeps(catalog, log = []) {
+        return {
+            getSubscriptionTier: async (token) => ({ tier: 'pro', projectId: 'p-' + token }),
+            getModelQuotas: async (token) => {
+                const email = token.replace('tok-', '');
+                log.push({ email, at: Date.now() });
+                if (catalog[email] instanceof Error) throw catalog[email];
+                return Object.fromEntries(catalog[email].map(m => [m, { remainingFraction: 1, resetTime: null }]));
+            }
+        };
+    }
+    const bare = (email, extra = {}) => ({ email, enabled: true, modelRateLimits: {}, quota: { models: {}, lastChecked: null }, ...extra });
+
+    atest('refreshAll fills quota.models for every account, so routing works without the dashboard', async () => {
+        const accounts = [bare('ultra-1@test'), bare('pro-1@test')];
+        const mgr = fakeManager(accounts);
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 0, deps: fakeDeps({ 'ultra-1@test': [CARBON, SHARED], 'pro-1@test': [SHARED] }) });
+        // Before: no lists, everything fails open
+        assert(accountOffersModel(accounts, accounts[1], CARBON), 'fails open before refresh');
+        const res = await r.refreshAll();
+        assert(res.refreshed === 2 && res.failed === 0, JSON.stringify(res));
+        assert(CARBON in accounts[0].quota.models);
+        assert(!(CARBON in accounts[1].quota.models));
+        assert(accounts[0].subscription.tier === 'pro');
+        assert(!accountOffersModel(accounts, accounts[1], CARBON), 'pro account excluded after refresh');
+        assert(anyAccountOffersModel(accounts, CARBON), 'Carbon valid after refresh');
+        assert(mgr.calls.saves === 2, 'saved to disk');
+    });
+
+    atest('refreshAll skips disabled, invalid and fresh accounts', async () => {
+        const fresh = { models: { [SHARED]: { remainingFraction: 1 } }, lastChecked: Date.now() };
+        const accounts = [bare('a@test', { enabled: false }), bare('b@test', { isInvalid: true }), bare('c@test', { quota: fresh }), bare('d@test')];
+        const mgr = fakeManager(accounts);
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 0, deps: fakeDeps({ 'd@test': [SHARED] }) });
+        const res = await r.refreshAll();
+        assert(res.refreshed === 1 && res.skipped === 3, JSON.stringify(res));
+        assert(mgr.calls.tokens.join() === 'd@test', mgr.calls.tokens.join());
+    });
+
+    atest('refreshAll fails open: a failed fetch keeps the old list and does not throw', async () => {
+        const old = { models: { [CARBON]: { remainingFraction: 1 } }, lastChecked: 1 };
+        const accounts = [bare('a@test', { quota: old }), bare('b@test')];
+        const mgr = fakeManager(accounts, { tokenFails: ['b@test'] });
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 0, deps: fakeDeps({ 'a@test': new Error('Google down') }) });
+        const res = await r.refreshAll();
+        assert(res.failed === 2 && res.refreshed === 0, JSON.stringify(res));
+        assert(accounts[0].quota === old, 'old list kept');
+        assert(Object.keys(accounts[1].quota.models).length === 0, 'still no list, routing fails open');
+    });
+
+    atest('refreshAll marks a banned account invalid', async () => {
+        const accounts = [bare('banned@test')];
+        const mgr = fakeManager(accounts);
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 0, deps: fakeDeps({ 'banned@test': new Error('ACCOUNT_BANNED: disabled') }) });
+        await r.refreshAll();
+        assert(mgr.calls.invalid.join() === 'banned@test');
+    });
+
+    atest('refreshAll waits between accounts and runs one pass at a time', async () => {
+        const accounts = [bare('a@test'), bare('b@test'), bare('c@test')];
+        const log = [];
+        const mgr = fakeManager(accounts);
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 60, deps: fakeDeps({ 'a@test': [SHARED], 'b@test': [SHARED], 'c@test': [SHARED] }, log) });
+        const [x, y] = await Promise.all([r.refreshAll(), r.refreshAll()]);
+        assert(x === y, 'second call shares the running pass');
+        assert(log.length === 3, `fetched ${log.length} times`);
+        assert(log[1].at - log[0].at >= 50 && log[2].at - log[1].at >= 50, 'calls are staggered');
+    });
+
+    atest('refreshAccountQuota returns the same shape /account-limits uses', async () => {
+        const acc = bare('a@test');
+        const r = await refreshAccountQuota(fakeManager([acc]), acc, fakeDeps({ 'a@test': [SHARED] }));
+        assert(r.status === 'ok' && SHARED in r.quotas);
+    });
+
+    atest('start() runs a first pass by itself and stop() clears timers', async () => {
+        const accounts = [bare('a@test')];
+        const mgr = fakeManager(accounts);
+        const r = new ModelCatalogRefresher(mgr, { staggerMs: 0, initialDelayMs: 10, intervalMs: 60_000, deps: fakeDeps({ 'a@test': [SHARED] }) });
+        r.start();
+        await new Promise(res => setTimeout(res, 80));
+        r.stop();
+        assert(SHARED in accounts[0].quota.models, 'first pass ran without anyone calling /account-limits');
+    });
+
+    for (const [name, fn] of asyncTests) {
+        try {
+            await fn();
+            console.log(`✓ ${name}`);
+            passed++;
+        } catch (e) {
+            console.log(`✗ ${name}\n  ${e.message}`);
+            failed++;
+        }
+    }
 
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed > 0 ? 1 : 0);

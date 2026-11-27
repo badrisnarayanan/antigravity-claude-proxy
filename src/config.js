@@ -53,6 +53,9 @@ const DEFAULT_CONFIG = {
     switchAccountDelayMs: 5000,    // Delay before switching accounts on rate limit
     capacityBackoffTiersMs: [5000, 10000, 20000, 30000, 60000], // Progressive backoff tiers for capacity exhaustion
     modelMapping: {},
+    // How often the proxy reloads each account's model list (ms), so models
+    // only some tiers offer go to accounts that have them. 0 = only at startup.
+    modelCatalogRefreshMs: 1800000, // 30 minutes
     extraStopSequences: [], // Additional stop sequences appended to every request (capped at 5 total with client stop_sequences)
     // Antigravity client version sent to Cloud Code (X-Client-Version / User-Agent).
     // Empty = auto-detect from local Antigravity install, then hardcoded fallback.

@@ -8,7 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscriptionTier, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
+import { sendMessage, sendMessageStream, listModels, getModelQuotas, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
 import { createAccountQuotaReporter } from './cloudcode/quota-summary.js';
 import { mountWebUI } from './webui/index.js';
@@ -22,6 +22,7 @@ import { REQUEST_BODY_LIMIT, BUILTIN_MODEL_MAPPINGS, STREAM_HEADER_GRACE_MS, STR
 import { ClientDisconnectedError } from './errors.js';
 import { firstEvent, writeEvents } from './utils/stream-response.js';
 import { AccountManager } from './account-manager/index.js';
+import { refreshAccountQuota, ModelCatalogRefresher } from './account-manager/model-catalog.js';
 import { clearAllSignatureCaches } from './format/signature-cache.js';
 import { geminiOutputSchema, assertGeminiStructuredResponse } from './format/structured-output.js';
 import { routeWebSearchModel } from './format/web-search.js';
@@ -74,6 +75,11 @@ function guardAccountQuotasWithoutApiKey(req, res, next) {
     });
 }
 
+// Keeps each account's model list (quota.models) filled without the dashboard (#420)
+const modelCatalog = new ModelCatalogRefresher(accountManager, {
+    intervalMs: config.modelCatalogRefreshMs ?? 30 * 60 * 1000
+});
+
 // Track initialization status
 let isInitialized = false;
 let initPromise = null;
@@ -93,6 +99,8 @@ async function ensureInitialized() {
             isInitialized = true;
             const status = accountManager.getStatus();
             logger.success(`[Server] Account pool initialized: ${status.summary}`);
+            // Load each account's model list in the background (#420)
+            modelCatalog.start();
         } catch (error) {
             initPromise = null; // Allow retry on failure
             logger.error('[Server] Failed to initialize account manager:', error.message);
@@ -101,6 +109,16 @@ async function ensureInitialized() {
     })();
 
     return initPromise;
+}
+
+/**
+ * Initialize the account pool at startup (instead of on the first request),
+ * which also starts the background model-list refresh. Never throws.
+ */
+export function warmUp() {
+    ensureInitialized().catch(err => {
+        logger.debug(`[Server] Startup initialization deferred: ${err.message}`);
+    });
 }
 
 // Middleware
@@ -415,55 +433,22 @@ app.get('/account-limits', async (req, res) => {
                     };
                 }
 
-                try {
-                    const token = await accountManager.getTokenForAccount(account);
-
-                    const subscription = await getSubscriptionTier(token);
-
-                    // Then fetch quotas with project ID for accurate quota info
-                    const quotas = await getModelQuotas(token, subscription.projectId);
-
-                    account.subscription = {
-                        tier: subscription.tier,
-                        projectId: subscription.projectId,
-                        detectedAt: Date.now()
-                    };
-                    account.quota = {
-                        models: quotas,
-                        lastChecked: Date.now()
-                    };
-
-                    // Save updated account data to disk (async, don't wait)
-                    accountManager.saveToDisk().catch(err => {
-                        logger.error('[Server] Failed to save account data:', err);
-                    });
-
+                const r = await refreshAccountQuota(accountManager, account);
+                if (r.status === 'ok') {
                     return {
                         email: account.email,
                         status: 'ok',
                         subscription: account.subscription,
-                        models: quotas
-                    };
-                } catch (error) {
-                    // Detect ToS ban from quota/subscription fetch and mark account invalid
-                    if (error.message?.startsWith('ACCOUNT_BANNED:')) {
-                        accountManager.markInvalid(account.email, 'Account banned — Gemini disabled for Terms of Service violation');
-                        return {
-                            email: account.email,
-                            status: 'banned',
-                            error: 'Account banned — Gemini disabled for Terms of Service violation',
-                            subscription: account.subscription || { tier: 'unknown', projectId: null },
-                            models: {}
-                        };
-                    }
-                    return {
-                        email: account.email,
-                        status: 'error',
-                        error: error.message,
-                        subscription: account.subscription || { tier: 'unknown', projectId: null },
-                        models: {}
+                        models: r.quotas
                     };
                 }
+                return {
+                    email: account.email,
+                    status: r.status,
+                    error: r.error,
+                    subscription: account.subscription || { tier: 'unknown', projectId: null },
+                    models: {}
+                };
             })
         );
 

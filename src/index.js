@@ -6,7 +6,7 @@
 // Initialize proxy support BEFORE any other imports that may use fetch
 import './utils/proxy.js';
 
-import app, { accountManager } from './server.js';
+import app, { accountManager, warmUp } from './server.js';
 import { DEFAULT_PORT } from './constants.js';
 import { logger } from './utils/logger.js';
 import { config } from './config.js';
@@ -65,6 +65,9 @@ const server = app.listen(PORT, HOST, () => {
     const address = server.address();
     const boundHost = typeof address === 'string' ? address : address.address;
     const boundPort = typeof address === 'string' ? null : address.port;
+
+    // Load accounts now and start the background model-list refresh (#420)
+    warmUp();
 
     // Clear console for a clean start
     console.clear();

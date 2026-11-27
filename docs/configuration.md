@@ -94,6 +94,7 @@ The proxy supports `http_proxy`, `HTTP_PROXY`, `https_proxy`, and `HTTPS_PROXY` 
 - **Retry Logic**: Configure `maxRetries`, `retryBaseMs`, and `retryMaxMs`.
 - **Rate Limit Handling**: Comprehensive rate limit detection from headers and error messages with intelligent retry-after parsing.
 - **Load Balancing**: Adjust `defaultCooldownMs` and `maxWaitBeforeErrorMs`.
+- **Per-Account Models**: Accounts on different tiers offer different models. Shortly after startup, and then every `modelCatalogRefreshMs` (default 1800000, 30 minutes; `0` = startup only), the proxy loads each account's model list, one account at a time. A model is accepted if any account offers it, and requests for it only go to accounts that have it. If a list can't be loaded, that account is treated as able to serve any model, as before.
 - **Slow First Replies**: A streamed request holds its headers for `streamHeaderGraceMs` (default 10000) waiting for the first upstream event, so an immediate upstream error keeps its HTTP status. After that the proxy sends the headers and an SSE `ping` every `streamPingIntervalMs` (default 15000) until the first event, so clients with a first-byte timeout (Claude Code: `CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS`) do not abort and resend.
 - **Persistence**: Enable `persistTokenCache` to save OAuth sessions across restarts.
 - **Max Accounts**: Set `maxAccounts` (1-100) to limit the number of Google accounts. Default: 10.
