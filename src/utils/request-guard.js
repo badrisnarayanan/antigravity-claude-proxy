@@ -126,10 +126,11 @@ export function toList(value) {
  * @param {Object} options
  * @param {() => Object} options.getConfig - returns the live config object
  * @param {Object} [options.logger]
+ * @param {(reqPath: string) => boolean} [options.isProtected] - which paths to guard (default: isAdminPath)
  */
-export function createRequestGuard({ getConfig, logger } = {}) {
+export function createRequestGuard({ getConfig, logger, isProtected = isAdminPath } = {}) {
     return (req, res, next) => {
-        if (!isAdminPath(req.path)) return next();
+        if (!isProtected(req.path)) return next();
 
         const cfg = getConfig ? getConfig() : {};
         const allowedHosts = [...toList(cfg.allowedHosts), ...toList(process.env.ALLOWED_HOSTS)];

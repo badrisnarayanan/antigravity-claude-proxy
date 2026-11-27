@@ -13,6 +13,8 @@
 
 Reports each account's quota pools: the 5-hour and the weekly window of each model group, as Google's `retrieveUserQuotaSummary` gives them. Unlike `/account-limits`, it is under `/v1`, so the API key (`Authorization: Bearer <key>` or `x-api-key`) protects it, and it does not need the web UI password.
 
+It lists account emails, so when no API key is set it is not left open like the rest of `/v1`: it then gets the same protection as `/account-limits`: no cross-origin browser requests, and requests from this machine only unless a WebUI password is set, in which case the password must be sent (`x-webui-password` header). Set an API key to read it from another machine with the key instead.
+
 ```bash
 curl -H "x-api-key: $API_KEY" http://localhost:8080/v1/account-quotas
 ```

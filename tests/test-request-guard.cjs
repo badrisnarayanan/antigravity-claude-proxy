@@ -35,8 +35,8 @@ async function runTests() {
         if (!cond) throw new Error(msg || 'assertion failed');
     }
 
-    function run(cfg, { host = 'localhost:8080', origin, path = '/api/claude/config', method = 'POST', remote = '127.0.0.1' } = {}) {
-        const mw = guard.createRequestGuard({ getConfig: () => cfg });
+    function run(cfg, { host = 'localhost:8080', origin, path = '/api/claude/config', method = 'POST', remote = '127.0.0.1', isProtected } = {}) {
+        const mw = guard.createRequestGuard({ getConfig: () => cfg, ...(isProtected ? { isProtected } : {}) });
         const headers = { host };
         if (origin !== undefined) headers.origin = origin;
         const req = { headers, path, method, socket: { remoteAddress: remote } };
@@ -98,6 +98,22 @@ async function runTests() {
     test('Still guards admin paths reached through a hostname', () => {
         assert(run({ webuiPassword: 'x' }, { host: 'myproxy.example.com', remote: '203.0.113.9', path: '/api/accounts', method: 'GET' }) === 403);
         assert(run({ webuiPassword: 'x', allowedHosts: 'myproxy.example.com' }, { host: 'myproxy.example.com', remote: '203.0.113.9', path: '/api/accounts', method: 'GET' }) === 200);
+    });
+
+    test('Default guard leaves /v1/account-quotas to the API key check', () => {
+        assert(run({}, { path: '/v1/account-quotas', method: 'GET', remote: '203.0.113.9' }) === 200);
+    });
+
+    test('isProtected guard blocks /v1/account-quotas from another machine without a WebUI password', () => {
+        assert(run({}, { path: '/v1/account-quotas', method: 'GET', remote: '203.0.113.9', isProtected: () => true }) === 403);
+    });
+
+    test('isProtected guard blocks cross-origin /v1/account-quotas', () => {
+        assert(run({}, { path: '/v1/account-quotas', method: 'GET', origin: 'https://evil.example', isProtected: () => true }) === 403);
+    });
+
+    test('isProtected guard allows local /v1/account-quotas with no Origin', () => {
+        assert(run({}, { path: '/v1/account-quotas', method: 'GET', isProtected: () => true }) === 200);
     });
 
     test('Treats ::ffff:127.0.0.1 as loopback', () => {

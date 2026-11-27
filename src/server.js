@@ -12,7 +12,7 @@ import { sendMessage, sendMessageStream, listModels, getModelQuotas, getSubscrip
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
 import { createAccountQuotaReporter } from './cloudcode/quota-summary.js';
 import { mountWebUI } from './webui/index.js';
-import { createRequestGuard, isAdminPath, toList } from './utils/request-guard.js';
+import { createRequestGuard, isAdminPath, safeEqual, toList } from './utils/request-guard.js';
 import { config } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +50,26 @@ export const accountManager = new AccountManager();
 
 // Per-account 5-hour and weekly quota for GET /v1/account-quotas (cached 60 s per account)
 const accountQuotaReporter = createAccountQuotaReporter({ accountManager });
+
+// /v1/account-quotas lists account emails. With an API key set, the /v1 key
+// check protects it. Without one, the /v1 API is open to every machine and web
+// page, so the endpoint gets the same protection as /account-limits instead:
+// the request guard, then the WebUI password when one is set.
+const accountQuotasGuard = createRequestGuard({ getConfig: () => config, logger, isProtected: () => true });
+function guardAccountQuotasWithoutApiKey(req, res, next) {
+    if (config.apiKey) return next();
+    accountQuotasGuard(req, res, () => {
+        const password = config.webuiPassword;
+        const provided = req.headers['x-webui-password'] || req.query?.password;
+        if (password && !safeEqual(String(provided ?? ''), password)) {
+            return res.status(401).json({
+                status: 'error',
+                error: 'Unauthorized: set an API key, or send the WebUI password'
+            });
+        }
+        next();
+    });
+}
 
 // Track initialization status
 let isInitialized = false;
@@ -701,10 +721,11 @@ app.get('/v1/models', async (req, res) => {
 
 /**
  * Account quotas endpoint - the 5-hour and weekly window of each quota group
- * for every account. Under /v1, so the API key protects it. Each account's
- * result is cached for 60 s; one account's failure does not fail the reply.
+ * for every account. Under /v1, so the API key protects it; with no API key
+ * set, the WebUI request guard protects it. Each account's result is cached
+ * for 60 s; one account's failure does not fail the reply.
  */
-app.get('/v1/account-quotas', async (req, res) => {
+app.get('/v1/account-quotas', guardAccountQuotasWithoutApiKey, async (req, res) => {
     try {
         await ensureInitialized();
         res.json(await accountQuotaReporter.getAccountQuotas());
