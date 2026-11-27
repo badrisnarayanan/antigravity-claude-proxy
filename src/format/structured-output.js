@@ -87,6 +87,9 @@ function matches(value, schema) {
 
 export function assertGeminiStructuredResponse(request, response) {
     if (!geminiOutputSchema(request) || response.stop_reason === 'max_tokens') return;
+    // After a fallback to a non-Gemini model the schema was never sent (it only
+    // applies to Gemini), so the reply can't be held to it.
+    if (response.model && getModelFamily(response.model) !== 'gemini') return;
     const text = (response.content || []).filter(b => b.type === 'text').map(b => b.text || '').join('');
     let valid = false;
     try { valid = matches(JSON.parse(text), request.output_config.format.schema); } catch {}

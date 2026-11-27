@@ -29,6 +29,9 @@ async function main() {
     assert.doesNotThrow(()=>assertGeminiStructuredResponse(req,response('{"value":"ok","list":[1,2]}')));
     for(const t of ['', 'not JSON','{"value":"wrong","list":[]}','{"value":"ok","list":[1.5]}','{"value":"ok"}','{"value":"ok","list":[],"extra":1}']) assert.throws(()=>assertGeminiStructuredResponse(req,response(t)),/empty or invalid structured response/);
     assert.doesNotThrow(()=>assertGeminiStructuredResponse(req,{stop_reason:'max_tokens',content:[]}));
+    // A fallback to a Claude model never sent the schema, so its reply isn't held to it
+    assert.doesNotThrow(()=>assertGeminiStructuredResponse(req,{model:'claude-sonnet-4-6',stop_reason:'end_turn',content:[{type:'text',text:'Here you go: {"value":"ok"}'}]}));
+    assert.throws(()=>assertGeminiStructuredResponse(req,{model:req.model,stop_reason:'end_turn',content:[{type:'text',text:'not JSON'}]}),/empty or invalid structured response/);
     console.log('PASS legacy schema mapping, unsupported union/ref/types/constraints, stream/tools, Cloud Code payload, original schema unchanged, output validation, Claude unchanged');
 }
 main().catch(e=>{console.error(e);process.exit(1)});
