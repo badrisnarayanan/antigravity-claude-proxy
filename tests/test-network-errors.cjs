@@ -293,6 +293,29 @@ async function runTests() {
         assert(starts === 1, `expected 1 message_start, got ${starts}`);
     });
 
+    await test('sendMessageStream: a client disconnect ends a backoff wait at once', async () => {
+        const am = new MockAccountManager();
+        const { ClientDisconnectedError } = await import('../src/errors.js');
+        global.fetch = async (url, opts) => {
+            opts?.signal?.throwIfAborted();
+            return new Response(JSON.stringify({ error: { message: 'MODEL_CAPACITY_EXHAUSTED' } }), { status: 503 });
+        };
+        const ac = new AbortController();
+        setTimeout(() => ac.abort(new ClientDisconnectedError()), 100);
+        const t0 = Date.now();
+        let thrown;
+        try {
+            for await (const _ of sendMessageStream(request, am, true, { signal: ac.signal })) { /* drain */ }
+        } catch (e) {
+            thrown = e;
+        } finally {
+            global.fetch = realFetch;
+        }
+        const ms = Date.now() - t0;
+        assert(thrown instanceof ClientDisconnectedError, `expected ClientDisconnectedError, got ${thrown}`);
+        assert(ms < 1500, `generator kept waiting ${ms}ms after the disconnect`);
+    });
+
     console.log('\n── Error replies ─────────────────────────────────────────────');
 
     await test('a token refresh that cannot reach Google replies 503 "Network error"', async () => {

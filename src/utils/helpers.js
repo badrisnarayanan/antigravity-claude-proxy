@@ -51,10 +51,24 @@ export function formatDuration(ms) {
 /**
  * Sleep for specified milliseconds
  * @param {number} ms - Duration to sleep in milliseconds
+ * @param {AbortSignal} [signal] - Optional; when it fires, the sleep ends early by
+ *   rejecting with signal.reason (used to stop waiting once the client has gone)
  * @returns {Promise<void>} Resolves after the specified duration
  */
-export function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+export function sleep(ms, signal) {
+    if (!signal) return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve, reject) => {
+        if (signal.aborted) return reject(signal.reason);
+        const onAbort = () => {
+            clearTimeout(timer);
+            reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+            signal.removeEventListener('abort', onAbort);
+            resolve();
+        }, ms);
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
 }
 
 // Error codes Node and undici use when the connection itself fails (#384)

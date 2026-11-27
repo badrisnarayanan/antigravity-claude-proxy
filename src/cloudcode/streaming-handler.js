@@ -112,7 +112,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                 // Wait for shortest reset time
                 const accountCount = accountManager.getAccountCount();
                 logger.warn(`[CloudCode] All ${accountCount} account(s) rate-limited. Waiting ${formatDuration(minWaitMs)}...`);
-                await sleep(minWaitMs + 500); // Add 500ms buffer
+                await sleep(minWaitMs + 500, signal); // Add 500ms buffer
                 accountManager.clearExpiredLimits();
 
                 // CRITICAL FIX: Don't count waiting for rate limits as a failed attempt
@@ -131,7 +131,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
         // If strategy returns a wait time without an account, sleep and retry
         if (!account && waitMs > 0) {
             logger.info(`[CloudCode] Waiting ${formatDuration(waitMs)} for account...`);
-            await sleep(waitMs + 500);
+            await sleep(waitMs + 500, signal);
             attempt--; // CRITICAL FIX: Don't count strategy wait as failure
             continue;
         }
@@ -140,7 +140,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
         // This prevents overwhelming the API when using emergency/lastResort fallbacks
         if (account && waitMs > 0) {
             logger.debug(`[CloudCode] Throttling request (${waitMs}ms) - fallback mode active`);
-            await sleep(waitMs);
+            await sleep(waitMs, signal);
         }
 
         if (!account) {
@@ -206,7 +206,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                     // Track failures for progressive backoff escalation (matches opencode-antigravity-auth)
                                     accountManager.incrementConsecutiveFailures(account.email);
                                     logger.info(`[CloudCode] Model capacity exhausted, retry ${capacityRetryCount}/${MAX_CAPACITY_RETRIES} after ${formatDuration(waitMs)}...`);
-                                    await sleep(waitMs);
+                                    await sleep(waitMs, signal);
                                     // Don't increment endpointIndex - retry same endpoint
                                     continue;
                                 }
@@ -222,7 +222,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             if (resetMs !== null && resetMs < 1000) {
                                 const waitMs = resetMs;
                                 logger.info(`[CloudCode] Short rate limit on ${account.email} (${resetMs}ms), waiting and retrying...`);
-                                await sleep(waitMs);
+                                await sleep(waitMs, signal);
                                 // Don't increment endpointIndex - retry same endpoint
                                 continue;
                             }
@@ -246,13 +246,13 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 // markRateLimited already increments consecutiveFailures internally
                                 accountManager.markRateLimited(account.email, waitMs, model);
                                 logger.info(`[CloudCode] First rate limit on ${account.email}, quick retry after ${formatDuration(waitMs)}...`);
-                                await sleep(waitMs);
+                                await sleep(waitMs, signal);
                                 // Don't increment endpointIndex - retry same endpoint
                                 continue;
                             } else if (smartBackoffMs > DEFAULT_COOLDOWN_MS) {
                                 // Long-term quota exhaustion (> 10s) - wait SWITCH_ACCOUNT_DELAY_MS then switch
                                 logger.info(`[CloudCode] Quota exhausted for ${account.email} (${formatDuration(smartBackoffMs)}), switching account after ${formatDuration(SWITCH_ACCOUNT_DELAY_MS)} delay...`);
-                                await sleep(SWITCH_ACCOUNT_DELAY_MS);
+                                await sleep(SWITCH_ACCOUNT_DELAY_MS, signal);
                                 accountManager.markRateLimited(account.email, smartBackoffMs, model);
                                 throw new Error(`QUOTA_EXHAUSTED: ${errorText}`);
                             } else {
@@ -261,7 +261,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 // markRateLimited already increments consecutiveFailures internally
                                 accountManager.markRateLimited(account.email, waitMs, model);
                                 logger.info(`[CloudCode] Rate limit on ${account.email} (attempt ${backoff.attempt}), waiting ${formatDuration(waitMs)}...`);
-                                await sleep(waitMs);
+                                await sleep(waitMs, signal);
                                 // Don't increment endpointIndex - retry same endpoint
                                 continue;
                             }
@@ -277,7 +277,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 capacityRetryCount++;
                                 accountManager.incrementConsecutiveFailures(account.email);
                                 logger.info(`[CloudCode] ${response.status} Model capacity exhausted, retry ${capacityRetryCount}/${MAX_CAPACITY_RETRIES} after ${formatDuration(waitMs)}...`);
-                                await sleep(waitMs);
+                                await sleep(waitMs, signal);
                                 // Don't increment endpointIndex - retry same endpoint
                                 continue;
                             }
@@ -319,7 +319,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             logger.warn(`[CloudCode] ${response.status} at ${endpoint}..`);
                         } else if (response.status >= 500) {
                             logger.warn(`[CloudCode] ${response.status} stream error, waiting 1s before retry...`);
-                            await sleep(1000);
+                            await sleep(1000, signal);
                         }
 
                         endpointIndex++;
@@ -359,7 +359,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                             // Exponential backoff: 500ms, 1000ms, 2000ms
                             const backoffMs = 500 * Math.pow(2, emptyRetries);
                             logger.warn(`[CloudCode] Empty response, retry ${emptyRetries + 1}/${MAX_EMPTY_RESPONSE_RETRIES} after ${backoffMs}ms...`);
-                            await sleep(backoffMs);
+                            await sleep(backoffMs, signal);
 
                             // Refetch the response
                             currentResponse = await throttledFetch(url, {
@@ -395,7 +395,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                                 // For 5xx errors, continue retrying
                                 if (currentResponse.status >= 500) {
                                     logger.warn(`[CloudCode] Retry got ${currentResponse.status}, will retry...`);
-                                    await sleep(1000);
+                                    await sleep(1000, signal);
                                     currentResponse = await throttledFetch(url, {
                                         method: 'POST',
                                         headers: buildHeaders(token, model, 'text/event-stream'),
@@ -499,7 +499,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
                 // "quota exhausted" error when the network was the problem (#384).
                 lastNetworkError = error;
                 logger.warn(`[CloudCode] Network error for ${account.email} (stream) (attempt ${attempt + 1}/${maxAttempts}), retrying... (${describeNetworkError(error)})`);
-                await sleep(1000);
+                await sleep(1000, signal);
                 continue;
             }
 
