@@ -9,6 +9,7 @@
 document.addEventListener('alpine:init', () => {
     // Register Components (loaded from separate files via window.Components)
     Alpine.data('dashboard', window.Components.dashboard);
+    Alpine.data('quotaWindows', window.Components.quotaWindows);
     Alpine.data('models', window.Components.models);
     Alpine.data('accountManager', window.Components.accountManager);
     Alpine.data('claudeConfig', window.Components.claudeConfig);

@@ -408,4 +408,18 @@ window.translations.pt = {
     deletePresetConfirm: "Excluir preset \"{name}\"?",
     // Dropdown de Modelo
     clearSelection: "Limpar seleção",
+    // Usage limits panel (#390)
+    usageLimits: "Limites de uso",
+    usageLimitsDesc: "Janelas de 5 horas e semanais por conta",
+    limitUpdatedAt: "Atualizado {time}",
+    limitLoadFailed: "Não foi possível carregar os limites de uso.",
+    limitRetry: "Tentar novamente",
+    noLimitData: "Ainda não há dados de limite de uso.",
+    limitFiveHour: "5 horas",
+    limitWeekly: "Semanal",
+    limitNotReported: "Nenhum limite informado",
+    limitAccountDisabled: "Desativada",
+    limitAccountInvalid: "Requer atenção",
+    timeD: "D",
+    limitAccountError: "Falha ao carregar",
 };

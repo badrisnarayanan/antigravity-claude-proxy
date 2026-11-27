@@ -11,6 +11,9 @@ window.AppConstants.INTERVALS = {
     // Dashboard refresh interval (5 minutes)
     DASHBOARD_REFRESH: 300000,
 
+    // Usage limits panel refresh (the server caches each account for 60 s)
+    QUOTA_WINDOWS_REFRESH: 60000,
+
     // OAuth message handler timeout (5 minutes)
     OAUTH_MESSAGE_TIMEOUT: 300000,
 

@@ -469,4 +469,18 @@ window.translations.zh = {
     weightLru: "LRU 权重",
     // 模型下拉菜单
     clearSelection: "清除选择",
+    // Usage limits panel (#390)
+    usageLimits: "使用限额",
+    usageLimitsDesc: "每个账号的 5 小时和每周窗口",
+    limitUpdatedAt: "更新于 {time}",
+    limitLoadFailed: "无法加载使用限额。",
+    limitRetry: "重试",
+    noLimitData: "暂无使用限额数据。",
+    limitFiveHour: "5 小时",
+    limitWeekly: "每周",
+    limitNotReported: "未报告限额",
+    limitAccountDisabled: "已禁用",
+    limitAccountInvalid: "需要处理",
+    timeD: "天",
+    limitAccountError: "加载失败",
 };

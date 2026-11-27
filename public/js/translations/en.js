@@ -464,4 +464,18 @@ window.translations.en = {
     weightLru: "LRU Weight",
     // Model Dropdown
     clearSelection: "Clear selection",
+    // Usage limits panel (#390)
+    usageLimits: "Usage limits",
+    usageLimitsDesc: "5-hour and weekly windows per account",
+    limitUpdatedAt: "Updated {time}",
+    limitLoadFailed: "Couldn't load usage limits.",
+    limitRetry: "Retry",
+    noLimitData: "No usage limit data yet.",
+    limitFiveHour: "5-hour",
+    limitWeekly: "Weekly",
+    limitNotReported: "No limit reported",
+    limitAccountDisabled: "Disabled",
+    limitAccountInvalid: "Needs attention",
+    timeD: "D",
+    limitAccountError: "Couldn't load",
 };

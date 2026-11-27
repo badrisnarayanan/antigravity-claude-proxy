@@ -454,4 +454,18 @@ window.translations.tr = {
     weightLru: "LRU Ağırlığı",
     // Model Açılır Menüsü
     clearSelection: "Seçimi temizle",
+    // Usage limits panel (#390)
+    usageLimits: "Kullanım limitleri",
+    usageLimitsDesc: "Hesap başına 5 saatlik ve haftalık pencereler",
+    limitUpdatedAt: "Güncellendi {time}",
+    limitLoadFailed: "Kullanım limitleri yüklenemedi.",
+    limitRetry: "Tekrar dene",
+    noLimitData: "Henüz kullanım limiti verisi yok.",
+    limitFiveHour: "5 saat",
+    limitWeekly: "Haftalık",
+    limitNotReported: "Limit bildirilmedi",
+    limitAccountDisabled: "Devre dışı",
+    limitAccountInvalid: "İlgilenilmeli",
+    timeD: "G",
+    limitAccountError: "Yüklenemedi",
 };

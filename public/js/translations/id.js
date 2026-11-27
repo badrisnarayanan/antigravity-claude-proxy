@@ -509,4 +509,18 @@ window.translations.id = {
     weightLru: "Bobot LRU",
     // Dropdown Model
     clearSelection: "Hapus pilihan",
+    // Usage limits panel (#390)
+    usageLimits: "Batas penggunaan",
+    usageLimitsDesc: "Jendela 5 jam dan mingguan per akun",
+    limitUpdatedAt: "Diperbarui {time}",
+    limitLoadFailed: "Gagal memuat batas penggunaan.",
+    limitRetry: "Coba lagi",
+    noLimitData: "Belum ada data batas penggunaan.",
+    limitFiveHour: "5 jam",
+    limitWeekly: "Mingguan",
+    limitNotReported: "Tidak ada batas dilaporkan",
+    limitAccountDisabled: "Nonaktif",
+    limitAccountInvalid: "Perlu perhatian",
+    timeD: "h",
+    limitAccountError: "Gagal memuat",
 };

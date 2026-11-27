@@ -226,6 +226,97 @@
             </div>
         </div>
     </div>
+    <!-- Usage Limits: 5-hour and weekly windows per account and model group (#390) -->
+    <div x-data="quotaWindows" class="view-card" data-testid="usage-limits">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    class="w-4 h-4 text-gray-500 flex-shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-[15px] font-medium text-white whitespace-nowrap"
+                    x-text="$store.global.t('usageLimits')">Usage limits</h3>
+                <span class="text-xs text-gray-500 truncate" x-text="$store.global.t('usageLimitsDesc')"></span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap">
+                <span x-show="fetchedAt" x-text="$store.global.t('limitUpdatedAt', {time: updatedLabel()})"></span>
+                <button type="button" class="btn btn-xs btn-ghost btn-square text-gray-500 hover:text-white"
+                    @click="fetchQuotas()" :title="$store.global.t('refreshData')" :aria-label="$store.global.t('refreshData')">
+                    <svg class="w-3.5 h-3.5" :class="loading && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- First load -->
+        <div x-show="loading && !loaded && !error" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div class="h-28 rounded-lg bg-space-800/60 animate-pulse"></div>
+            <div class="h-28 rounded-lg bg-space-800/60 animate-pulse hidden lg:block"></div>
+        </div>
+
+        <!-- Couldn't load (keeps the last data shown, if any) -->
+        <div x-show="error" x-cloak class="flex items-center gap-2 text-xs text-neon-red/90 mb-3" data-testid="usage-limits-error">
+            <span x-text="$store.global.t('limitLoadFailed')"></span>
+            <button type="button" class="underline hover:text-white" @click="fetchQuotas()" x-text="$store.global.t('limitRetry')"></button>
+        </div>
+
+        <!-- Nothing to show -->
+        <div x-show="isEmpty" x-cloak class="text-xs text-gray-500 py-6 text-center" data-testid="usage-limits-empty"
+            x-text="$store.global.t('noLimitData')"></div>
+
+        <!-- Per account -->
+        <div x-show="loaded && !isEmpty" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <template x-for="account in visibleAccounts" :key="account.email">
+                <div class="rounded-lg border border-space-border bg-space-950/40 p-4 min-w-0" data-testid="usage-limits-account">
+                    <div class="flex items-center gap-2 mb-3 min-w-0">
+                        <span class="text-[13px] font-mono text-gray-300 truncate" x-text="Redact.email(account.email)"></span>
+                        <span x-show="account.tier" :class="tierClass(account.tier)" x-text="tierLabel(account.tier)"></span>
+                        <span x-show="account.status !== 'ok'"
+                            :class="account.status === 'disabled' ? 'status-pill-free' : 'status-pill-error'"
+                            x-text="statusLabel(account)"></span>
+                    </div>
+
+                    <div x-show="account.status === 'error' || account.status === 'invalid'"
+                        class="text-xs text-gray-500 break-words" x-text="account.error"></div>
+
+                    <div class="space-y-3">
+                        <template x-for="group in account.groups" :key="account.email + ':' + (group.id || group.name)">
+                            <div data-testid="usage-limits-group">
+                                <div class="text-xs text-gray-400 mb-1.5" x-text="group.name || group.id"></div>
+                                <template x-for="def in windowDefs" :key="def.key">
+                                    <div class="flex items-center gap-2 h-5">
+                                        <span class="text-[11px] text-gray-500 w-14 flex-shrink-0" x-text="$store.global.t(def.label)"></span>
+                                        <template x-if="pct(group.windows[def.key]) !== null">
+                                            <div class="flex-1 flex items-center gap-2 min-w-0">
+                                                <div class="flex-1 h-1 rounded-[1px] bg-space-800 overflow-hidden">
+                                                    <div class="h-full rounded-[1px] transition-all duration-500"
+                                                        :class="barClass(group.windows[def.key])"
+                                                        :style="'width: ' + pct(group.windows[def.key]) + '%'"></div>
+                                                </div>
+                                                <span class="text-[11px] font-mono w-9 text-right flex-shrink-0"
+                                                    :class="pctClass(group.windows[def.key])"
+                                                    x-text="pct(group.windows[def.key]) + '%'"></span>
+                                                <span class="text-[10px] font-mono text-gray-600 w-16 text-right whitespace-nowrap flex-shrink-0"
+                                                    :title="resetTitle(group.windows[def.key])"
+                                                    x-text="resetLabel(group.windows[def.key])"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="pct(group.windows[def.key]) === null">
+                                            <span class="flex-1 text-[11px] text-gray-600" x-text="$store.global.t('limitNotReported')"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Usage Trend Chart -->
     <div class="view-card">
         <!-- Header with Stats and Filter -->

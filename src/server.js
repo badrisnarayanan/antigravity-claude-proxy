@@ -734,6 +734,20 @@ app.get('/v1/account-quotas', guardAccountQuotasWithoutApiKey, async (req, res) 
 });
 
 /**
+ * Same data for the WebUI dashboard (#390). Under /api, so the WebUI password and
+ * request guard protect it, and the dashboard works whether or not an API key is set.
+ */
+app.get('/api/account-quotas', async (req, res) => {
+    try {
+        await ensureInitialized();
+        res.json({ status: 'ok', ...(await accountQuotaReporter.getAccountQuotas()) });
+    } catch (error) {
+        logger.error('[WebUI] Error fetching account quotas:', error);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
+/**
  * Count tokens endpoint - Anthropic Messages API compatible
  * Uses local tokenization with official tokenizers (@anthropic-ai/tokenizer for Claude, @lenml/tokenizer-gemini for Gemini)
  */
