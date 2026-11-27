@@ -4,7 +4,9 @@
  */
 
 import crypto from 'crypto';
+import { fetch as undiciFetch } from 'undici';
 import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
+import { getProxyDispatcher } from '../utils/proxy.js';
 import { cacheSignature, cacheThinkingSignature, cacheTrailingTextSignature } from './signature-cache.js';
 
 /**
@@ -68,11 +70,12 @@ export async function resolveGroundingUrl(uri) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 2500);
         try {
-            const res = await fetch(uri, {
-                method: 'HEAD',
-                redirect: 'manual',
-                signal: controller.signal
-            });
+            const options = { method: 'HEAD', redirect: 'manual', signal: controller.signal };
+            // Go through HTTPS_PROXY like every other Google call (#337)
+            const dispatcher = getProxyDispatcher();
+            const res = dispatcher
+                ? await undiciFetch(uri, { ...options, dispatcher })
+                : await fetch(uri, options);
             const loc = res.headers.get('location');
             if (loc && (loc.startsWith('http://') || loc.startsWith('https://'))) {
                 return loc;
