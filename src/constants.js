@@ -221,6 +221,11 @@ export const GEMINI_SIGNATURE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 // Cache TTL for model validation (5 minutes)
 export const MODEL_VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 
+// An account's saved model list older than this is not used to route requests (#420).
+// The background refresh renews lists every 30 minutes; a list this old means the
+// refresh keeps failing for that account, so the list may no longer be true.
+export const MODEL_LIST_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 /**
  * Get the model family from model name (dynamic detection, no hardcoded list).
  * Ids without a family in their name resolve via backend metadata (model-registry.js).
@@ -542,6 +547,7 @@ export default {
     GEMINI_SKIP_SIGNATURE,
     GEMINI_SIGNATURE_CACHE_TTL_MS,
     MODEL_VALIDATION_CACHE_TTL_MS,
+    MODEL_LIST_MAX_AGE_MS,
     getModelFamily,
     isThinkingModel,
     OAUTH_CONFIG,

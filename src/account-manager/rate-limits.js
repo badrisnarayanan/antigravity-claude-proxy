@@ -5,18 +5,24 @@
  * All rate limits are model-specific.
  */
 
-import { DEFAULT_COOLDOWN_MS } from '../constants.js';
+import { DEFAULT_COOLDOWN_MS, MODEL_LIST_MAX_AGE_MS } from '../constants.js';
 import { formatDuration } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Whether an account's quota data lists a model.
+ * Whether an account has a model list recent enough to route by.
+ * A list older than MODEL_LIST_MAX_AGE_MS (or with no lastChecked) is treated
+ * like no list at all, so an account whose refresh keeps failing is not left
+ * out of new models forever on the strength of an old list.
  * @param {Object} account
- * @returns {boolean} True if the account has a non-empty model list
+ * @returns {boolean} True if the account has a non-empty, recent model list
  */
 function hasModelList(account) {
     const models = account?.quota?.models;
-    return Boolean(models && Object.keys(models).length > 0);
+    if (!models || Object.keys(models).length === 0) return false;
+    const checkedAt = new Date(account.quota.lastChecked || 0).getTime();
+    if (!Number.isFinite(checkedAt) || checkedAt <= 0) return false;
+    return Date.now() - checkedAt < MODEL_LIST_MAX_AGE_MS;
 }
 
 /**
@@ -24,9 +30,9 @@ function hasModelList(account) {
  * quota fetch. Accounts on different tiers offer different models, so a model
  * must not be routed to an account whose tier does not have it (#420).
  *
- * Fails open: an account with no quota data is assumed able to serve the
- * model, and so is every account when none of them lists it (a model granted
- * since the last quota fetch, or quota never fetched).
+ * Fails open: an account with no recent quota data is assumed able to serve
+ * the model, and so is every account when none of them lists it in a recent
+ * list (a model granted since the last quota fetch, or quota never fetched).
  *
  * @param {Array} accounts - All accounts
  * @param {Object} account - The account to check

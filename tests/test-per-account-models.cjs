@@ -75,6 +75,30 @@ async function runTests() {
         assert(accountOffersModel(a, a[2], 'gemini-9-new'));
     });
 
+    test('accountOffersModel: an old saved list does not leave an account out', () => {
+        // pro-1's refresh has been failing for two days, so its saved list may be out of date
+        const a = makeAccounts();
+        a[2].quota.lastChecked = Date.now() - 2 * 24 * 60 * 60 * 1000;
+        assert(accountOffersModel(a, a[2], CARBON), 'an account with only an old list must fail open');
+        // a recent list still counts
+        a[2].quota.lastChecked = Date.now() - 60 * 1000;
+        assert(!accountOffersModel(a, a[2], CARBON), 'a recent list still excludes the account');
+    });
+
+    test('accountOffersModel: old lists on other accounts do not exclude anyone', () => {
+        // Only ultra accounts list Carbon, and their lists are old: fail open for pro-1
+        const a = makeAccounts();
+        a[0].quota.lastChecked = Date.now() - 2 * 24 * 60 * 60 * 1000;
+        a[1].quota.lastChecked = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+        assert(accountOffersModel(a, a[2], CARBON), 'nobody lists it in a recent list, so fail open');
+    });
+
+    test('accountOffersModel: a list without lastChecked is not used', () => {
+        const a = makeAccounts();
+        delete a[2].quota.lastChecked;
+        assert(accountOffersModel(a, a[2], CARBON));
+    });
+
     test('accountOffersModel: ignores disabled/invalid accounts as the only listers', () => {
         const a = makeAccounts();
         a[0].enabled = false;
