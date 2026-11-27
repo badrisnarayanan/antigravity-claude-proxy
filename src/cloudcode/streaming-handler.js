@@ -63,6 +63,10 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
     // instead of a generic "Max retries exceeded" (#384)
     let lastNetworkError = null;
 
+    // Set once an event has gone to the client. From then on the request can't
+    // be retried: a retry would start a second message in the same response.
+    let emitted = false;
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         signal?.throwIfAborted();
         lastNetworkError = null;
@@ -327,10 +331,13 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
                     for (let emptyRetries = 0; emptyRetries <= MAX_EMPTY_RESPONSE_RETRIES; emptyRetries++) {
                         try {
-                            yield* streamSSEResponse(currentResponse, anthropicRequest.model, {
+                            for await (const event of streamSSEResponse(currentResponse, anthropicRequest.model, {
                                 messages: anthropicRequest.messages || [],
                                 system: anthropicRequest.system
-                            });
+                            })) {
+                                emitted = true;
+                                yield event;
+                            }
                             logger.debug('[CloudCode] Stream completed');
                             // Clear rate limit state on success
                             clearRateLimitState(account.email, model);
@@ -407,6 +414,8 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
                 } catch (endpointError) {
                     if (signal?.aborted) throw signal.reason;
+                    // Part of the reply already went out: report the error, don't retry
+                    if (emitted) throw endpointError;
                     if (isRateLimitError(endpointError)) {
                         throw endpointError; // Re-throw to trigger account switch
                     }
@@ -439,6 +448,7 @@ export async function* sendMessageStream(anthropicRequest, accountManager, fallb
 
         } catch (error) {
             if (signal?.aborted) throw signal.reason;
+            if (emitted) throw error;
             if (isRateLimitError(error)) {
                 // Rate limited - already marked, notify strategy and continue to next account
                 accountManager.notifyRateLimit(account, model);

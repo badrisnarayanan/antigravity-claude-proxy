@@ -261,6 +261,38 @@ async function runTests() {
         assert(fetches === 1, `expected 1 fetch, got ${fetches}`);
     });
 
+    await test('sendMessageStream: a connection drop mid-stream is not retried into the same reply', async () => {
+        const am = new MockAccountManager();
+        let fetches = 0;
+        global.fetch = async () => {
+            fetches++;
+            const encoder = new TextEncoder();
+            const stream = new ReadableStream({
+                start(controller) {
+                    controller.enqueue(encoder.encode('data: {"response":{"candidates":[{"content":{"parts":[{"text":"Hello"}]}}]}}\n\n'));
+                    setTimeout(() => {
+                        const cause = Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' });
+                        controller.error(new TypeError('terminated', { cause }));
+                    }, 10);
+                }
+            });
+            return new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+        };
+        const events = [];
+        let thrown;
+        try {
+            for await (const ev of sendMessageStream(request, am, true)) { events.push(ev.type); }
+        } catch (e) {
+            thrown = e;
+        } finally {
+            global.fetch = realFetch;
+        }
+        const starts = events.filter(t => t === 'message_start').length;
+        assert(thrown, 'expected the drop to reach the client as an error');
+        assert(fetches === 1, `expected 1 fetch, got ${fetches}`);
+        assert(starts === 1, `expected 1 message_start, got ${starts}`);
+    });
+
     console.log('\n── Error replies ─────────────────────────────────────────────');
 
     await test('a token refresh that cannot reach Google replies 503 "Network error"', async () => {
