@@ -8,6 +8,152 @@ import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
 import { cacheSignature, cacheThinkingSignature, cacheTrailingTextSignature } from './signature-cache.js';
 
 /**
+ * Merge progressive Google Search groundingMetadata chunks from SSE streams
+ * so earlier fields (e.g. webSearchQueries) are not wiped by later chunks.
+ *
+ * @param {Object|null} prev - Accumulated groundingMetadata
+ * @param {Object|null} next - Incoming candidate groundingMetadata
+ * @returns {Object|null} Merged groundingMetadata
+ */
+export function mergeGroundingMetadata(prev, next) {
+    if (!next) return prev;
+    const hasQueries = Array.isArray(next.webSearchQueries) && next.webSearchQueries.length > 0;
+    const hasChunks = Array.isArray(next.groundingChunks) && next.groundingChunks.length > 0;
+    if (!hasQueries && !hasChunks) return prev;
+
+    const mergedQueries = [];
+    const seenQueries = new Set();
+    for (const q of [...(prev?.webSearchQueries || []), ...(next.webSearchQueries || [])]) {
+        if (typeof q === 'string' && q && !seenQueries.has(q)) {
+            seenQueries.add(q);
+            mergedQueries.push(q);
+        }
+    }
+
+    const mergedChunks = [];
+    const seenUris = new Set();
+    for (const chunk of [...(prev?.groundingChunks || []), ...(next.groundingChunks || [])]) {
+        const uri = chunk?.web?.uri;
+        if (!uri || seenUris.has(uri)) continue;
+        seenUris.add(uri);
+        mergedChunks.push(chunk);
+    }
+
+    return {
+        ...prev,
+        ...next,
+        webSearchQueries: mergedQueries,
+        groundingChunks: mergedChunks
+    };
+}
+
+/**
+ * Resolve Vertex AI grounding redirect URLs to their final destination URLs.
+ * Only sends HEAD requests to vertexaisearch.cloud.google.com redirect paths;
+ * falls back to the original URI on timeout or error.
+ */
+export async function resolveGroundingUrl(uri) {
+    if (!uri) return uri;
+    try {
+        const parsed = new URL(uri);
+        if (parsed.hostname !== 'vertexaisearch.cloud.google.com' ||
+            !parsed.pathname.startsWith('/grounding-api-redirect/')) {
+            return uri;
+        }
+    } catch {
+        return uri;
+    }
+
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2500);
+        try {
+            const res = await fetch(uri, {
+                method: 'HEAD',
+                redirect: 'manual',
+                signal: controller.signal
+            });
+            const loc = res.headers.get('location');
+            if (loc && (loc.startsWith('http://') || loc.startsWith('https://'))) {
+                return loc;
+            }
+        } finally {
+            clearTimeout(timer);
+        }
+    } catch {
+        // Keep original URI if resolution fails or times out
+    }
+    return uri;
+}
+
+/**
+ * Resolve all Vertex AI redirect URLs inside a groundingMetadata object in parallel.
+ *
+ * @param {Object|null} groundingMetadata
+ * @returns {Promise<Object|null>}
+ */
+export async function resolveGroundingMetadataUrls(groundingMetadata) {
+    if (!groundingMetadata || !Array.isArray(groundingMetadata.groundingChunks) || groundingMetadata.groundingChunks.length === 0) {
+        return groundingMetadata;
+    }
+    const resolvedChunks = await Promise.all(
+        groundingMetadata.groundingChunks.map(async (chunk) => {
+            if (!chunk?.web?.uri) return chunk;
+            const resolvedUri = await resolveGroundingUrl(chunk.web.uri);
+            return resolvedUri === chunk.web.uri
+                ? chunk
+                : { ...chunk, web: { ...chunk.web, uri: resolvedUri } };
+        })
+    );
+    return { ...groundingMetadata, groundingChunks: resolvedChunks };
+}
+
+/**
+ * Build Anthropic server_tool_use + web_search_tool_result blocks from Google groundingMetadata.
+ *
+ * @param {Object|null} groundingMetadata
+ * @returns {Array<Object>} Pair of [server_tool_use, web_search_tool_result] or []
+ */
+export function buildWebSearchBlocks(groundingMetadata) {
+    if (!groundingMetadata ||
+        !(groundingMetadata.groundingChunks?.length > 0 || groundingMetadata.webSearchQueries?.length > 0)) {
+        return [];
+    }
+
+    const serverToolId = `srvtoolu_${crypto.randomBytes(12).toString('hex')}`;
+    const query = (groundingMetadata.webSearchQueries || [])[0] || '';
+    const seen = new Set();
+    const searchResults = [];
+
+    for (const chunk of (groundingMetadata.groundingChunks || [])) {
+        const url = chunk?.web?.uri;
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
+        searchResults.push({
+            type: 'web_search_result',
+            title: chunk.web.title || url,
+            url,
+            encrypted_content: '',
+            page_age: null
+        });
+    }
+
+    return [
+        {
+            type: 'server_tool_use',
+            id: serverToolId,
+            name: 'web_search',
+            input: { query }
+        },
+        {
+            type: 'web_search_tool_result',
+            tool_use_id: serverToolId,
+            content: searchResults
+        }
+    ];
+}
+
+/**
  * Convert Google Generative AI response to Anthropic Messages API format
  *
  * @param {Object} googleResponse - Google format response (the inner response object)
@@ -89,6 +235,17 @@ export function convertGoogleToAnthropic(googleResponse, model, requestContext =
         const answerText = parts.filter(part => part.thought !== true && part.text !== undefined)
             .map(part => part.text || '').join('');
         cacheTrailingTextSignature(model, requestContext, answerText, trailingTextSignature);
+    }
+
+    // Insert Anthropic server_tool_use + web_search_tool_result blocks for Google Search grounding
+    // Place them after any leading thinking blocks and before synthesized text (canonical order)
+    const webSearchBlocks = buildWebSearchBlocks(firstCandidate.groundingMetadata);
+    if (webSearchBlocks.length > 0) {
+        let insertIdx = 0;
+        while (insertIdx < anthropicContent.length && anthropicContent[insertIdx].type === 'thinking') {
+            insertIdx++;
+        }
+        anthropicContent.splice(insertIdx, 0, ...webSearchBlocks);
     }
 
     // Determine stop reason

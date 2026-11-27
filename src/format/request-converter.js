@@ -276,65 +276,102 @@ export function convertAnthropicToGoogle(anthropicRequest) {
 
     // Convert tools to Google format
     if (tools && tools.length > 0) {
-        const functionDeclarations = tools.map((tool, idx) => {
-            const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
+        const isWebSearchTool = (tool) =>
+            typeof tool?.type === 'string' && tool.type.startsWith('web_search');
 
-            const description = tool.description || tool.function?.description || tool.custom?.description || '';
+        const webSearchTools = tools.filter(isWebSearchTool);
+        const clientTools = tools.filter(tool => !isWebSearchTool(tool));
+        const webSearchNames = new Set(webSearchTools.map(t => t.name || 'web_search'));
+        const choice = anthropicRequest.tool_choice;
+        const choiceType = typeof choice === 'string' ? choice : choice?.type;
+        const forcesWebSearch = choiceType === 'tool' && webSearchNames.has(choice?.name);
 
-            const schema = tool.input_schema
-                || tool.function?.input_schema
-                || tool.function?.parameters
-                || tool.custom?.input_schema
-                || tool.parameters
-                || { type: 'object' };
+        if (webSearchTools.length > 0 && (clientTools.length === 0 || forcesWebSearch)) {
+            // Map Anthropic server-side web_search tool (e.g. web_search_20250305)
+            // to Google Search grounding. Cloud Code rejects mixing googleSearch
+            // with functionDeclarations, so only enable it when no client tools
+            // are present or when tool_choice explicitly forces web_search.
+            googleRequest.tools = [{ googleSearch: {} }];
 
-            // Sanitize schema for general compatibility
-            let parameters = sanitizeSchema(schema);
-
-            // Apply Google-format cleaning for ALL models since they all go through
-            // Cloud Code API which validates schemas using Google's protobuf format.
-            // This fixes issue #82: /compact command fails with schema transformation error
-            // "Proto field is not repeating, cannot start list" for Claude models.
-            parameters = cleanSchema(parameters);
-
-            return {
-                name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
-                description: description,
-                parameters
-            };
-        });
-
-        googleRequest.tools = [{ functionDeclarations }];
-        logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
-
-        // Gemini: preserve Anthropic tool selection semantics.
-        if (isGeminiModel) {
-            const choice = anthropicRequest.tool_choice;
-            const type = typeof choice === 'string' ? choice : choice?.type;
-            let functionCallingConfig;
-            if (type === 'tool' && choice.name) {
-                const name = String(choice.name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
-                functionCallingConfig = { mode: 'ANY', allowedFunctionNames: [name] };
-            } else if (type === 'any' || type === 'required') {
-                functionCallingConfig = { mode: 'ANY' };
-            } else if (type === 'none') {
-                functionCallingConfig = { mode: 'NONE' };
-            } else if (type === 'auto') {
-                functionCallingConfig = { mode: 'AUTO' };
+            const wsTool = webSearchTools[0];
+            const domainHints = [];
+            if (Array.isArray(wsTool.allowed_domains) && wsTool.allowed_domains.length > 0) {
+                domainHints.push(`Restrict web search results to these domains: ${wsTool.allowed_domains.join(', ')}.`);
             }
-            if (functionCallingConfig) {
-                googleRequest.toolConfig = { functionCallingConfig };
+            if (Array.isArray(wsTool.blocked_domains) && wsTool.blocked_domains.length > 0) {
+                domainHints.push(`Exclude these domains from web search results: ${wsTool.blocked_domains.join(', ')}.`);
             }
-        }
-
-        // For Claude models, set functionCallingConfig.mode = "VALIDATED"
-        // This ensures strict parameter validation (matches opencode-antigravity-auth)
-        if (isClaudeModel) {
-            googleRequest.toolConfig = {
-                functionCallingConfig: {
-                    mode: 'VALIDATED'
+            if (domainHints.length > 0) {
+                const hintText = domainHints.join(' ');
+                if (!googleRequest.systemInstruction) {
+                    googleRequest.systemInstruction = { parts: [{ text: hintText }] };
+                } else {
+                    googleRequest.systemInstruction.parts.push({ text: hintText });
                 }
-            };
+            }
+            logger.debug('[RequestConverter] Mapped Anthropic web_search tool to googleSearch grounding');
+        } else if (clientTools.length > 0) {
+            const functionDeclarations = clientTools.map((tool, idx) => {
+                const name = tool.name || tool.function?.name || tool.custom?.name || `tool-${idx}`;
+
+                const description = tool.description || tool.function?.description || tool.custom?.description || '';
+
+                const schema = tool.input_schema
+                    || tool.function?.input_schema
+                    || tool.function?.parameters
+                    || tool.custom?.input_schema
+                    || tool.parameters
+                    || { type: 'object' };
+
+                // Sanitize schema for general compatibility
+                let parameters = sanitizeSchema(schema);
+
+                // Apply Google-format cleaning for ALL models since they all go through
+                // Cloud Code API which validates schemas using Google's protobuf format.
+                // This fixes issue #82: /compact command fails with schema transformation error
+                // "Proto field is not repeating, cannot start list" for Claude models.
+                parameters = cleanSchema(parameters);
+
+                return {
+                    name: String(name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64),
+                    description: description,
+                    parameters
+                };
+            });
+
+            googleRequest.tools = [{ functionDeclarations }];
+            logger.debug(`[RequestConverter] Tools: ${JSON.stringify(googleRequest.tools).substring(0, 300)}`);
+
+            // Gemini: preserve Anthropic tool selection semantics.
+            if (isGeminiModel) {
+                const declaredNames = new Set(functionDeclarations.map(d => d.name));
+                let functionCallingConfig;
+                if (choiceType === 'tool' && choice.name) {
+                    const name = String(choice.name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+                    if (declaredNames.has(name)) {
+                        functionCallingConfig = { mode: 'ANY', allowedFunctionNames: [name] };
+                    }
+                } else if (choiceType === 'any' || choiceType === 'required') {
+                    functionCallingConfig = { mode: 'ANY' };
+                } else if (choiceType === 'none') {
+                    functionCallingConfig = { mode: 'NONE' };
+                } else if (choiceType === 'auto') {
+                    functionCallingConfig = { mode: 'AUTO' };
+                }
+                if (functionCallingConfig) {
+                    googleRequest.toolConfig = { functionCallingConfig };
+                }
+            }
+
+            // For Claude models, set functionCallingConfig.mode = "VALIDATED"
+            // This ensures strict parameter validation (matches opencode-antigravity-auth)
+            if (isClaudeModel) {
+                googleRequest.toolConfig = {
+                    functionCallingConfig: {
+                        mode: 'VALIDATED'
+                    }
+                };
+            }
         }
     }
 

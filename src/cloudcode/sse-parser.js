@@ -5,7 +5,7 @@
  * Accumulates all parts and returns a single response.
  */
 
-import { convertGoogleToAnthropic } from '../format/index.js';
+import { convertGoogleToAnthropic, mergeGroundingMetadata, resolveGroundingMetadataUrls } from '../format/index.js';
 import { MIN_SIGNATURE_LENGTH } from '../constants.js';
 import { logger } from '../utils/logger.js';
 
@@ -24,6 +24,7 @@ export async function parseThinkingSSEResponse(response, originalModel, requestC
     const finalParts = [];
     let usageMetadata = {};
     let finishReason = 'STOP';
+    let groundingMetadata = null;
 
     const flushThinking = () => {
         if (accumulatedThinkingText) {
@@ -74,6 +75,9 @@ export async function parseThinkingSSEResponse(response, originalModel, requestC
                 if (firstCandidate.finishReason) {
                     finishReason = firstCandidate.finishReason;
                 }
+                if (firstCandidate.groundingMetadata) {
+                    groundingMetadata = mergeGroundingMetadata(groundingMetadata, firstCandidate.groundingMetadata);
+                }
 
                 const parts = firstCandidate.content?.parts || [];
                 for (const part of parts) {
@@ -115,8 +119,12 @@ export async function parseThinkingSSEResponse(response, originalModel, requestC
         if (lastTextPart) lastTextPart.thoughtSignature = trailingTextSignature;
     }
 
+    const candidate = { content: { parts: finalParts }, finishReason };
+    if (groundingMetadata) {
+        candidate.groundingMetadata = await resolveGroundingMetadataUrls(groundingMetadata);
+    }
     const accumulatedResponse = {
-        candidates: [{ content: { parts: finalParts }, finishReason }],
+        candidates: [candidate],
         usageMetadata
     };
 
