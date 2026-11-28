@@ -25,7 +25,9 @@ const PAID = [
 ];
 
 async function runTests() {
+    const assert = require('node:assert/strict');
     const { resolveModelAlias, parseBackendClaudeId, pickNewestInFamily } = await import('../src/cloudcode/model-resolver.js');
+    const { addModelEffortAliases, resolveModelEffort } = await import('../src/cloudcode/model-effort.js');
     const { BUILTIN_MODEL_MAPPINGS } = await import('../src/constants.js');
     const { recordModels, clearModelRegistry } = await import('../src/cloudcode/model-registry.js');
     const { getFallbackModel } = await import('../src/fallback-config.js');
@@ -119,6 +121,50 @@ async function runTests() {
         eq(resolve('claude-opus-5-5', null), { model: 'claude-opus-5-5-medium', source: 'static' });
         eq(resolve('claude-opus-5[1m]', new Set()), { model: 'claude-opus-5-5-medium', source: 'static' });
         eq(resolve('gemini-3.8-flash-low', null), { model: 'gemini-3.8-flash-low', source: 'none' });
+    });
+
+    const geminiEffort = (id, effort, catalog = FREE) => resolveModelEffort(id, effort, candidate => catalog.includes(candidate));
+    test('routes per-request effort on the same Gemini family ID', () => {
+        eq(geminiEffort('gemini-4-hydrogen', 'low'), 'gemini-4-hydrogen-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high'), 'gemini-4-hydrogen-high');
+        eq(geminiEffort('gemini-4-hydrogen', 'xhigh'), 'gemini-4-hydrogen-xhigh');
+    });
+    test('routes the bare Gemini alias with no effort to a catalog default', () => {
+        eq(geminiEffort('gemini-3.8-flash'), 'gemini-3.8-flash-tiered');
+        eq(geminiEffort('gemini-4-hydrogen'), 'gemini-4-hydrogen-medium');
+        eq(geminiEffort('gemini-4-hydrogen[1m]', 'high'), 'gemini-4-hydrogen-high');
+    });
+    test('uses only tiers the catalog offers, including tiered IDs', () => {
+        eq(geminiEffort('gemini-3.8-flash-tiered', 'low'), 'gemini-3.8-flash-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high', ['gemini-4-hydrogen-tiered-high']), 'gemini-4-hydrogen-tiered-high');
+        assert.throws(() => geminiEffort('gemini-4-hydrogen', 'max'), /Available levels: low, medium, high, xhigh/);
+        assert.throws(() => geminiEffort('gemini-4-hydrogen', 'low', PAID), /Available levels: high\./);
+    });
+    test('keeps fixed-tier IDs and unrelated or unknown model routes', () => {
+        eq(geminiEffort('gemini-4-hydrogen-medium', 'high'), 'gemini-4-hydrogen-medium');
+        eq(geminiEffort('claude-sonnet-5-5-low', 'high', PAID), 'claude-sonnet-5-5-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high', []), 'gemini-4-hydrogen');
+        eq(geminiEffort('gemini-4-argon', 'high'), 'gemini-4-argon');
+    });
+    test('routes request effort within the explicitly selected Claude version', () => {
+        const models = [...PAID, 'claude-opus-6-0-high'];
+        const effort = (model, level, catalog = models) => resolveModelEffort(model, level, id => catalog.includes(id));
+        eq(effort('claude-opus-5-5'), 'claude-opus-5-5-medium');
+        eq(effort('claude-opus-5-5[1m]', 'low'), 'claude-opus-5-5-low');
+        eq(effort('claude-opus-5-5', 'high'), 'claude-opus-5-5-high');
+        eq(effort('claude-sonnet-5-5', 'high'), 'claude-sonnet-5-5-high');
+        assert.throws(() => effort('claude-sonnet-5-5', 'max'), /Available levels: low, medium, high\./);
+        eq(effort('claude-opus-5-5-medium', 'high'), 'claude-opus-5-5-medium');
+        eq(effort('claude-sonnet-5', 'high'), 'claude-sonnet-5');
+        eq(effort('claude-opus-5-5', 'high', FREE), 'claude-opus-5-5');
+    });
+    test('advertises neutral IDs alongside original catalog rows', () => {
+        const rows = [{ id: 'gemini-4-hydrogen-medium', description: 'Gemini 4 Hydrogen (Medium)', context_length: 1048576, thinking_level: { id: 'medium' } },
+            { id: 'gemini-4-hydrogen-tiered-medium' }, { id: 'claude-opus-5-5-medium' }, { id: 'gemini-4-argon-disabled' }];
+        const models = addModelEffortAliases({ object: 'list', data: rows });
+        eq(models.data, [...rows, { id: 'gemini-4-hydrogen', description: 'Gemini 4 Hydrogen', context_length: 1048576 },
+            { id: 'claude-opus-5-5', description: 'claude-opus-5-5' }]);
+        eq(addModelEffortAliases(models), models);
     });
 
     // --- Quota fallback (fallback-config.js) ---
