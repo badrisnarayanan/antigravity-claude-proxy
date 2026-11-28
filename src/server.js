@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
-import { addGeminiEffortAliases, resolveGeminiEffort } from './cloudcode/gemini-effort.js';
+import { addModelEffortAliases, resolveModelEffort } from './cloudcode/model-effort.js';
 import { createAccountQuotaReporter } from './cloudcode/quota-summary.js';
 import { mountWebUI } from './webui/index.js';
 import { createRequestGuard, isAdminPath, safeEqual, toList } from './utils/request-guard.js';
@@ -705,7 +705,7 @@ app.get('/v1/models', async (req, res) => {
         }
         const token = await accountManager.getTokenForAccount(account);
         const models = await listModels(token);
-        res.json(addGeminiEffortAliases(models));
+        res.json(addModelEffortAliases(models));
     } catch (error) {
         logger.error('[API] Error listing models:', error);
         res.status(500).json({
@@ -816,21 +816,20 @@ app.post('/v1/messages', async (req, res) => {
             availableModels = await getAvailableModelIds(validationToken, validationProjectId);
         }
 
-        // Resolve client aliases (claude-sonnet-5, claude-opus-5-5[1m], ...) and
-        // retired ids against the models the account offers right now, falling
-        // back to the static table only when the live list is unavailable.
-        const resolved = resolveModelAlias(requestedModel, availableModels, BUILTIN_MODEL_MAPPINGS);
-        if (resolved.model !== requestedModel) {
-            const how = resolved.source === 'live' ? 'live catalog' : resolved.source === 'static' ? 'built-in table' : 'exact';
-            logger.info(`[Server] Resolved model ${requestedModel} -> ${resolved.model} (${how})`);
-            requestedModel = resolved.model;
-        }
-
-        const effortModel = resolveGeminiEffort(requestedModel, output_config?.effort,
+        // Resolve effort within the requested family before generic alias fallback.
+        const effortModel = resolveModelEffort(requestedModel, output_config?.effort,
             id => availableModels?.has(id) || accountManager.anyAccountOffers(id));
         if (effortModel !== requestedModel) {
-            logger.info(`[Server] Resolved Gemini model ${requestedModel} -> ${effortModel}`);
+            logger.info(`[Server] Resolved effort model ${requestedModel} -> ${effortModel}`);
             requestedModel = effortModel;
+        } else {
+            // Resolve remaining client aliases and retired ids against the live catalog.
+            const resolved = resolveModelAlias(requestedModel, availableModels, BUILTIN_MODEL_MAPPINGS);
+            if (resolved.model !== requestedModel) {
+                const how = resolved.source === 'live' ? 'live catalog' : resolved.source === 'static' ? 'built-in table' : 'exact';
+                logger.info(`[Server] Resolved model ${requestedModel} -> ${resolved.model} (${how})`);
+                requestedModel = resolved.model;
+            }
         }
 
         // Google Search grounding only works on Gemini models: a request that
