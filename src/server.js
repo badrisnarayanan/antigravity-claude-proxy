@@ -10,6 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendMessage, sendMessageStream, listModels, getModelQuotas, isValidModel, getAvailableModelIds } from './cloudcode/index.js';
 import { resolveModelAlias } from './cloudcode/model-resolver.js';
+import { addGeminiEffortAliases, resolveGeminiEffort } from './cloudcode/gemini-effort.js';
 import { createAccountQuotaReporter } from './cloudcode/quota-summary.js';
 import { mountWebUI } from './webui/index.js';
 import { createRequestGuard, isAdminPath, safeEqual, toList } from './utils/request-guard.js';
@@ -704,7 +705,7 @@ app.get('/v1/models', async (req, res) => {
         }
         const token = await accountManager.getTokenForAccount(account);
         const models = await listModels(token);
-        res.json(models);
+        res.json(addGeminiEffortAliases(models));
     } catch (error) {
         logger.error('[API] Error listing models:', error);
         res.status(500).json({
@@ -823,6 +824,13 @@ app.post('/v1/messages', async (req, res) => {
             const how = resolved.source === 'live' ? 'live catalog' : resolved.source === 'static' ? 'built-in table' : 'exact';
             logger.info(`[Server] Resolved model ${requestedModel} -> ${resolved.model} (${how})`);
             requestedModel = resolved.model;
+        }
+
+        const effortModel = resolveGeminiEffort(requestedModel, output_config?.effort,
+            id => availableModels?.has(id) || accountManager.anyAccountOffers(id));
+        if (effortModel !== requestedModel) {
+            logger.info(`[Server] Resolved Gemini model ${requestedModel} -> ${effortModel}`);
+            requestedModel = effortModel;
         }
 
         // Google Search grounding only works on Gemini models: a request that

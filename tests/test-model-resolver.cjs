@@ -25,7 +25,9 @@ const PAID = [
 ];
 
 async function runTests() {
+    const assert = require('node:assert/strict');
     const { resolveModelAlias, parseBackendClaudeId, pickNewestInFamily } = await import('../src/cloudcode/model-resolver.js');
+    const { addGeminiEffortAliases, resolveGeminiEffort } = await import('../src/cloudcode/gemini-effort.js');
     const { BUILTIN_MODEL_MAPPINGS } = await import('../src/constants.js');
     const { recordModels, clearModelRegistry } = await import('../src/cloudcode/model-registry.js');
     const { getFallbackModel } = await import('../src/fallback-config.js');
@@ -119,6 +121,37 @@ async function runTests() {
         eq(resolve('claude-opus-5-5', null), { model: 'claude-opus-5-5-medium', source: 'static' });
         eq(resolve('claude-opus-5[1m]', new Set()), { model: 'claude-opus-5-5-medium', source: 'static' });
         eq(resolve('gemini-3.8-flash-low', null), { model: 'gemini-3.8-flash-low', source: 'none' });
+    });
+
+    const geminiEffort = (id, effort, catalog = FREE) => resolveGeminiEffort(id, effort, candidate => catalog.includes(candidate));
+    test('routes per-request effort on the same Gemini family ID', () => {
+        eq(geminiEffort('gemini-4-hydrogen', 'low'), 'gemini-4-hydrogen-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high'), 'gemini-4-hydrogen-high');
+        eq(geminiEffort('gemini-4-hydrogen', 'xhigh'), 'gemini-4-hydrogen-xhigh');
+    });
+    test('routes the bare Gemini alias with no effort to a catalog default', () => {
+        eq(geminiEffort('gemini-3.8-flash'), 'gemini-3.8-flash-tiered');
+        eq(geminiEffort('gemini-4-hydrogen'), 'gemini-4-hydrogen-medium');
+        eq(geminiEffort('gemini-4-hydrogen[1m]', 'high'), 'gemini-4-hydrogen-high');
+    });
+    test('uses only tiers the catalog offers, including tiered IDs', () => {
+        eq(geminiEffort('gemini-3.8-flash-tiered', 'low'), 'gemini-3.8-flash-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high', ['gemini-4-hydrogen-tiered-high']), 'gemini-4-hydrogen-tiered-high');
+        assert.throws(() => geminiEffort('gemini-4-hydrogen', 'max'), /Available levels: low, medium, high, xhigh/);
+        assert.throws(() => geminiEffort('gemini-4-hydrogen', 'low', PAID), /Available levels: high\./);
+    });
+    test('keeps fixed-tier IDs and unrelated or unknown model routes', () => {
+        eq(geminiEffort('gemini-4-hydrogen-medium', 'high'), 'gemini-4-hydrogen-medium');
+        eq(geminiEffort('claude-sonnet-5-5-low', 'high', PAID), 'claude-sonnet-5-5-low');
+        eq(geminiEffort('gemini-4-hydrogen', 'high', []), 'gemini-4-hydrogen');
+        eq(geminiEffort('gemini-4-argon', 'high'), 'gemini-4-argon');
+    });
+    test('advertises neutral IDs alongside original catalog rows', () => {
+        const rows = [{ id: 'gemini-4-hydrogen-medium', description: 'Gemini 4 Hydrogen (Medium)', context_length: 1048576, thinking_level: { id: 'medium' } },
+            { id: 'gemini-4-hydrogen-tiered-medium' }, { id: 'claude-opus-5-5-medium' }, { id: 'gemini-4-argon-disabled' }];
+        const models = addGeminiEffortAliases({ object: 'list', data: rows });
+        eq(models.data, [...rows, { id: 'gemini-4-hydrogen', description: 'Gemini 4 Hydrogen', context_length: 1048576 }]);
+        eq(addGeminiEffortAliases(models), models);
     });
 
     // --- Quota fallback (fallback-config.js) ---

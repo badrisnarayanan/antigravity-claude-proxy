@@ -251,6 +251,14 @@ claude
 
 > **Note:** If Claude Code asks you to select a login method, add `"hasCompletedOnboarding": true` to `~/.claude.json` (macOS/Linux) or `%USERPROFILE%\.claude.json` (Windows), then restart your terminal and try again.
 
+### Adjust Gemini effort
+
+Select a Gemini family ID from the proxy's `/v1/models`, such as
+`gemini-4-hydrogen`, then use `/effort` in Claude Code. The proxy routes each
+request to the matching tier advertised by the account catalog. An unavailable
+effort returns HTTP 400 with the supported levels. IDs ending in a specific
+effort, such as `gemini-4-hydrogen-medium`, keep that tier.
+
 ### Proxy Mode vs. Paid Mode
 
 Toggle in **Settings** → **Claude CLI**:
