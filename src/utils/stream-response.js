@@ -11,6 +11,12 @@
  * headers go out with an SSE `ping` (as the Anthropic API sends), and a ping
  * follows every `pingMs` until the first event. An upstream error after that
  * point goes out as an SSE `error` event.
+ *
+ * The pings continue for the whole stream: a ping goes out when nothing has
+ * been written for `pingMs`. Google can be silent for minutes in the middle of
+ * a stream while it generates a large tool call, and idle watchdogs in clients
+ * and gateways drop a stream that sends no bytes. The Anthropic API sends
+ * pings at any point in a stream, and clients ignore them.
  */
 
 const PING = `event: ping\ndata: ${JSON.stringify({ type: 'ping' })}\n\n`;
@@ -38,6 +44,25 @@ function send(res, chunk) {
 }
 
 /**
+ * Send a ping every `pingMs` until `stop()`. `reset()` restarts the wait after
+ * a real event, so a ping goes out only when the stream has been idle. Events
+ * are written whole by `send()`, so a ping never lands inside one.
+ *
+ * @param {import('express').Response} res
+ * @param {number} pingMs
+ */
+function heartbeat(res, pingMs) {
+    const timer = setInterval(() => {
+        if (res.writableEnded || res.destroyed) return;
+        send(res, PING);
+    }, pingMs);
+    return {
+        reset: () => timer.refresh(),
+        stop: () => clearInterval(timer)
+    };
+}
+
+/**
  * Pull the first event, sending headers and pings while it is slow.
  * Rejects with the generator's error; the caller decides how to report it.
  *
@@ -62,28 +87,36 @@ export async function firstEvent(res, generator, { graceMs, pingMs, onSlowStart 
     onSlowStart?.();
     startEventStream(res);
     send(res, PING);
-    const heartbeat = setInterval(() => send(res, PING), pingMs);
+    const pings = heartbeat(res, pingMs);
     try {
         return await first;
     } finally {
-        clearInterval(heartbeat);
+        pings.stop();
     }
 }
 
 /**
  * Stream every event of `generator` to `res`, starting with `firstResult`.
+ * Sends a ping when no event has been written for `pingMs`. Rejects with the
+ * generator's error; no ping follows the error or `res.end()`.
  *
  * @param {import('express').Response} res
  * @param {AsyncGenerator<Object>} generator
  * @param {IteratorResult<Object>} firstResult
+ * @param {{ pingMs: number }} options
  */
-export async function writeEvents(res, generator, firstResult) {
+export async function writeEvents(res, generator, firstResult, { pingMs }) {
     startEventStream(res);
-    if (!firstResult.done) {
-        send(res, `event: ${firstResult.value.type}\ndata: ${JSON.stringify(firstResult.value)}\n\n`);
-    }
-    for await (const event of generator) {
+    const pings = heartbeat(res, pingMs);
+    const write = (event) => {
         send(res, `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        pings.reset();
+    };
+    try {
+        if (!firstResult.done) write(firstResult.value);
+        for await (const event of generator) write(event);
+    } finally {
+        pings.stop();
     }
     res.end();
 }

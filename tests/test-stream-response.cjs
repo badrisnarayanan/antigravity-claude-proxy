@@ -42,11 +42,17 @@ async function runTests() {
             headers: {},
             chunks: [],
             ended: false,
+            writableEnded: false,
+            destroyed: false,
+            writesAfterEnd: 0,
             status(code) { this.statusCode = code; return this; },
             setHeader(k, v) { this.headers[k] = v; },
             flushHeaders() { this.headersSent = true; },
-            write(chunk) { this.chunks.push(chunk); },
-            end() { this.ended = true; }
+            write(chunk) {
+                if (this.writableEnded) this.writesAfterEnd++;
+                this.chunks.push(chunk);
+            },
+            end() { this.ended = true; this.writableEnded = true; }
         };
     }
 
@@ -63,6 +69,13 @@ async function runTests() {
         throw new Error(message);
     }
 
+    // One event, then upstream goes quiet, then `after` runs (yield or throw).
+    async function* stallsMidStream(stallMs, after) {
+        yield { type: 'message_start' };
+        await sleep(stallMs);
+        yield* after();
+    }
+
     const opts = { graceMs: 40, pingMs: 15 };
 
     await test('fast first event: no ping, headers sent once, all events written', async () => {
@@ -71,7 +84,7 @@ async function runTests() {
         const gen = events(0, [{ type: 'message_start' }, { type: 'message_stop' }]);
         const first = await firstEvent(res, gen, { ...opts, onSlowStart: () => { slow = true; } });
         assert(!res.headersSent, 'headers wait for the caller');
-        await writeEvents(res, gen, first);
+        await writeEvents(res, gen, first, opts);
         assert(!slow, 'onSlowStart must not fire');
         assert(pings(res) === 0, `expected no ping, got ${pings(res)}`);
         assert(res.statusCode === 200 && res.headers['Content-Type'] === 'text/event-stream', 'SSE headers');
@@ -89,7 +102,7 @@ async function runTests() {
         assert(res.headersSent && res.statusCode === 200, 'headers sent early');
         const pingsBefore = pings(res);
         assert(pingsBefore >= 2, `expected the first ping and at least one more, got ${pingsBefore}`);
-        await writeEvents(res, gen, first);
+        await writeEvents(res, gen, first, opts);
         assert(res.chunks.slice(0, pingsBefore).every(c => c.startsWith('event: ping\n')), 'pings come first');
         assert(res.chunks[pingsBefore].startsWith('event: message_start\n'), 'then the first event');
         await sleep(40);
@@ -121,6 +134,42 @@ async function runTests() {
         const count = pings(res);
         await sleep(40);
         assert(pings(res) === count, 'pings stop after the error');
+    });
+
+    await test('silent upstream mid-stream: pings between events, none after end', async () => {
+        const res = fakeRes();
+        const gen = stallsMidStream(100, async function* () { yield { type: 'message_stop' }; });
+        const first = await firstEvent(res, gen, opts);
+        await writeEvents(res, gen, first, opts);
+        const start = res.chunks.findIndex(c => c.startsWith('event: message_start\n'));
+        const stop = res.chunks.findIndex(c => c.startsWith('event: message_stop\n'));
+        assert(start === 0 && stop > start, 'events in order');
+        const between = res.chunks.slice(start + 1, stop);
+        assert(between.length >= 2 && between.every(c => c.startsWith('event: ping\n')),
+            `expected at least 2 pings between the events, got ${between.length}`);
+        assert(res.ended, 'response ended');
+        const count = pings(res);
+        await sleep(60);
+        assert(pings(res) === count, 'no ping after res.end()');
+        assert(res.writesAfterEnd === 0, 'no write after res.end()');
+    });
+
+    await test('upstream error mid-stream: rejects, and pings stop', async () => {
+        const res = fakeRes();
+        const gen = stallsMidStream(60, async function* () { throw new Error('500 INTERNAL'); });
+        const first = await firstEvent(res, gen, opts);
+        let error = null;
+        try {
+            await writeEvents(res, gen, first, opts);
+        } catch (e) {
+            error = e;
+        }
+        assert(error?.message === '500 INTERNAL', 'error reaches the caller');
+        assert(pings(res) >= 1, `expected a ping during the silence, got ${pings(res)}`);
+        assert(!res.ended, 'the caller ends the response');
+        const count = res.chunks.length;
+        await sleep(60);
+        assert(res.chunks.length === count, 'nothing written after the error');
     });
 
     await test('a cancelled request stops before it calls upstream', async () => {

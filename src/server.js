@@ -927,7 +927,7 @@ app.post('/v1/messages', async (req, res) => {
                 if (slowStart) logger.info(`[API] First upstream event for ${modelId} after ${Date.now() - started}ms`);
 
                 usageStats.track(modelId);
-                await writeEvents(res, generator, firstResult);
+                await writeEvents(res, generator, firstResult, { pingMs: STREAM_PING_INTERVAL_MS });
 
             } catch (error) {
                 if (clientGone.signal.aborted) {
